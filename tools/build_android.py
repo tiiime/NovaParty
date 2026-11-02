@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a local debug APK using the Android SDK configured in Godot."""
+"""Build a Debug or Release APK on local machines or CI."""
 import argparse
 from pathlib import Path
 from dev_config import godot_path
@@ -12,8 +12,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--godot', default=godot_path())
     parser.add_argument('--output', type=Path, default=ROOT / 'build/android/novaparty-debug.apk')
-    parser.add_argument("--release", action="store_true", help="Ordinary SDK build without the Debug service; local prototype signing")
+    parser.add_argument("--release", action="store_true", help="Release build without Debug services; requires release signing configuration")
     args = parser.parse_args()
+    from android_config import resolve
+    resolve(debug=not args.release)  # Fail before exporting if signing configuration is incomplete.
     args.output.parent.mkdir(parents=True, exist_ok=True)
     log = args.output.parent / 'export.log'
     with log.open('w') as stream:

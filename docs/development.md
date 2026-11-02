@@ -19,7 +19,7 @@ cp .env.example .env
 
 优先级为：命令行参数 > 进程环境变量 > 仓库 `.env` > 通用默认值。空值视为未配置。路径支持 `~`，含空格需引号；配置读取器只解析字面量 `KEY=value`，不执行 shell，不展开 `$VAR`。
 
-构建脚本、UI 打包器和通过共享测试入口运行的 Python 测试自动读取 `.env`。直接执行 Godot 不会读取 `.env`；SDK/游戏本身也不依赖该文件。Android 签名配置仍由本机 Godot 编辑器设置提供，不放进仓库。
+构建脚本、UI 打包器和通过共享测试入口运行的 Python 测试自动读取 `.env`。直接执行 Godot 不会读取 `.env`；SDK/游戏本身也不依赖该文件。Debug 签名默认沿用本机 Godot 编辑器设置。Release 使用 `.env.example` 中的正式签名环境变量，缺少配置时不会回退 Debug 密钥；详见 [GitHub 打包与签名](github-actions.md)。
 
 ```sh
 python3 tools/build_android.py

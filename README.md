@@ -54,7 +54,9 @@ Mod 支持清单列出的 GDScript 与原始文件；通用 Godot 导入资源�
 python3 tools/build_android.py
 ```
 
-输出 `build/android/novaparty-debug.apk`，包含 ARM32 与 ARM64。已构建的最新基础包位于 `build/android/novaparty-0.1.13-debug.apk`，Release 原型包为 `build/android/novaparty-0.1.13-release.apk`。Android/iOS 导出均只保留五子棋 Mod；项目导出插件使用白名单，其他 Mod 源码留作外部包。本次已直接将工程、包 ID、原生桥接、发现服务与二维码协议统一为 NovaParty；Android ARM64 与 iOS 模拟器已安装新包并完成发现、二维码解析和加入验证。电视上的旧包需首次手动安装新包，之后继续使用同包更新。构建与设备边界见 [Android 指南](docs/android.md)和[开发现状](docs/status.md)。
+输出 `build/android/novaparty-debug.apk`，包含 ARM32 与 ARM64。已构建的最新基础包位于 `build/android/novaparty-0.1.13-debug.apk`，历史 Release 原型包为 `build/android/novaparty-0.1.13-release.apk`。Android/iOS 导出均只保留五子棋 Mod；项目导出插件使用白名单，其他 Mod 源码留作外部包。本次已直接将工程、包 ID、原生桥接、发现服务与二维码协议统一为 NovaParty；Android ARM64 与 iOS 模拟器已安装新包并完成发现、二维码解析和加入验证。电视上的旧包需首次手动安装新包，之后继续使用同包更新。构建与设备边界见 [Android 指南](docs/android.md)和[开发现状](docs/status.md)。
+
+GitHub 自动打包、正式签名 Secrets 和下载产物的方法见 [GitHub Actions 指南](docs/github-actions.md)。
 
 ## 网络 Debug
 
