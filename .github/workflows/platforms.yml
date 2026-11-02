@@ -1,0 +1,50 @@
+name: Desktop and iOS Simulator
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: platforms-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            runner: windows-2025
+          - platform: macos
+            runner: macos-15
+          - platform: ios-simulator
+            runner: macos-15-intel
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Prepare Godot and native extensions
+        run: python tools/ci_platforms.py --platform ${{ matrix.platform }}
+      - name: Export and smoke-test packaged application
+        run: python tools/build_platform.py --platform ${{ matrix.platform }}
+      - name: Upload test package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: novaparty-${{ matrix.platform }}-${{ github.run_number }}
+          path: build/${{ matrix.platform }}/novaparty-*.zip
+          if-no-files-found: error
+          retention-days: 14

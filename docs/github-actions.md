@@ -1,4 +1,35 @@
-# GitHub Android 打包
+# GitHub 构建与打包
+
+## Windows、macOS 与 iOS 模拟器测试包
+
+工作流 `.github/workflows/platforms.yml`，名称 **Desktop and iOS Simulator**。推送 main、推送 v* 标签、向 main 提交 PR 或手动运行时，并行生成以下测试包；不读取任何签名 Secrets，也不发布到商店：
+
+| 平台 | Runner / 架构 | 产物 |
+| --- | --- | --- |
+| Windows | windows-2025 / x64 | EXE + PCK 的 ZIP，未签名 |
+| macOS | macos-15 / Apple Silicon 构建 | Universal ZIP，主程序与 Bonjour 扩展均含 arm64 / x86_64，临时签名，未公证 |
+| iOS 模拟器 | macos-15-intel / x86_64 | NovaParty.app 的 ZIP，临时签名，只用于模拟器 |
+
+产物位于对应运行的 Artifacts，保留 14 天。Apple 的 `.app` 用 ditto 打成 ZIP，保留执行权限和包结构。iOS 模拟器包不是 IPA，不能安装到真实 iPhone；Godot 4.6.1 官方模拟器模板当前只有 x86_64，未提供原生 arm64 模拟器产物。
+
+```sh
+gh workflow run platforms.yml
+gh run list --workflow platforms.yml
+gh run download <run-id> --dir build/github
+```
+
+CI 安装与校验固定版本 Godot 4.6.1 下载，重建 Apple 原生扩展，检查导出内容仅含五子棋且不含本地配置；然后实际启动打包后的应用，通过 Debug RPC 检查首页、游戏列表、房间创建/退出。macOS 与 iOS 模拟器还检查 Apple Bonjour 桥接和二维码生成；macOS 校验双架构和临时签名。
+
+Windows 目前没有原生 mDNS / 二维码适配器，需手动地址加入；该限制不会因成功打包而消失。macOS 未进行 Developer ID 签名和公证，外部分发后仍可能被 Gatekeeper 拦截。模拟器启动检查不代表真实 iPhone 已验证。
+
+本地 macOS 构建：
+
+```sh
+python3 tools/build_bonjour.py --platform macos
+python3 tools/build_platform.py --platform macos
+```
+
+## Android APK
 
 工作流：`.github/workflows/android.yml`，GitHub Actions 页面选择 **Android APK**。
 
