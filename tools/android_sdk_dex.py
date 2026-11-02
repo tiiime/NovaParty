@@ -1,4 +1,5 @@
 """Add the ordinary SDK's Java bridge to the official non-Gradle Godot template."""
+from pathlib import Path
 import hashlib
 import urllib.request
 import subprocess
