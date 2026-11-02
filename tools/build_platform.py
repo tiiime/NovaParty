@@ -19,8 +19,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def run(command, log):
+    print(f'BUILD_PHASE: {log.name}', flush=True)
     with log.open('w') as stream:
-        result = subprocess.run(list(map(str, command)), cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT)
+        result = subprocess.run(list(map(str, command)), cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT, timeout=900)
     text = log.read_text(errors='replace')
     if result.returncode or 'ERROR:' in text or 'SCRIPT ERROR:' in text:
         print(text[-16000:])
@@ -88,11 +89,13 @@ def simulator_smoke(app):
     assert devices, 'No available iPhone simulator runtime on this runner'
     device = next((d for d in devices if d['state'] == 'Booted'), devices[0])
     udid = device['udid']
+    print('SIMULATOR_PHASE: boot ' + device['name'], flush=True)
     if device['state'] != 'Booted':
-        subprocess.run(['xcrun', 'simctl', 'boot', udid], check=True)
-    subprocess.run(['xcrun', 'simctl', 'bootstatus', udid, '-b'], check=True)
-    subprocess.run(['xcrun', 'simctl', 'install', udid, str(app)], check=True)
-    subprocess.run(['xcrun', 'simctl', 'launch', udid, 'org.novaparty.prototype'], check=True)
+        subprocess.run(['xcrun', 'simctl', 'boot', udid], check=True, timeout=60)
+    subprocess.run(['xcrun', 'simctl', 'bootstatus', udid, '-b'], check=True, timeout=240)
+    print('SIMULATOR_PHASE: install and launch', flush=True)
+    subprocess.run(['xcrun', 'simctl', 'install', udid, str(app)], check=True, timeout=120)
+    subprocess.run(['xcrun', 'simctl', 'launch', udid, 'org.novaparty.prototype'], check=True, timeout=60)
     try:
         container = Path(subprocess.check_output(['xcrun', 'simctl', 'get_app_container', udid, 'org.novaparty.prototype', 'data'], text=True).strip())
         connection = container/'Documents/debug/connection.json'
@@ -108,23 +111,34 @@ def simulator_smoke(app):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--platform', choices=['windows', 'macos', 'ios-simulator'], required=True)
+    stages = parser.add_mutually_exclusive_group()
+    stages.add_argument('--skip-smoke', action='store_true', help='Build/archive only; CI runs startup separately')
+    stages.add_argument('--smoke-only', action='store_true', help='Check the previously built application')
     args = parser.parse_args()
     platform = args.platform
     directory = ROOT/'build'/platform
     directory.mkdir(parents=True, exist_ok=True)
+    if args.smoke_only:
+        if platform == 'ios-simulator':
+            simulator_smoke(ROOT/'build/ios/SimulatorBuild/NovaParty.app')
+        else:
+            binary = directory/'package'/'NovaParty.exe' if platform == 'windows' else directory/'package/NovaParty.app/Contents/MacOS/NovaParty'
+            desktop_smoke(binary, platform, directory)
+        return
     godot = godot_path()
     run([godot, '--headless', '--editor', '--path', ROOT, '--quit'], directory/'import.log')
     preset = {'windows': 'Windows Debug', 'macos': 'macOS Debug', 'ios-simulator': 'iOS Simulator Debug'}[platform]
     run([godot, '--headless', '--path', ROOT, '--export-pack', preset, directory/'content.zip'], directory/'content.log')
     check_content(directory/'content.zip')
     if platform == 'ios-simulator':
-        run([sys.executable, 'tools/build_ios_simulator.py'], directory/'build.log')
+        subprocess.run([sys.executable, '-u', 'tools/build_ios_simulator.py'], cwd=ROOT, check=True, timeout=1800)
         app = ROOT/'build/ios/SimulatorBuild/NovaParty.app'
         info = plistlib.loads((app/'Info.plist').read_bytes())
         assert info['CFBundleIdentifier'] == 'org.novaparty.prototype'
         assert info['DTPlatformName'] == 'iphonesimulator'
         subprocess.run(['codesign', '--force', '--deep', '--sign', '-', str(app)], check=True, capture_output=True)
-        simulator_smoke(app)
+        if not args.skip_smoke:
+            simulator_smoke(app)
         output = directory/'novaparty-ios-simulator-x86_64.zip'
         subprocess.run(['ditto', '-c', '-k', '--sequesterRsrc', '--keepParent', str(app), str(output)], check=True)
     else:
@@ -140,12 +154,14 @@ def main():
             for framework in frameworks:
                 subprocess.run(['lipo', str(framework), '-verify_arch', 'arm64', 'x86_64'], check=True)
             subprocess.run(['codesign', '--verify', '--deep', '--strict', str(target)], check=True, capture_output=True)
-            desktop_smoke(binary, platform, directory)
+            if not args.skip_smoke:
+                desktop_smoke(binary, platform, directory)
             output = directory/'novaparty-macos-universal.zip'
             subprocess.run(['ditto', '-c', '-k', '--sequesterRsrc', '--keepParent', str(target), str(output)], check=True)
         else:
             assert target.read_bytes()[:2] == b'MZ'
-            desktop_smoke(target, platform, directory)
+            if not args.skip_smoke:
+                desktop_smoke(target, platform, directory)
             output = directory/'novaparty-windows-x64.zip'
             with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_DEFLATED) as z:
                 for path in package.rglob('*'):

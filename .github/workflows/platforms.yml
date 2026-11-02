@@ -39,8 +39,10 @@ jobs:
           python-version: '3.12'
       - name: Prepare Godot and native extensions
         run: python tools/ci_platforms.py --platform ${{ matrix.platform }}
-      - name: Export and smoke-test packaged application
-        run: python tools/build_platform.py --platform ${{ matrix.platform }}
+      - name: Export test package
+        run: python tools/build_platform.py --platform ${{ matrix.platform }} --skip-smoke
+      - name: Check packaged application startup
+        run: python tools/build_platform.py --platform ${{ matrix.platform }} --smoke-only
       - name: Upload test package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -48,3 +50,13 @@ jobs:
           path: build/${{ matrix.platform }}/novaparty-*.zip
           if-no-files-found: error
           retention-days: 14
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: diagnostics-${{ matrix.platform }}-${{ github.run_number }}
+          path: |
+            build/${{ matrix.platform }}/*.log
+            build/ios/*.log
+          if-no-files-found: ignore
+          retention-days: 7

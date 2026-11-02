@@ -13,8 +13,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def run(command, log):
+    print(f"BUILD_PHASE: {log.name}", flush=True)
     with log.open('w') as stream:
-        result = subprocess.run(command, cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT)
+        result = subprocess.run(command, cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT, timeout=900)
     if result.returncode:
         print(log.read_text()[-12000:], file=sys.stderr)
         raise SystemExit(result.returncode)
