@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1440" viewBox="0 0 1920 1440">
+<defs>
+<linearGradient id="sky-day" x2="0" y2="1"><stop stop-color="#82B9FF"/><stop offset="1" stop-color="#EDF6FF"/></linearGradient>
+<linearGradient id="sky-evening" x2="0" y2="1"><stop stop-color="#9DADE9"/><stop offset="1" stop-color="#F1F1FC"/></linearGradient>
+<path id="buddy" d="M49 10Q55 0 61 10L72 31 96 35Q108 37 99 47L82 64 86 88Q88 101 76 95L55 84 34 95Q22 101 24 88L28 64 11 47Q2 37 14 35L38 31Z" fill="#FFE84D" stroke="#173653" stroke-width="2" stroke-linejoin="round"/>
+<g id="cloud"><path d="M0 40Q-2 17 22 18Q26-9 52 3Q69-8 82 15Q110 10 110 38Q110 53 92 53H17Q0 53 0 40Z" fill="white"/></g>
+<g id="search" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="m15 15 7 7"/></g>
+<g id="arrow" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18m-7-7 7 7-7 7"/></g>
+<g id="check" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L21 5"/></g>
+<g id="refresh" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 8a9 9 0 1 0 0 9M20 2v6h-6"/></g>
+<g id="close" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m5 5 14 14M19 5 5 19"/></g>
+<g id="wifi" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M2 8q10-9 20 0M6 12q6-6 12 0m-8 4q2-2 4 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></g>
+</defs>
+<g font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif"><g transform="translate(0 0)">
+<rect x="0" y="0" width="1920" height="1440" rx="0" fill="#EAF7FF"/>
+<text x="64" y="80" font-size="40" font-weight="700" fill="#173653">03  /  页面结构与跨设备边界</text>
+<text x="64" y="122" font-size="22" font-weight="400" fill="#4D6A80">大厅统一品牌；游戏内部自由；平台的房间与连接语义始终一致。</text>
+<rect x="64" y="165" width="408" height="812" rx="42" fill="#173653"/>
+<rect x="76" y="177" width="384" height="788" rx="32" fill="url(#sky-day)"/>
+<rect x="204" y="192" width="128" height="22" rx="11" fill="#173653"/>
+<use href="#cloud" transform="translate(291 275) scale(1.1)" opacity=".8"/>
+<g transform="translate(205 281) scale(1.2)"><use href="#buddy"/>
+<ellipse cx="42" cy="49" rx="3" ry="4.5" fill="#173653"/><ellipse cx="68" cy="49" rx="3" ry="4.5" fill="#173653"/><path d="M44 60 66 62Q58 80 44 60Z" fill="#F3A4C3" stroke="#173653" stroke-width="2.3" stroke-linejoin="round"/>
+<ellipse cx="32" cy="59" rx="6" ry="3" fill="#F3A873" opacity=".65"/><ellipse cx="78" cy="59" rx="6" ry="3" fill="#F3A873" opacity=".65"/></g>
+<text x="110" y="465" font-size="36" font-weight="700" fill="#173653">星星大作战</text>
+<text x="110" y="505" font-size="23" font-weight="400" fill="#173653">朋友到齐，就开一局。</text>
+<rect x="105" y="574" width="326" height="66" rx="18" fill="#D4BA37"/>
+<rect x="105" y="570" width="326" height="66" rx="18" fill="#FFE84D"/>
+<text text-anchor="middle" x="268.0" y="611.0" font-size="23" font-weight="600" fill="#173653">开始游戏</text>
+<rect x="105" y="667" width="326" height="66" rx="18" fill="#ADC5D5"/>
+<rect x="105" y="663" width="326" height="66" rx="18" fill="#FFFFFF" stroke="#CBDDE9" stroke-width="2"/>
+<text text-anchor="middle" x="268.0" y="704.0" font-size="23" font-weight="600" fill="#173653">加入游戏</text>
+<text x="111" y="873" font-size="21" font-weight="400" fill="#173653">昵称：小星</text>
+<text x="111" y="918" font-size="21" font-weight="400" fill="#4D6A80">设置</text>
+<text x="70" y="1020" font-size="24" font-weight="600" fill="#173653">手机大厅 · 两个主入口</text>
+<text x="70" y="1060" font-size="19" font-weight="400" fill="#4D6A80">示意，非现有实现截图。</text>
+<rect x="496" y="165" width="408" height="812" rx="42" fill="#173653"/>
+<rect x="508" y="177" width="384" height="788" rx="32" fill="url(#sky-day)"/>
+<rect x="636" y="192" width="128" height="22" rx="11" fill="#173653"/>
+<text x="536" y="275" font-size="29" font-weight="700" fill="#173653">‹  加入游戏</text>
+<use href="#search" transform="translate(535 312) scale(1)" color="#2469AD"/>
+<text x="573" y="335" font-size="20" font-weight="400" fill="#173653">找到 1 个可加入房间</text>
+<rect x="534" y="373" width="332" height="156" rx="22" fill="#FFFFFF"/>
+<text x="554" y="413" font-size="25" font-weight="600" fill="#173653">小星的房间</text>
+<text x="554" y="450" font-size="20" font-weight="400" fill="#4D6A80">五子棋 · 1 / 2 人</text>
+<text x="554" y="493" font-size="20" font-weight="600" fill="#246F5A">可加入</text>
+<use href="#arrow" transform="translate(815 471) scale(1)" color="#2469AD"/>
+<g transform="translate(623 583) scale(0.9)"><use href="#buddy"/>
+<ellipse cx="44" cy="49" rx="2.5" ry="3.5" fill="#173653"/><ellipse cx="70" cy="49" rx="2.5" ry="3.5" fill="#173653"/><path d="M49 65q6 4 12 0" fill="none" stroke="#173653" stroke-width="2.5" stroke-linecap="round"/>
+<ellipse cx="32" cy="59" rx="6" ry="3" fill="#F3A873" opacity=".65"/><ellipse cx="78" cy="59" rx="6" ry="3" fill="#F3A873" opacity=".65"/></g>
+<text x="540" y="747" font-size="22" font-weight="600" fill="#173653">选个房间，一起开玩。</text>
+<text x="540" y="784" font-size="20" font-weight="400" fill="#173653">只显示当前可加入的房间。</text>
+<rect x="536" y="834" width="326" height="63" rx="18" fill="#ADC5D5"/>
+<rect x="536" y="830" width="326" height="63" rx="18" fill="#FFFFFF" stroke="#CBDDE9" stroke-width="2"/>
+<text text-anchor="middle" x="699.0" y="869.5" font-size="23" font-weight="600" fill="#173653">重新搜索</text>
+<text x="502" y="1020" font-size="24" font-weight="600" fill="#173653">加入游戏 · 可用房间优先</text>
+<text x="502" y="1060" font-size="19" font-weight="400" fill="#4D6A80">自动发现为待实现的目标交互。</text>
+<rect x="940" y="165" width="916" height="580" rx="28" fill="#173653"/>
+<rect x="952" y="177" width="892" height="556" rx="20" fill="url(#sky-day)"/>
+<use href="#cloud" transform="translate(1640 215) scale(1.1)" opacity=".85"/>
+<text x="991" y="239" font-size="35" font-weight="700" fill="#173653">星星大作战</text>
+<text x="991" y="281" font-size="23" font-weight="400" fill="#173653">朋友到齐，就开一局。</text>
+<g transform="translate(997 357) scale(1.75)"><use href="#buddy"/>
+<ellipse cx="42" cy="49" rx="3" ry="4.5" fill="#173653"/><ellipse cx="68" cy="49" rx="3" ry="4.5" fill="#173653"/><path d="M44 60 66 62Q58 80 44 60Z" fill="#F3A4C3" stroke="#173653" stroke-width="2.3" stroke-linejoin="round"/>
+<ellipse cx="32" cy="59" rx="6" ry="3" fill="#F3A873" opacity=".65"/><ellipse cx="78" cy="59" rx="6" ry="3" fill="#F3A873" opacity=".65"/></g>
+<rect x="1241.0" y="346.0" width="537.0" height="94.0" rx="24.0" fill="none" stroke="#2469AD" stroke-width="4"/>
+<rect x="1247" y="356" width="525" height="82" rx="18" fill="#D4BA37"/>
+<rect x="1247" y="352" width="525" height="82" rx="18" fill="#FFE84D"/>
+<text text-anchor="middle" x="1509.5" y="401.0" font-size="23" font-weight="600" fill="#173653">开始游戏</text>
+<rect x="1247" y="475" width="525" height="82" rx="18" fill="#ADC5D5"/>
+<rect x="1247" y="471" width="525" height="82" rx="18" fill="#FFFFFF" stroke="#CBDDE9" stroke-width="2"/>
+<text text-anchor="middle" x="1509.5" y="520.0" font-size="23" font-weight="600" fill="#173653">加入游戏</text>
+<text x="992" y="670" font-size="23" font-weight="400" fill="#173653">小星</text>
+<text x="1528" y="670" font-size="21" font-weight="400" fill="#4D6A80">方向键选择 · 确认进入</text>
+<text x="950" y="788" font-size="24" font-weight="600" fill="#173653">电视大厅 · 大目标、清楚焦点、少量信息</text>
+<text x="950" y="836" font-size="21" font-weight="400" fill="#4D6A80">按 1280 × 720 逻辑画布布局，文字与按钮按电视档位放大。</text>
+<text x="950" y="874" font-size="21" font-weight="400" fill="#4D6A80">外围建议保留 48 安全边距；手机遵循刘海和手势条区域。</text>
+<text x="950" y="912" font-size="21" font-weight="400" fill="#4D6A80">不依靠悬停提供操作；遥控器返回优先关闭当前层。</text>
+<rect x="64" y="1100" width="928" height="231" rx="28" fill="#FFFFFF"/>
+<text x="92" y="1145" font-size="26" font-weight="700" fill="#173653">12  确认的大厅流程</text>
+<path d="M92 1166H964" stroke="#CBDDE9" stroke-width="2"/>
+<text x="94" y="1204" font-size="22" font-weight="600" fill="#173653">开始游戏  →  创建房间 / 选择游戏  →  等待朋友</text>
+<text x="94" y="1254" font-size="22" font-weight="600" fill="#173653">加入游戏  →  搜索可加入房间  →  加入并等待确认</text>
+<rect x="1016" y="961" width="840" height="370" rx="28" fill="#FFFFFF"/>
+<text x="1044" y="1006" font-size="26" font-weight="700" fill="#173653">13  平台与 Mod 分工</text>
+<path d="M1044 1027H1828" stroke="#CBDDE9" stroke-width="2"/>
+<text x="1046" y="1068" font-size="21" font-weight="400" fill="#4D6A80">平台统一：大厅、房间流程、设置、连接提示与返回行为。</text>
+<text x="1046" y="1115" font-size="21" font-weight="400" fill="#4D6A80">游戏自由：棋盘、棋子、牌面、背景和游戏内视觉风格。</text>
+<text x="1046" y="1162" font-size="21" font-weight="400" fill="#4D6A80">共同底线：清楚的回合、输入反馈、可读文字和电视焦点。</text>
+<text x="1046" y="1209" font-size="21" font-weight="400" fill="#4D6A80">状态提示应留有位置，避免遮住棋盘和正在操作的手牌。</text>
+<text x="1046" y="1256" font-size="21" font-weight="400" fill="#4D6A80">创建房间内的步骤排列与具体游戏页，留待下一版细化。</text>
+<text x="64" y="1401" font-size="17" font-weight="400" fill="#4D6A80">星星大作战 · UI CHEAT SHEET v0.2 · 2026.11.01 · 设计初稿</text>
+<text x="1550" y="1401" font-size="17" font-weight="400" fill="#4D6A80">03 / LAYOUTS &amp; FLOWS</text>
+</g>
+</g>
+</svg>

@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1440" viewBox="0 0 1920 1440">
+<defs>
+<linearGradient id="sky-day" x2="0" y2="1"><stop stop-color="#82B9FF"/><stop offset="1" stop-color="#EDF6FF"/></linearGradient>
+<linearGradient id="sky-evening" x2="0" y2="1"><stop stop-color="#9DADE9"/><stop offset="1" stop-color="#F1F1FC"/></linearGradient>
+<path id="buddy" d="M49 10Q55 0 61 10L72 31 96 35Q108 37 99 47L82 64 86 88Q88 101 76 95L55 84 34 95Q22 101 24 88L28 64 11 47Q2 37 14 35L38 31Z" fill="#FFE84D" stroke="#173653" stroke-width="2" stroke-linejoin="round"/>
+<g id="cloud"><path d="M0 40Q-2 17 22 18Q26-9 52 3Q69-8 82 15Q110 10 110 38Q110 53 92 53H17Q0 53 0 40Z" fill="white"/></g>
+<g id="search" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="m15 15 7 7"/></g>
+<g id="arrow" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18m-7-7 7 7-7 7"/></g>
+<g id="check" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L21 5"/></g>
+<g id="refresh" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 8a9 9 0 1 0 0 9M20 2v6h-6"/></g>
+<g id="close" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m5 5 14 14M19 5 5 19"/></g>
+<g id="wifi" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M2 8q10-9 20 0M6 12q6-6 12 0m-8 4q2-2 4 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></g>
+</defs>
+<g font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif"><g transform="translate(0 0)">
+<rect x="0" y="0" width="1920" height="1440" rx="0" fill="#EAF7FF"/>
+<text x="64" y="80" font-size="40" font-weight="700" fill="#173653">02  /  组件与反馈</text>
+<text x="64" y="122" font-size="22" font-weight="400" fill="#4D6A80">每次操作有回应；每个等待有解释；每个失败有下一步。</text>
+<rect x="64" y="158" width="1080" height="360" rx="28" fill="#FFFFFF"/>
+<text x="92" y="203" font-size="26" font-weight="700" fill="#173653">06  主次按钮与状态</text>
+<path d="M92 224H1116" stroke="#CBDDE9" stroke-width="2"/>
+<rect x="92" y="261" width="300" height="62" rx="18" fill="#D4BA37"/>
+<rect x="92" y="257" width="300" height="62" rx="18" fill="#FFE84D"/>
+<text text-anchor="middle" x="242.0" y="296.0" font-size="23" font-weight="600" fill="#173653">开始游戏</text>
+<rect x="432" y="261" width="300" height="62" rx="18" fill="#ADC5D5"/>
+<rect x="432" y="257" width="300" height="62" rx="18" fill="#FFFFFF" stroke="#CBDDE9" stroke-width="2"/>
+<text text-anchor="middle" x="582.0" y="296.0" font-size="23" font-weight="600" fill="#173653">加入游戏</text>
+<rect x="772" y="261" width="340" height="62" rx="18" fill="#D4BA37"/>
+<rect x="772" y="259" width="340" height="62" rx="18" fill="#E2C937"/>
+<text text-anchor="middle" x="942.0" y="296.0" font-size="23" font-weight="600" fill="#173653">按下 / 轻微下沉</text>
+<rect x="92" y="378" width="300" height="62" rx="18" fill="#D4BA37"/>
+<rect x="92" y="374" width="300" height="62" rx="18" fill="#FFF1A0"/>
+<text text-anchor="middle" x="242.0" y="413.0" font-size="23" font-weight="600" fill="#173653">正在创建房间…</text>
+<rect x="432" y="378" width="300" height="62" rx="18" fill="#C9D5DF"/>
+<rect x="432" y="374" width="300" height="62" rx="18" fill="#E1EAF0"/>
+<text text-anchor="middle" x="582.0" y="413.0" font-size="23" font-weight="600" fill="#8294A3">等待选择游戏</text>
+<text x="773" y="399" font-size="20" font-weight="600" fill="#173653">一个页面一个主要动作。</text>
+<text x="773" y="434" font-size="19" font-weight="400" fill="#4D6A80">忙碌时保留按钮宽度与说明。</text>
+<rect x="1168" y="158" width="688" height="360" rx="28" fill="#FFFFFF"/>
+<text x="1196" y="203" font-size="26" font-weight="700" fill="#173653">07  电视焦点</text>
+<path d="M1196 224H1828" stroke="#CBDDE9" stroke-width="2"/>
+<rect x="1207.0" y="261.0" width="605.0" height="84.0" rx="24.0" fill="none" stroke="#2469AD" stroke-width="4"/>
+<rect x="1213" y="271" width="593" height="72" rx="18" fill="#D4BA37"/>
+<rect x="1213" y="267" width="593" height="72" rx="18" fill="#FFE84D"/>
+<text text-anchor="middle" x="1509.5" y="311.0" font-size="23" font-weight="600" fill="#173653">开始游戏</text>
+<text x="1200" y="405" font-size="21" font-weight="400" fill="#4D6A80">外扩 4 的湖蓝描边，和选中状态区分。</text>
+<text x="1200" y="437" font-size="21" font-weight="400" fill="#4D6A80">方向导航顺序稳定；弹窗关闭回到原焦点。</text>
+<rect x="64" y="542" width="856" height="440" rx="28" fill="#FFFFFF"/>
+<text x="92" y="587" font-size="26" font-weight="700" fill="#173653">08  持续状态条 · 文字与动作</text>
+<path d="M92 608H892" stroke="#CBDDE9" stroke-width="2"/>
+<rect x="92" y="638" width="800" height="61" rx="16" fill="#EAF3FC"/>
+<use href="#search" transform="translate(108 656) scale(1)" color="#2469AD"/>
+<text x="149" y="677" font-size="22" font-weight="600" fill="#2469AD">正在搜索房间…</text>
+<text x="740" y="677" font-size="18" font-weight="550" fill="#2469AD">取消</text>
+<rect x="92" y="714" width="800" height="61" rx="16" fill="#FFF4D6"/>
+<use href="#wifi" transform="translate(108 732) scale(1)" color="#173653"/>
+<text x="149" y="753" font-size="22" font-weight="600" fill="#173653">等待朋友加入 · 1 / 2</text>
+<text x="740" y="753" font-size="18" font-weight="550" fill="#173653">离开房间</text>
+<rect x="92" y="790" width="800" height="61" rx="16" fill="#E7F3ED"/>
+<use href="#check" transform="translate(108 808) scale(1)" color="#246F5A"/>
+<text x="149" y="829" font-size="22" font-weight="600" fill="#246F5A">你的回合</text>
+<text x="740" y="829" font-size="18" font-weight="550" fill="#246F5A">落子</text>
+<rect x="92" y="866" width="800" height="61" rx="16" fill="#FFF0F1"/>
+<use href="#refresh" transform="translate(108 884) scale(1)" color="#AE4250"/>
+<text x="149" y="905" font-size="22" font-weight="600" fill="#AE4250">连接中断，正在重连…</text>
+<text x="740" y="905" font-size="18" font-weight="550" fill="#AE4250">离开房间</text>
+<rect x="944" y="542" width="912" height="440" rx="28" fill="#FFFFFF"/>
+<text x="972" y="587" font-size="26" font-weight="700" fill="#173653">09  房间卡片 / 输入 / 错误恢复</text>
+<path d="M972 608H1828" stroke="#CBDDE9" stroke-width="2"/>
+<rect x="974" y="641" width="850" height="100" rx="20" fill="#EAF7FF" stroke="#CBDDE9" stroke-width="2"/>
+<use href="#wifi" transform="translate(994 667) scale(1)" color="#2469AD"/>
+<text x="1040" y="678" font-size="25" font-weight="600" fill="#173653">小星的房间</text>
+<text x="1040" y="713" font-size="20" font-weight="400" fill="#4D6A80">五子棋 · 1 / 2 人 · 可加入</text>
+<rect x="1654" y="664" width="145" height="58" rx="18" fill="#D4BA37"/>
+<rect x="1654" y="660" width="145" height="58" rx="18" fill="#FFE84D"/>
+<text text-anchor="middle" x="1726.5" y="697.0" font-size="23" font-weight="600" fill="#173653">加入</text>
+<rect x="974" y="765" width="850" height="64" rx="12" fill="#FFFFFF" stroke="#CBDDE9" stroke-width="2"/>
+<text x="995" y="805" font-size="22" font-weight="400" fill="#4D6A80">房间名称</text>
+<text x="1608" y="805" font-size="22" font-weight="400" fill="#173653">小星的房间</text>
+<rect x="974" y="852" width="850" height="91" rx="16" fill="#FFF0F1"/>
+<text x="998" y="888" font-size="23" font-weight="600" fill="#AE4250">没连上房间</text>
+<text x="998" y="920" font-size="19" font-weight="400" fill="#173653">确认设备在同一局域网后再试一次。</text>
+<rect x="1636" y="874" width="164" height="52" rx="18" fill="#ADC5D5"/>
+<rect x="1636" y="870" width="164" height="52" rx="18" fill="#FFFFFF" stroke="#CBDDE9" stroke-width="2"/>
+<text text-anchor="middle" x="1718.0" y="904.0" font-size="23" font-weight="600" fill="#173653">再试一次</text>
+<rect x="64" y="1006" width="1080" height="305" rx="28" fill="#FFFFFF"/>
+<text x="92" y="1051" font-size="26" font-weight="700" fill="#173653">10  反馈时机建议</text>
+<path d="M92 1072H1116" stroke="#CBDDE9" stroke-width="2"/>
+<text x="92" y="1110" font-size="22" font-weight="400" fill="#4D6A80">按下：立即改变按钮状态；松开后进入进行中或完成状态。</text>
+<text x="92" y="1153" font-size="22" font-weight="400" fill="#4D6A80">网络操作：先显示“正在…”；收到确认后再展示成功。</text>
+<text x="92" y="1196" font-size="22" font-weight="400" fill="#4D6A80">按压 100–140ms；焦点 / 面板 180–240ms，避免循环跳动。</text>
+<text x="92" y="1239" font-size="22" font-weight="400" fill="#4D6A80">错误：保留用户输入；长时间等待时提供取消或明确离开入口。</text>
+<rect x="1168" y="1006" width="688" height="305" rx="28" fill="#FFFFFF"/>
+<text x="1196" y="1051" font-size="26" font-weight="700" fill="#173653">11  图标与动效边界</text>
+<path d="M1196 1072H1828" stroke="#CBDDE9" stroke-width="2"/>
+<use href="#search" transform="translate(1202 1110) scale(1.4)" color="#173653"/>
+<use href="#arrow" transform="translate(1306 1110) scale(1.4)" color="#173653"/>
+<use href="#check" transform="translate(1410 1110) scale(1.4)" color="#173653"/>
+<use href="#refresh" transform="translate(1514 1110) scale(1.4)" color="#173653"/>
+<use href="#close" transform="translate(1618 1110) scale(1.4)" color="#173653"/>
+<use href="#wifi" transform="translate(1722 1110) scale(1.4)" color="#173653"/>
+<text x="1200" y="1200" font-size="21" font-weight="400" fill="#4D6A80">圆头线条；图标通常搭配短文字。</text>
+<text x="1200" y="1232" font-size="21" font-weight="400" fill="#4D6A80">短动画；音效可关；减少动态效果可选。</text>
+<text x="64" y="1401" font-size="17" font-weight="400" fill="#4D6A80">星星大作战 · UI CHEAT SHEET v0.2 · 2026.11.01 · 设计初稿</text>
+<text x="1550" y="1401" font-size="17" font-weight="400" fill="#4D6A80">02 / COMPONENTS &amp; STATES</text>
+</g>
+</g>
+</svg>

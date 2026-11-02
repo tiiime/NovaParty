@@ -1,0 +1,5 @@
+ZXing Core 3.5.3 — https://github.com/zxing/zxing
+Copyright ZXing authors. Licensed under the Apache License, Version 2.0.
+Artifact: com.google.zxing:core:3.5.3
+SHA-256: 8d8064c1636fdaef7189dd9055c7d59950a8940a12f2293956446ec3c109fd82
+Used for offline QR encoding and decoding. Camera frames remain on the device.

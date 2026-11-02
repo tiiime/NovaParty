@@ -1,0 +1,7 @@
+{
+  "CARDS_STATUS": "Hidden Cards (protocol demo)\nChoose one card each, then reveal together. Compare scores after three rounds.\nRound %d · Scores %s · Opponent submitted: %s",
+  "YES": "yes",
+  "NO": "no",
+  "REVEAL": "Revealed: %s / %s",
+  "GAME_OVER": "Game over"
+}

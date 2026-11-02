@@ -1,0 +1,28 @@
+{
+  "id": "gomoku",
+  "name": "五子棋",
+  "version": "0.2.0",
+  "sdk": 1,
+  "rules": "rules.gd",
+  "view": "view.gd",
+  "files": [
+    "rules.gd",
+    "view.gd",
+    "theme.json",
+    "locale-en.json",
+    "locale-zh.json",
+    "board.gd",
+    "ui.gd"
+  ],
+  "players": {
+    "min": 2,
+    "max": 2
+  },
+  "inputs": [
+    "touch",
+    "directional"
+  ],
+  "rules_files": [
+    "rules.gd"
+  ]
+}

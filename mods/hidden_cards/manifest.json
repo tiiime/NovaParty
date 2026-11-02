@@ -1,0 +1,25 @@
+{
+  "id": "hidden_cards",
+  "name": "暗牌比大小 · 协议示例",
+  "version": "0.1.1",
+  "sdk": 1,
+  "rules": "rules.gd",
+  "view": "view.gd",
+  "files": [
+    "rules.gd",
+    "view.gd",
+    "locale-en.json",
+    "locale-zh.json"
+  ],
+  "players": {
+    "min": 2,
+    "max": 2
+  },
+  "inputs": [
+    "touch",
+    "directional"
+  ],
+  "rules_files": [
+    "rules.gd"
+  ]
+}

@@ -1,0 +1,9 @@
+[configuration]
+entry_symbol = "novaparty_bonjour_init"
+compatibility_minimum = "4.6"
+reloadable = false
+
+[libraries]
+macos.arm64 = "res://addons/novaparty_bonjour/macos/NovaBonjour.framework/NovaBonjour"
+ios.arm64 = "res://addons/novaparty_bonjour/ios/NovaBonjour.framework"
+ios.x86_64 = "res://addons/novaparty_bonjour/simulator/NovaBonjour.framework"

@@ -1,0 +1,4 @@
+Noto Sans SC, unmodified variable font.
+Source: https://github.com/google/fonts/tree/main/ofl/notosanssc
+License: SIL Open Font License 1.1; see OFL.txt.
+Bundled to render Chinese consistently without relying on platform font fallback.

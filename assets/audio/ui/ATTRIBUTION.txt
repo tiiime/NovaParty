@@ -1,0 +1,12 @@
+Soft UI SFX Free by heyheythere - https://heyheythere.itch.io/soft-ui-sfx-free - CC BY 4.0
+https://creativecommons.org/licenses/by/4.0/
+
+Source: soft-ui-sfx-free-assets.zip, downloaded 2026-11-02 from the free itch.io download.
+Archive SHA-256: 75ed50d3bdccd39705f56a0067f1c4a6e78f80c976d19e7167bed6f32fe6e6d5
+Audio files are unmodified OGG excerpts from the free pack; playback volume is reduced in the app.
+
+move.ogg <- OGG/hover/hover_01.ogg
+confirm.ogg <- OGG/clicks/click_pop_01.ogg
+launch.ogg <- OGG/confirm/confirm_pluck_01.ogg
+back.ogg <- OGG/cancel/back_01.ogg
+welcome.ogg <- OGG/notification/notify_03.ogg

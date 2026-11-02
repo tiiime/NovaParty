@@ -1,0 +1,15 @@
+{
+  "id": "jump_rope",
+  "name": "跳绳",
+  "localized_names": {"zh": "跳绳", "en": "Jump Rope"},
+  "version": "0.1.1",
+  "sdk": 1,
+  "session_mode": "drop_in",
+  "players": {"min": 1, "max": 5},
+  "rules": "rules.gd",
+  "view": "view.gd",
+  "rules_files": ["rules.gd"],
+  "inputs": ["touch", "directional", "accelerometer"],
+  "cover": "cover.svg.txt",
+  "files": ["rules.gd", "view.gd", "motion.gd", "stage.gd", "ui.gd", "locale-en.json", "locale-zh.json", "cover.svg.txt"]
+}
