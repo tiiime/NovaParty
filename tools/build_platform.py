@@ -37,9 +37,9 @@ def check_content(archive):
     print('PASS exported content: only Gomoku, Debug service included, local config excluded')
 
 
-def inspect_client(connection, expected_backend):
+def inspect_client(connection, expected_backend, exercise_room=True):
     with connection.open() as stream:
-        client = Client(json.load(stream), timeout=10)
+        client = Client(json.load(stream), timeout=30 if not exercise_room else 10)
     try:
         ui = client.call('ui.status')
         assert ui['screen'] == 'home', ui['screen']
@@ -47,6 +47,9 @@ def inspect_client(connection, expected_backend):
         if os.environ.get('GITHUB_ACTIONS') == 'true':
             assert ui['game_ids'] == ['gomoku'], ui['game_ids']
         assert client.call('lan.status')['backend'] == expected_backend
+        if not exercise_room:
+            print('PASS simulator runtime: home, game catalog and native Apple bridge', flush=True)
+            return
         with socket.socket() as sock:
             sock.bind(('127.0.0.1', 0)); port = sock.getsockname()[1]
         client.room('room.create', {'game_id': 'gomoku', 'port': port})
@@ -92,18 +95,26 @@ def simulator_smoke(app):
     print('SIMULATOR_PHASE: boot ' + device['name'], flush=True)
     if device['state'] != 'Booted':
         subprocess.run(['xcrun', 'simctl', 'boot', udid], check=True, timeout=60)
+    subprocess.run(['open', '-a', 'Simulator', '--args', '-CurrentDeviceUDID', udid], check=True, timeout=30)
     subprocess.run(['xcrun', 'simctl', 'bootstatus', udid, '-b'], check=True, timeout=240)
     print('SIMULATOR_PHASE: install and launch', flush=True)
     subprocess.run(['xcrun', 'simctl', 'install', udid, str(app)], check=True, timeout=120)
+    container = Path(subprocess.check_output(['xcrun', 'simctl', 'get_app_container', udid, 'org.novaparty.prototype', 'data'], text=True).strip())
+    debug = container/'Documents/debug'
+    debug.mkdir(parents=True, exist_ok=True)
+    (debug/'listen.json').write_text('{"bind":"127.0.0.1"}')
     subprocess.run(['xcrun', 'simctl', 'launch', udid, 'org.novaparty.prototype'], check=True, timeout=60)
     try:
-        container = Path(subprocess.check_output(['xcrun', 'simctl', 'get_app_container', udid, 'org.novaparty.prototype', 'data'], text=True).strip())
-        connection = container/'Documents/debug/connection.json'
+        connection = debug/'connection.json'
         deadline = time.monotonic() + 40
         while not connection.exists() and time.monotonic() < deadline:
             time.sleep(.2)
         assert connection.exists(), 'Simulator app did not expose its Debug startup configuration'
-        inspect_client(connection, 'apple_bonjour')
+        inspect_client(connection, 'apple_bonjour', exercise_room=False)
+    except Exception:
+        screenshot = ROOT/'build/ios-simulator/startup-failure.png'
+        subprocess.run(['xcrun', 'simctl', 'io', udid, 'screenshot', str(screenshot)], capture_output=True, timeout=30)
+        raise
     finally:
         subprocess.run(['xcrun', 'simctl', 'terminate', udid, 'org.novaparty.prototype'], check=False, capture_output=True)
 

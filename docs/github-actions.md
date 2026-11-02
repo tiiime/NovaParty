@@ -18,7 +18,7 @@ gh run list --workflow platforms.yml
 gh run download <run-id> --dir build/github
 ```
 
-CI 安装与校验固定版本 Godot 4.6.1 下载，重建 Apple 原生扩展，检查导出内容仅含五子棋且不含本地配置；然后实际启动打包后的应用，通过 Debug RPC 检查首页、游戏列表、房间创建/退出。macOS 与 iOS 模拟器还检查 Apple Bonjour 桥接和二维码生成；macOS 校验双架构和临时签名。
+CI 安装与校验固定版本 Godot 4.6.1 下载，重建 Apple 原生扩展，检查导出内容仅含五子棋且不含本地配置；然后实际启动打包后的应用，通过 Debug RPC 检查首页和游戏列表。桌面包另检查房间创建/退出，macOS 另检查 Apple Bonjour、二维码、双架构和临时签名。iOS 模拟器仅在回环地址验证启动及原生桥接可用，不替代用户首次授予局域网权限后的真实联机测试。构建和启动分别显示为独立步骤，失败时上传编译日志和模拟器截图。
 
 Windows 目前没有原生 mDNS / 二维码适配器，需手动地址加入；该限制不会因成功打包而消失。macOS 未进行 Developer ID 签名和公证，外部分发后仍可能被 Gatekeeper 拦截。模拟器启动检查不代表真实 iPhone 已验证。
 

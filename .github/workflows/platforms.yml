@@ -58,5 +58,6 @@ jobs:
           path: |
             build/${{ matrix.platform }}/*.log
             build/ios/*.log
+            build/ios-simulator/startup-failure.png
           if-no-files-found: ignore
           retention-days: 7
