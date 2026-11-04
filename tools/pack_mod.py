@@ -15,9 +15,12 @@ def pack(source: Path, output: Path, hot: bool = False):
         raise ValueError('invalid id')
     bounds = manifest.get('players', {})
     drop_in = manifest.get('session_mode') == 'drop_in'
-    valid_bounds = bounds == {'min': 2, 'max': 2} or (drop_in and bounds.get('min') == 1 and type(bounds.get('max')) is int and 2 <= bounds['max'] <= 8)
+    mode = manifest.get('session_mode', '')
+    if mode not in ['', 'drop_in', 'fixed']:
+        raise ValueError('Unknown session_mode')
+    valid_bounds = (mode == 'fixed' and bounds.get('min') == 2 and type(bounds.get('max')) is int and 2 <= bounds['max'] <= 8) or (mode == '' and bounds == {'min': 2, 'max': 2}) or (drop_in and bounds.get('min') == 1 and type(bounds.get('max')) is int and 2 <= bounds['max'] <= 8)
     if manifest['sdk'] != 1 or not valid_bounds:
-        raise ValueError('SDK 1 requires two players or explicit drop_in with 1–8 seats')
+        raise ValueError('SDK 1 requires two players, fixed (2–8 seats), or drop_in (1–8 seats)')
     files = manifest['files']
     if not isinstance(files, list) or len(files) > 128 or len(files) != len(set(files)):
         raise ValueError('invalid file list')

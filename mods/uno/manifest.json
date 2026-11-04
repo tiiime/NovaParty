@@ -1,0 +1,48 @@
+{
+  "id": "uno",
+  "name": "UNO · 聚会叠加版",
+  "localized_names": {
+    "zh": "UNO · 聚会叠加版",
+    "en": "UNO · Party"
+  },
+  "version": "0.1.0",
+  "sdk": 1,
+  "session_mode": "fixed",
+  "players": {
+    "min": 2,
+    "max": 7
+  },
+  "rules": "rules.gd",
+  "view": "view.gd",
+  "rules_files": [
+    "rules.gd",
+    "cards.gd"
+  ],
+  "inputs": [
+    "touch",
+    "directional"
+  ],
+  "cover": "cover.svg.txt",
+  "files": [
+    "cards.gd",
+    "rules.gd",
+    "view.gd",
+    "locale-en.json",
+    "locale-zh.json",
+    "cover.svg.txt",
+    "art/back.svg.txt",
+    "art/bear.svg.txt",
+    "art/blue.svg.txt",
+    "art/bunny.svg.txt",
+    "art/cat.svg.txt",
+    "art/dog.svg.txt",
+    "art/fox.svg.txt",
+    "art/green.svg.txt",
+    "art/panda.svg.txt",
+    "art/red.svg.txt",
+    "art/table-phone.svg.txt",
+    "art/table-wide.svg.txt",
+    "art/wild.svg.txt",
+    "art/yellow.svg.txt"
+  ]
+}

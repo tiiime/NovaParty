@@ -103,7 +103,7 @@ Session 的 `action_result(result)` 对房主与加入方均发出最终回执�
 
 ## UI 设计依据
 
-客户端与 Mod 的界面开发参照 [星星大作战 Design Cheat Sheet](design/README.md)。平台统一大厅与房间控件，游戏内部美术可自由；共同遵守可读性、电视焦点、输入反馈、真实连接状态及安全区域要求。当前已实现自动发现、扫码与缺包下载；接口与验证边界见 [局域网共享](lan-sharing.md)，状态应展示真实搜索和下载结果。
+客户端与 Mod 的界面开发参照 [星星大作战 Design Cheat Sheet](design/README.md)。UNO 游戏内使用独立的 [UNO UI 规范](design/uno/README.md)，大厅不受影响。平台统一大厅与房间控件，游戏内部美术可自由；共同遵守可读性、电视焦点、输入反馈、真实连接状态及安全区域要求。当前已实现自动发现、扫码与缺包下载；接口与验证边界见 [局域网共享](lan-sharing.md)，状态应展示真实搜索和下载结果。
 
 0.1.6 的 i18n：Mod 显示文案随表现包携带，参考两个内置游戏的 `locale-*.json` 与 `_t()`。目录列入 `files`，不列入 `rules_files`。使用当前构建根的相对路径，避免热更新命名空间失效；未知语言回退英文，不依赖平台替 Mod 注册翻译。外部游戏名称支持清单中的 `localized_names`，仅用于显示且不参与规则指纹。详见 [UI 与 i18n](ui.md)。
 
@@ -127,3 +127,20 @@ Session 的 `action_result(result)` 对房主与加入方均发出最终回执�
 Session 自动提供 mDNS 游戏发布及普通 SDK Mod 共享。接收端 `PeerMods` 的目录查询不下载包；用户确认后才 `confirm_download()`，校验后由 `Loader.install_peer_zip` 安装。独立 `ModSender` 可在没有游戏 Session 时提供包。完整接口和边界见 [局域网发现、Mod 传递与二维码](lan-sharing.md)。
 
 可选 Mod 表现方法 `set_session_services(session)` 可访问 `get_join_info(address_override = "")` 与 `get_join_qr(address_override = "")`。`controls_join_qr()` 返回 true 后，由 Mod 自行控制显示；否则平台在初次等待玩家加入时显示默认二维码。返回的 Texture2D 仅用于本地表现，不能放进规则或快照。扫码与手动加入统一走目录检查、缺失 Mod 下载确认及带会话 ID 的握手。
+
+## 固定多人会话（0.1.14）
+
+新增显式 `session_mode: "fixed"`，清单使用 `players.min: 2`，整数 `players.max` 为 2–8。默认双人和 Drop-in 语义不变，SDK 清单版本仍为 1；旧客户端因不支持该人数/模式而拒绝包，需要更新基座。
+
+- 固定会话始终使用严格 revision、原座位凭据重连和不复用座位的身份策略，不放宽为 Drop-in 的旧版本命令。
+- 规则实现纯函数 `presence_changed(state, seat, connected)`；首次创建会调用座位 0 的在线通知，此后成员加入/断线/重连时调用并递增 revision。
+- 可实现 `can_join(state) -> bool` 控制新身份加入。既有身份的凭据重连在此门槛前验证，不会因本局锁定而被拒绝。返回 false 时暂停 mDNS 发布，恢复 true 时重新发布。
+- SDK 不替 Mod 决定准备阶段或暂停策略。固定模式允许单个发起者提交等待页设置；Mod 必须验证开始时的实际参与人数，记录本局参与座位，并自行拒绝断线期间的游戏操作。
+- 坐席不一定等于参与发牌的人。UNO 的公共屏幕 + 最多 6 玩家使用 7 个坐席，屏幕不进入参与者列表、手牌和重赛投票；其他游戏可采用不同角色。
+- 合法操作描述也必须适配 JSON float 数字，不能用类型敏感的 `Array.has(int)` 检查从网络读取的 float 座位数组。参考 `mods/uno/cards.gd`。
+
+示例见 [UNO](uno.md)。当前计时钩子仍只支持双人累计计时，UNO 没有使用它。`debug.capabilities.session_modes` 可检查基座是否声明 `fixed` 支持；这只是开发诊断接口，普通 SDK 游戏不依赖 Debug。
+
+## 用户配置与角色表现（0.1.15）
+
+平台提供用户信息编辑与六种动物角色、四种配色、个人主题色。Mod 从 `snapshot.players[seat].profile` 或表现服务 `get_local_profile()` / `get_player_profile(seat)` 获取公开配置，通过 `get_avatar_texture(profile)` / `get_profile_color(profile)` 展示。完整数据、兼容性与示例见 [用户配置 SDK](user-profile.md)。这是新增基座能力，0.1.14 需升级；头像不进入规则与私有身份信息。

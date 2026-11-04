@@ -252,7 +252,7 @@ func _message(peer: int, request: Dictionary) -> void:
 		"device.info":
 			_reply(peer, id, {"app_instance_id": app_instance_id, "os": OS.get_name(), "model": OS.get_model_name(), "version": ProjectSettings.get_setting("application/config/version"), "mode": "play"})
 		"debug.capabilities":
-			_reply(peer, id, {"protocol": 1, "methods": METHODS, "mode": "play", "apk_http": apk_http, "hot_update": {"upload": true, "presentation": true, "live_rules": false, "client_ui": ui_updates != null, "ui_api": 1, "max_ui_package_bytes": 67108864, "max_package_bytes": 16777216, "chunk_bytes": 24576}, "event_capacity": 128, "result_capacity": 256})
+			_reply(peer, id, {"protocol": 1, "methods": METHODS, "mode": "play", "session_modes": ["two_player", "drop_in", "fixed"], "apk_http": apk_http, "hot_update": {"upload": true, "presentation": true, "live_rules": false, "client_ui": ui_updates != null, "ui_api": 1, "max_ui_package_bytes": 67108864, "max_package_bytes": 16777216, "chunk_bytes": 24576}, "event_capacity": 128, "result_capacity": 256})
 		"room.status":
 			var status := state.duplicate(true)
 			status.erase("view")
@@ -265,7 +265,7 @@ func _message(peer: int, request: Dictionary) -> void:
 				return
 			var logic = Loader.new().rules(current_session.info)
 			var description: Dictionary = logic.describe_actions(state.view.duplicate(true), int(state.seat)) if logic != null and logic.has_method("describe_actions") else {"supported": false}
-			if not state.connected or (current_session.info.manifest.get("session_mode", "") != "drop_in" and (state.players.size() < 2 or not state.players[0].connected or not state.players[1].connected)):
+			if not state.connected or (current_session.info.manifest.get("session_mode", "") == "" and (state.players.size() < 2 or not state.players[0].connected or not state.players[1].connected)):
 				description.legal_actions = []
 				description.blocked_by = "waiting_for_players" if state.players.size() < 2 else "disconnected"
 			description.context = {"game_session_id": state.get("game_session_id", ""), "state_epoch": state.get("state_epoch", 0), "expected_revision": state.revision}

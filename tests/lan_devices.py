@@ -38,7 +38,7 @@ def run(sender_path, receiver_path, sender_serial='', direct=False):
  downloaded=''
  try:
   for c in [sender,receiver]:
-   assert c.call('device.info')['version']=='0.1.13'
+   assert c.call('device.info')['version']=='0.1.15'
    assert not c.call('game.snapshot')['in_room']
   with tempfile.TemporaryDirectory(prefix='nv-lan-devices-') as d:
    source=Path(d)/'mod';shutil.copytree(ROOT/'mods/gomoku',source)
@@ -75,7 +75,7 @@ def run(sender_path, receiver_path, sender_serial='', direct=False):
    wait_for(lambda:receiver.call('game.snapshot').get('in_room',False),timeout=15)
    assert receiver.call('game.snapshot')['game_session_id']==invite['session_id']
    assert not receiver.call('lan.status')['confirmation']
-   report={'sender':sender.call('device.info')['model'],'receiver':receiver.call('device.info')['model'],'base':'0.1.13','real_mdns_discovery':not direct,'actual_adb_room_touch':not direct,'actual_adb_download_consent':True,'no_bytes_before_consent':True,'regular_sdk_download':True,'auto_join':True,'real_move':True,'generated_qr_decoded':True,'decoded_invite_auto_join':True,'physical_camera_scan':False,'package_sha256':downloaded}
+   report={'sender':sender.call('device.info')['model'],'receiver':receiver.call('device.info')['model'],'base':'0.1.15','real_mdns_discovery':not direct,'actual_adb_room_touch':not direct,'actual_adb_download_consent':True,'no_bytes_before_consent':True,'regular_sdk_download':True,'auto_join':True,'real_move':True,'generated_qr_decoded':True,'decoded_invite_auto_join':True,'physical_camera_scan':False,'package_sha256':downloaded}
    (ROOT/'build/validation/lan-arm-devices.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
    receiver.room('room.leave');sender.room('room.leave')
    sender.call('mods.activate',{'build':baseline})

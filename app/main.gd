@@ -4,6 +4,8 @@ const Session = preload("res://sdk/session.gd")
 const I18n = preload("res://app/i18n.gd")
 const Style = preload("res://app/ui/party_theme.gd")
 const UI_API = 1
+const UserProfile = preload("res://sdk/user_profile.gd")
+var user_panel
 const JoinCode = preload("res://sdk/join_code.gd")
 var qr_scanner
 var join_invite
@@ -77,6 +79,12 @@ func _ready() -> void:
 			profile_path = "user://profile_" + argument.substr(10).sha256_text().left(12) + ".json"
 	var saved = JSON.parse_string(FileAccess.get_file_as_string(profile_path)) if FileAccess.file_exists(profile_path) else null
 	profile = saved if saved is Dictionary and saved.has("id") else {"id": Crypto.new().generate_random_bytes(16).hex_encode(), "nickname": ""}
+	if not profile.has("profile_schema") and profile.get("nickname", "") in ["玩家", "Player"]:
+		profile.nickname = ""
+	profile.profile_schema = 1
+	var appearance := UserProfile.local_public(profile)
+	profile.avatar = appearance.avatar.duplicate(true)
+	profile.theme_color = appearance.theme_color
 	ui_feedback = preload("res://app/ui/ui_feedback.gd").new()
 	set_meta("ui_feedback", ui_feedback)
 	add_child(ui_feedback)
@@ -124,6 +132,7 @@ func _ready() -> void:
 	home.start_requested.connect(func(): _open_setup(true))
 	home.join_requested.connect(func(): _open_setup(false))
 	home.settings_requested.connect(_open_settings)
+	home.user_requested.connect(_open_user_profile)
 	home.set_reduced_motion(bool(profile.get("reduce_motion", false)))
 	var margin := MarginContainer.new()
 	content_margin = margin
@@ -156,7 +165,7 @@ func _ready() -> void:
 	# Internal selection/identity adapters remain available to the session and debug API.
 	# They are not user-facing form fields.
 	nickname = LineEdit.new()
-	nickname.text = profile.get("nickname", "")
+	nickname.text = UserProfile.local_public(profile).display_name
 	nickname.hide()
 	add_child(nickname)
 	choices = OptionButton.new()
@@ -231,6 +240,7 @@ func _ready() -> void:
 	game_area = VBoxContainer.new()
 	layout.add_child(game_area)
 	_build_settings()
+	_build_user_profile()
 	_build_leave_dialog()
 	_build_lan_ui()
 	for path in loader.installed_packages():
@@ -317,7 +327,7 @@ func _animate_page(page: Control) -> void:
 
 func _refresh_home() -> void:
 	if home and nickname:
-		home.set_nickname(nickname.text if not nickname.text.is_empty() else tr("PLAYER_DEFAULT"))
+		home.set_user_profile(UserProfile.local_public(profile))
 
 func _set_status(key: String, arguments: Array = []) -> void:
 	status_key = key
@@ -327,7 +337,7 @@ func _set_status(key: String, arguments: Array = []) -> void:
 	_send_game_status()
 
 func _handle_notice(code: String) -> void:
-	if peer_phase == "joining" and code in ["room_changed", "room_full", "incompatible", "connect_failed", "connection_lost"]:
+	if peer_phase == "joining" and code in ["room_changed", "room_full", "game_in_progress", "incompatible", "connect_failed", "connection_lost"]:
 		_clear_session()
 		_open_setup(false)
 		_peer_failed(code)
@@ -469,6 +479,11 @@ func _request_leave() -> void:
 		leave_dialog.popup_centered(Vector2i(mini(580, int(get_viewport_rect().size.x - 48)), 220))
 
 func _render_snapshot(data: Dictionary) -> void:
+	# A confirmed snapshot ends the join transaction. Later transport loss must
+	# preserve the seat/token for reconnect instead of clearing the session.
+	if peer_phase == "joining":
+		peer_phase = "joined"
+		peer_error = ""
 	token = session.resume_token
 	if data.players.size() == 2:
 		if data.players[1 - int(data.seat)].connected:
@@ -534,9 +549,11 @@ func _start(as_host: bool) -> Error:
 		_set_status("NETWORK_ERROR", [loader.error])
 		return ERR_INVALID_DATA
 	profile.last_address = address.text.strip_edges()
-	profile.nickname = nickname.text.strip_edges().left(32)
-	if profile.nickname.is_empty():
-		profile.nickname = tr("PLAYER_DEFAULT")
+	# The editor owns nickname; empty means follow the current device name.
+	if nickname.text != UserProfile.local_public(profile).display_name:
+		profile.nickname = UserProfile.clean_name(nickname.text, "")
+	var connection_profile := profile.duplicate(true)
+	connection_profile.nickname = UserProfile.local_public(profile).display_name
 	_save_profile()
 	var view_script = load(root.path_join(mod_info.manifest.view))
 	game_view = view_script.new()
@@ -554,9 +571,9 @@ func _start(as_host: bool) -> Error:
 	joined = not as_host
 	if as_host:
 		token = ""
-		error = session.create(mod_info, logic, profile, int(port.value))
+		error = session.create(mod_info, logic, connection_profile, int(port.value))
 	else:
-		error = session.join(mod_info, profile, address.text.strip_edges(), int(port.value), token)
+		error = session.join(mod_info, connection_profile, address.text.strip_edges(), int(port.value), token)
 	if as_host:
 		_set_status("ROOM_CREATED", [_local_addresses()])
 	else:
@@ -618,12 +635,17 @@ func _local_addresses() -> String:
 			addresses.append(ip)
 	return ", ".join(addresses) if not addresses.is_empty() else tr("NO_NETWORK")
 
-func _save_profile() -> void:
-	if ui_preparing:
-		return
-	var file := FileAccess.open(profile_path, FileAccess.WRITE)
-	if file:
-		file.store_string(JSON.stringify(profile))
+func _save_profile() -> bool:
+	if ui_preparing: return true
+	var temporary := profile_path + ".tmp"
+	var file := FileAccess.open(temporary, FileAccess.WRITE)
+	if file == null: return false
+	file.store_string(JSON.stringify(profile))
+	file.flush()
+	var error := file.get_error()
+	file.close()
+	if error != OK: return false
+	return DirAccess.rename_absolute(temporary, profile_path) == OK
 
 func _install_package(path: String) -> void:
 	if session != null:
@@ -716,6 +738,8 @@ func _go_back() -> void:
 		invite_dismissed = true
 	elif peer_transfer != null or (download_dialog != null and download_dialog.visible):
 		_cancel_peer_join()
+	elif user_panel != null and user_panel.visible:
+		user_panel.close()
 	elif settings_dialog.visible:
 		settings_dialog.close()
 	elif leave_dialog.visible:
@@ -889,7 +913,7 @@ func debug_ui_status() -> Dictionary:
 	var card_index: int = library.cards.find(focused) if focused is Button else -1
 	if card_index >= 0:
 		focus_control = "game:" + str(library.entries[card_index].id) if card_index < library.entries.size() else "add_game"
-	return {"feedback": ui_feedback.diagnostic(), "focus_scale": [focused.scale.x, focused.scale.y] if focused != null else [], "focus_control": focus_control, "library_columns": library.columns, "game_ids": game_ids, "screen": "settings" if settings_dialog.visible else "home" if home.visible else "game" if session != null else "setup", "locale": TranslationServer.get_locale(), "reduced_motion": home.reduced_motion, "motion_time": home.motion_time, "animation_processing": home.is_processing(), "orbits": points, "title": tr("APP_NAME"), "start_label": tr("START_GAME"), "size": [size.x, size.y]}
+	return {"feedback": ui_feedback.diagnostic(), "focus_scale": [focused.scale.x, focused.scale.y] if focused != null else [], "focus_control": focus_control, "library_columns": library.columns, "game_ids": game_ids, "screen": "user" if user_panel != null and user_panel.visible else "settings" if settings_dialog.visible else "home" if home.visible else "game" if session != null else "setup", "locale": TranslationServer.get_locale(), "reduced_motion": home.reduced_motion, "motion_time": home.motion_time, "animation_processing": home.is_processing(), "orbits": points, "user_profile": UserProfile.local_public(profile), "title": tr("APP_NAME"), "start_label": tr("START_GAME"), "size": [size.x, size.y]}
 
 # UI ABI 1: session, rules and the existing Mod view survive the UI shell swap.
 func ui_apply_catalogs() -> void:
@@ -967,7 +991,12 @@ func ui_import(old: Control) -> bool:
 	return true
 
 func ui_restore_focus(old_focus: Control, old: Control, path: NodePath) -> void:
-	if old.settings_dialog.visible:
+	if old.get("user_panel") != null and old.user_panel.visible:
+		_open_user_profile()
+		user_panel.draft = old.user_panel.draft.duplicate(true)
+		user_panel.name_input.text = str(user_panel.draft.get("nickname", ""))
+		user_panel._refresh()
+	elif old.settings_dialog.visible:
 		_open_settings()
 		if old_focus == old.motion_choice:
 			motion_choice.grab_focus()
@@ -1024,7 +1053,7 @@ func _send_game_status() -> void:
 		return
 	var interrupted: bool = session != null and not session.host and session.connection_state in ["disconnected", "failed", "rejected"]
 	var message := status.text if status_key not in ["CONNECTED", "LOBBY_HELP", "LEFT_ROOM"] else ""
-	game_view.set_platform_state({"enabled": true, "connected": not interrupted, "can_reconnect": joined and interrupted, "message": message, "reduce_motion": bool(profile.get("reduce_motion", false)), "input_paused": settings_dialog.visible or leave_dialog.visible})
+	game_view.set_platform_state({"enabled": true, "connected": not interrupted, "can_reconnect": joined and interrupted, "message": message, "reduce_motion": bool(profile.get("reduce_motion", false)), "input_paused": settings_dialog.visible or leave_dialog.visible or (user_panel != null and user_panel.visible)})
 
 func _layout_game() -> void:
 	immersive_game = is_instance_valid(session) and is_instance_valid(game_view) and game_view.has_method("wants_fullscreen") and game_view.wants_fullscreen()
@@ -1251,3 +1280,39 @@ func _update_join_invite() -> void:
 	var side := minf(400, minf(get_viewport_rect().size.x - 48, get_viewport_rect().size.y - 180))
 	join_invite.size = Vector2(side, side + 120)
 	join_invite.position = (get_viewport_rect().size - join_invite.size) / 2
+
+func _build_user_profile() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 52
+	add_child(layer)
+	user_panel = preload("res://app/ui/user_panel.gd").new()
+	user_panel.theme = theme
+	layer.add_child(user_panel)
+	user_panel.saved.connect(_save_user_profile)
+	user_panel.confirmed.connect(func():
+		if home.visible: home.nickname_button.grab_focus()
+	)
+	user_panel.visibility_changed.connect(func():
+		for button in [home.start_button,home.join_button,home.nickname_button,home.settings_button]:
+			button.focus_mode = Control.FOCUS_NONE if user_panel.visible else Control.FOCUS_ALL
+		_send_game_status()
+	)
+
+func _open_user_profile() -> void:
+	user_panel.edit(profile)
+
+func _save_user_profile(value: Dictionary) -> void:
+	var previous := profile.duplicate(true)
+	var public := UserProfile.local_public(value)
+	profile.nickname = UserProfile.clean_name(value.get("nickname", ""), "")
+	profile.avatar = public.avatar.duplicate(true)
+	profile.theme_color = public.theme_color
+	if not _save_profile():
+		profile = previous
+		user_panel.error_label.show()
+		return
+	nickname.text = public.display_name
+	if session != null: session.update_user_profile(profile)
+	_refresh_home()
+	ui_feedback.play("confirm")
+	user_panel.close()

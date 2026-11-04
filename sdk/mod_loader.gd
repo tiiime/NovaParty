@@ -25,9 +25,13 @@ func inspect(root: String, archive: ZIPReader = null) -> Dictionary:
 	for entry in [manifest.get("rules", ""), manifest.get("view", "")]:
 		if not manifest.files.has(entry) or not str(entry).ends_with(".gd"):
 			return _fail(tr("LDR_MISSING_ENTRY"))
-	var drop_in: bool = manifest.get("session_mode", "") == "drop_in"
+	var mode: String = str(manifest.get("session_mode", ""))
+	if mode not in ["", "drop_in", "fixed"]:
+		return _fail(tr("LDR_TWO_PLAYERS"))
+	var drop_in: bool = mode == "drop_in"
+	var fixed: bool = mode == "fixed"
 	var bounds = manifest.get("players", {})
-	var valid_bounds: bool = bounds is Dictionary and ((bounds.get("min") == 2 and bounds.get("max") == 2) or (drop_in and bounds.get("min") == 1 and bounds.get("max") is float and bounds.max == int(bounds.max) and bounds.max >= 2 and bounds.max <= 8))
+	var valid_bounds: bool = bounds is Dictionary and ((mode == "" and bounds.get("min") == 2 and bounds.get("max") == 2) or (fixed and bounds.get("min") == 2 and (bounds.get("max") is int or bounds.get("max") is float) and bounds.max == int(bounds.max) and bounds.max >= 2 and bounds.max <= 8) or (drop_in and bounds.get("min") == 1 and bounds.get("max") is float and bounds.max == int(bounds.max) and bounds.max >= 2 and bounds.max <= 8))
 	if not valid_bounds:
 		return _fail(tr("LDR_TWO_PLAYERS"))
 	if manifest.files.size() != _unique_count(manifest.files):

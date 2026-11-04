@@ -2,6 +2,8 @@ extends Control
 signal start_requested
 signal join_requested
 signal settings_requested
+signal user_requested
+const UserProfile = preload("res://sdk/user_profile.gd")
 const Style = preload("res://app/ui/party_theme.gd")
 const STAR = preload("res://assets/ui/star.svg")
 var start_button: Button
@@ -52,8 +54,9 @@ func _ready() -> void:
 	start_button = _button("START_GAME", false, func(): start_requested.emit())
 	join_button = _button("JOIN_GAME", true, func(): join_requested.emit())
 	settings_button = _button("SETTINGS", true, func(): settings_requested.emit())
-	nickname_button = _button("", true, func(): settings_requested.emit())
-	nickname_button.hide()
+	nickname_button = _button("USER_INFO", true, func(): user_requested.emit())
+	nickname_button.expand_icon = true
+	nickname_button.add_theme_constant_override("icon_max_width", 48)
 	resized.connect(_layout)
 	visibility_changed.connect(func(): set_process(is_visible_in_tree()); queue_redraw())
 	_layout()
@@ -84,8 +87,15 @@ func _button(key: String, secondary: bool, callback: Callable) -> Button:
 	return button
 
 func set_nickname(value: String) -> void:
-	if nickname_button:
-		nickname_button.text = tr("HOME_NICKNAME") % value
+	if nickname_button: nickname_button.tooltip_text = value
+
+func set_user_profile(value: Dictionary) -> void:
+	if not nickname_button: return
+	nickname_button.text = "USER_INFO"
+	nickname_button.tooltip_text = value.display_name
+	nickname_button.icon = UserProfile.texture(value)
+	var accent := UserProfile.color(value)
+	for key in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]: nickname_button.add_theme_color_override(key,accent)
 
 func set_reduced_motion(value: bool) -> void:
 	reduced_motion = value
@@ -113,35 +123,36 @@ func _layout() -> void:
 	subtitle.size = Vector2(width, 64)
 	var buttons_y: float
 	if portrait:
-		buttons_y = bottom - 282
+		buttons_y = bottom - 370
 		start_button.position = Vector2(left + 8, buttons_y)
 		start_button.size = Vector2(width - 16, 88)
 		join_button.position = Vector2(left + 8, buttons_y + 110)
 		join_button.size = Vector2(width - 16, 82)
+		nickname_button.position = Vector2(left + 8, buttons_y + 212)
+		nickname_button.size = Vector2(width - 16, 70)
 		var stage_top := top + 172
 		var stage_bottom := buttons_y - 42
 		star_extent = clampf((stage_bottom - stage_top) * 0.8, 96, minf(270, width * 0.66))
 		star_center = Vector2(size.x * 0.5, (stage_top + stage_bottom) * 0.5)
 	else:
-		buttons_y = top + (bottom - top) * 0.36
+		buttons_y = top + (bottom - top) * 0.30
 		start_button.position = Vector2(left + width * 0.52, buttons_y)
 		start_button.size = Vector2(width * 0.46, 116)
 		join_button.position = Vector2(start_button.position.x, buttons_y + 150)
 		join_button.size = Vector2(start_button.size.x, 104)
+		nickname_button.position = Vector2(start_button.position.x, buttons_y + 280)
+		nickname_button.size = Vector2(start_button.size.x, 80)
 		star_extent = minf(320, (bottom - top) * 0.49)
 		star_center = Vector2(left + width * 0.24, top + (bottom - top) * 0.55)
 	settings_button.position = Vector2(right - 160, bottom - 64)
 	settings_button.size = Vector2(160, 64)
 	settings_button.add_theme_font_size_override("font_size", 21)
-	nickname_button.position = Vector2(left, bottom - 64)
-	nickname_button.size = Vector2(minf(230, width - 184), 64)
 	nickname_button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	nickname_button.add_theme_font_size_override("font_size", 20)
 	hint.visible = not portrait
-	hint.position = Vector2(start_button.position.x, bottom - 117)
+	hint.position = Vector2(start_button.position.x, buttons_y - 72)
 	hint.size = Vector2(start_button.size.x, 70)
 	# Explicit navigation avoids geometry-based surprises when the canvas rotates.
-	var buttons := [start_button, join_button, settings_button]
+	var buttons := [start_button, join_button, nickname_button, settings_button]
 	for i in range(buttons.size()):
 		buttons[i].focus_neighbor_top = buttons[i].get_path_to(buttons[(i + buttons.size() - 1) % buttons.size()])
 		buttons[i].focus_neighbor_bottom = buttons[i].get_path_to(buttons[(i + 1) % buttons.size()])

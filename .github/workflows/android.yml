@@ -67,8 +67,11 @@ jobs:
           python3 tests/development_config.py
           python3 tests/android_build_config.py
           python3 tests/i18n.py
-          "$GODOT" --headless --path . --script tests/run.gd
-          "$GODOT" --headless --path . --script tests/ui.gd
+          set -o pipefail
+          for suite in run uno uno_ui user_profile profile_network ui; do
+            "$GODOT" --headless --path . --script "tests/$suite.gd" 2>&1 | tee "$RUNNER_TEMP/$suite.log"
+            if grep -E 'ERROR:|SCRIPT ERROR:' "$RUNNER_TEMP/$suite.log"; then exit 1; fi
+          done
       - name: Build Debug APK
         run: |
           python3 tools/build_android.py --output build/android/novaparty-debug.apk

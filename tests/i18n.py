@@ -24,7 +24,7 @@ def main():
         for path in (ROOT / directory).rglob('*.gd'):
             used.update(re.findall(r'\btr\("([A-Z_]+)"\)', path.read_text()))
     assert used <= platform, 'missing platform keys: ' + str(used - platform)
-    for game in ['gomoku', 'hidden_cards', 'jump_rope']:
+    for game in ['gomoku', 'hidden_cards', 'jump_rope', 'uno']:
         directory = ROOT / 'mods' / game
         keys = catalog_pair(directory / 'locale-en.json', directory / 'locale-zh.json')
         used = set(re.findall(r'_t\("([A-Za-z_]+)"\)', (directory / 'view.gd').read_text()))

@@ -66,3 +66,7 @@
 ## 可选健康检查
 
 `heartbeat_v1` 只在协议 2 的 hello 和 welcome 均声明后启用，未声明时不能因缺少 pong 而断开。每 2 秒发起一个随机 nonce 的 ping，匹配的 pong 确认往返路径；8 秒未确认关闭连接。参与者收到 welcome 前的握手期限为 10 秒。完整消息与重试边界见 [联机恢复](recovery.md)。心跳不进入规则、快照或对局版本。
+
+## 可选公共外观 · user_profile_v1
+
+0.1.15 在协议 2 hello/welcome 中协商 `user_profile_v1`。hello 的 `profile` 仅含版本 1 的 display_name、avatar.character / palette 和 theme_color。快照在 players 中增加归一化后的 profile，保留 nickname。握手后加入方可发送 `{"type":"profile_update","profile":{...}}`；房主按连接绑定的 seat 更新并发布快照，不信任载荷中的 seat/ID，不增加游戏 revision。缺能力的对端使用旧昵称流程。详见 [用户配置](user-profile.md)。

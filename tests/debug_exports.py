@@ -65,7 +65,7 @@ def main():
                                 client = Client(json.loads(config.read_text()))
                                 try:
                                     assert client.call('game.snapshot')['in_room'] is False
-                                    assert client.call('device.info')['version'] == '0.1.13'
+                                    assert client.call('device.info')['version'] == '0.1.15'
                                 finally:
                                     client.close()
                             else:

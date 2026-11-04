@@ -10,6 +10,10 @@ import java.nio.charset.StandardCharsets;
 
 /** Native NSD callbacks stay in Java; Godot polls bounded JSON events on its own thread. */
 public final class LanDiscovery {
+ public static String deviceName(Context context){
+  try{String name=android.provider.Settings.Global.getString(context.getContentResolver(),"device_name");if(name!=null&&!name.trim().isEmpty())return name;}catch(Exception ignored){}
+  return android.os.Build.MODEL;
+ }
  private final NsdManager manager;
  private final ArrayDeque<JSONObject> events=new ArrayDeque<>();
  private final ArrayDeque<NsdServiceInfo> resolves=new ArrayDeque<>();

@@ -1,5 +1,6 @@
 extends RefCounted
 const PROTOCOL = 2
+const UserProfile = preload("res://sdk/user_profile.gd")
 var info: Dictionary
 var rules
 var state: Dictionary
@@ -12,11 +13,14 @@ var clock_anchor := -1
 var clock_turn := -1
 var clock_round := -1
 
-func _init(mod_info: Dictionary, logic, host_id: String, nickname: String, seed_value: int):
+func _init(mod_info: Dictionary, logic, host_id: String, nickname: String, seed_value: int, user_profile: Dictionary = {}):
 	info = mod_info
 	rules = logic
 	state = rules.initial_state(seed_value)
-	players.append({"id": host_id, "nickname": nickname.left(32), "token": _token(), "connected": true})
+	players.append({"id": host_id, "nickname": nickname.left(32), "token": _token(), "connected": true, "profile": UserProfile.normalize(user_profile, host_id, nickname)})
+	players[0].nickname = players[0].profile.display_name
+	if fixed_seats():
+		_presence(0, true)
 
 func hello(data: Dictionary) -> Dictionary:
 	advance_clock()
@@ -33,7 +37,7 @@ func hello(data: Dictionary) -> Dictionary:
 		if players[seat].id == id:
 			if drop_in() and not players[seat].connected and str(data.get("resume_token", "")).is_empty():
 				players[seat].token = _token()
-				players[seat].nickname = data.nickname.left(32)
+				_update_profile(seat, data.get("profile", {}), data.nickname)
 				_clear_receipts(seat)
 				set_connected(seat, true)
 				return welcome(seat, int(protocol))
@@ -41,8 +45,11 @@ func hello(data: Dictionary) -> Dictionary:
 				return {"type": "error", "code": "invalid_resume_token"}
 			if players[seat].connected:
 				return {"type": "error", "code": "already_connected"}
+			_update_profile(seat, data.get("profile", {}), data.nickname)
 			set_connected(seat, true)
 			return welcome(seat, int(protocol))
+	if fixed_seats() and rules.has_method("can_join") and not rules.can_join(state.duplicate(true)):
+		return {"type": "error", "code": "game_in_progress"}
 	var available := -1
 	if drop_in():
 		for index in range(1, players.size()):
@@ -52,14 +59,21 @@ func hello(data: Dictionary) -> Dictionary:
 	if available < 0 and players.size() >= int(info.manifest.players.max):
 		return {"type": "error", "code": "room_full"}
 	if available >= 0:
-		players[available] = {"id": id, "nickname": data.nickname.left(32), "token": _token(), "connected": true}
+		players[available] = {"id": id, "nickname": data.nickname.left(32), "token": _token(), "connected": true, "profile": UserProfile.normalize(data.get("profile", {}), str(id), data.nickname)}
+		players[available].nickname = players[available].profile.display_name
 		_clear_receipts(available)
 		_presence(available, true)
 		return welcome(available, int(protocol))
-	players.append({"id": id, "nickname": data.nickname.left(32), "token": _token(), "connected": true})
+	players.append({"id": id, "nickname": data.nickname.left(32), "token": _token(), "connected": true, "profile": UserProfile.normalize(data.get("profile", {}), str(id), data.nickname)})
+	players[-1].nickname = players[-1].profile.display_name
 	_presence(players.size() - 1, true)
 	advance_clock()
 	return welcome(players.size() - 1, int(protocol))
+
+func _update_profile(seat: int, value, fallback_name: String = "") -> void:
+	if seat < 0 or seat >= players.size(): return
+	players[seat].profile = UserProfile.normalize(value, str(players[seat].id), fallback_name if not fallback_name.is_empty() else str(players[seat].nickname))
+	players[seat].nickname = players[seat].profile.display_name
 
 func welcome(seat: int, protocol: int = PROTOCOL) -> Dictionary:
 	return {"type": "welcome", "seat": seat, "resume_token": players[seat].token, "protocol": protocol, "rules_fingerprint": info.get("rules_fingerprint", ""), "capabilities": ["presentation_versions"] if protocol == 2 else []}
@@ -68,7 +82,7 @@ func snapshot(seat: int) -> Dictionary:
 	advance_clock()
 	var public_players := []
 	for p in players:
-		public_players.append({"nickname": p.nickname, "code": str(p.id).sha256_text().left(6), "connected": p.connected})
+		public_players.append({"nickname": p.nickname, "code": str(p.id).sha256_text().left(6), "connected": p.connected, "profile": p.profile.duplicate(true)})
 	var result := {"type": "snapshot", "game_session_id": game_session_id, "state_epoch": 0, "revision": revision, "seat": seat, "players": public_players, "view": rules.view_for(state.duplicate(true), seat)}
 	if clock_enabled():
 		result.clock = {"elapsed_ms": clock_elapsed.duplicate(), "running_seat": clock_turn, "round": clock_round, "synchronized": true}
@@ -94,7 +108,7 @@ func command(seat: int, data: Dictionary) -> Dictionary:
 		code = "stale_session"
 	elif data.has("state_epoch") and data.state_epoch != 0:
 		code = "stale_epoch"
-	elif not drop_in() and (players.size() < 2 or not players[0].connected or not players[1].connected):
+	elif not drop_in() and not fixed_seats() and (players.size() < 2 or not players[0].connected or not players[1].connected):
 		code = "waiting_for_players"
 	elif not _revision_allowed(data.get("expected_revision")):
 		code = "stale_revision"
@@ -153,13 +167,16 @@ func set_connected(seat: int, connected: bool) -> void:
 func drop_in() -> bool:
 	return info.manifest.get("session_mode", "") == "drop_in"
 
+func fixed_seats() -> bool:
+	return info.manifest.get("session_mode", "") == "fixed"
+
 func _revision_allowed(value) -> bool:
 	if not (value is int or value is float) or value != int(value):
 		return false
 	return value == revision or (drop_in() and value >= 0 and value <= revision)
 
 func _presence(seat: int, connected: bool) -> void:
-	if drop_in() and rules.has_method("presence_changed"):
+	if (drop_in() or fixed_seats()) and rules.has_method("presence_changed"):
 		state = rules.presence_changed(state.duplicate(true), seat, connected)
 		revision += 1
 

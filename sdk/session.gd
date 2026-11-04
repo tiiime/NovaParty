@@ -5,6 +5,8 @@ signal action_result(result: Dictionary)
 signal status_changed(state: String, code: String)
 const Wire = preload("res://sdk/wire.gd")
 const Room = preload("res://sdk/room.gd")
+const UserProfile = preload("res://sdk/user_profile.gd")
+var profile_supported := false
 const Sharing = preload("mod_sharing.gd")
 var sharing = Sharing.new()
 const JoinCode = preload("join_code.gd")
@@ -13,6 +15,7 @@ var qr_uri := ""
 var qr_texture: Texture2D
 var host_port := 0
 var advertisement
+var advertised := false
 var expected_remote_session := ""
 const HEARTBEAT_INTERVAL_MS = 2000
 const HEARTBEAT_TIMEOUT_MS = 8000
@@ -45,24 +48,25 @@ func _ready() -> void:
 
 func create(mod_info: Dictionary, logic, profile: Dictionary, port: int) -> Error:
 	info = mod_info
-	identity = profile
+	identity = profile.duplicate(true)
 	var error: Error = wire.listen(port)
 	if error != OK:
 		return error
 	host = true
+	profile_supported = true
 	host_port = port
 	seat = 0
-	room = Room.new(info, logic, profile.id, profile.nickname, int(Crypto.new().generate_random_bytes(4).decode_u32(0)))
+	room = Room.new(info, logic, profile.id, profile.nickname, int(Crypto.new().generate_random_bytes(4).decode_u32(0)), UserProfile.local_public(identity))
 	_set_connection("hosting")
 	_publish()
 	advertisement = preload("discovery.gd").new()
 	add_child(advertisement)
-	advertisement.advertise(port, room.game_session_id, info, profile.nickname)
+	_refresh_advertisement()
 	return OK
 
 func join(mod_info: Dictionary, profile: Dictionary, address: String, port: int, token: String = "") -> Error:
 	info = mod_info
-	identity = profile
+	identity = profile.duplicate(true)
 	join_address = address
 	host_port = port
 	resume_token = token
@@ -98,7 +102,7 @@ func _opened(peer: int) -> void:
 	if not host:
 		_set_connection("handshaking")
 		handshake_since = Time.get_ticks_msec()
-		wire.send(peer, {"type": "hello", "protocol": 2, "capabilities": ["heartbeat_v1"], "rules_fingerprint": info.rules_fingerprint, "fingerprint": info.fingerprint, "player_id": identity.id, "nickname": identity.nickname, "resume_token": resume_token, "expected_session_id": expected_remote_session})
+		wire.send(peer, {"type": "hello", "protocol": 2, "capabilities": ["heartbeat_v1", "user_profile_v1"], "rules_fingerprint": info.rules_fingerprint, "fingerprint": info.fingerprint, "player_id": identity.id, "nickname": UserProfile.local_public(identity).display_name, "profile": UserProfile.local_public(identity), "resume_token": resume_token, "expected_session_id": expected_remote_session})
 	else:
 		pending_since[peer] = Time.get_ticks_msec()
 
@@ -161,10 +165,15 @@ func _message(peer: int, data: Dictionary) -> void:
 				if data.get("protocol") == 2 and capabilities is Array and capabilities.has("heartbeat_v1"):
 					response.capabilities.append("heartbeat_v1")
 					_enable_heartbeat(peer)
+			if response.type == "welcome" and data.get("capabilities", []) is Array and data.get("capabilities", []).has("user_profile_v1"):
+				response.capabilities.append("user_profile_v1")
 			wire.send(peer, response)
 			if response.type == "welcome":
 				_publish()
 			return
+		if data.get("type") == "profile_update":
+			room._update_profile(int(bindings[peer]), data.get("profile", {}))
+			_publish()
 		if data.get("type") == "command":
 			_execute(bindings[peer], data, peer)
 	else:
@@ -174,6 +183,7 @@ func _message(peer: int, data: Dictionary) -> void:
 				resume_token = data.resume_token
 				handshake_since = -1
 				var capabilities = data.get("capabilities", [])
+				profile_supported = capabilities is Array and capabilities.has("user_profile_v1")
 				if data.get("protocol") == 2 and capabilities is Array and capabilities.has("heartbeat_v1"):
 					_enable_heartbeat(peer)
 				_set_connection("connected")
@@ -200,11 +210,23 @@ func _execute(player_seat: int, data: Dictionary, peer: int = -1) -> void:
 	_publish()
 
 func _publish() -> void:
+	_refresh_advertisement()
 	last_clock_publish = Time.get_ticks_msec()
 	snapshot = room.snapshot(0)
 	updated.emit(snapshot)
 	for peer in bindings:
 		wire.send(peer, room.snapshot(bindings[peer]))
+
+func _refresh_advertisement() -> void:
+	if advertisement == null or room == null:
+		return
+	var joinable: bool = not room.fixed_seats() or not room.rules.has_method("can_join") or room.rules.can_join(room.state.duplicate(true))
+	if joinable and not advertised:
+		advertisement.advertise(host_port, room.game_session_id, info, identity.nickname)
+		advertised = true
+	elif not joinable and advertised:
+		advertisement.stop_advertise()
+		advertised = false
 
 func _lost(peer: int) -> void:
 	pending_since.erase(peer)
@@ -233,7 +255,8 @@ func update_presentation(presentation: Dictionary) -> void:
 	info = presentation
 	if host:
 		room.info = presentation
-		advertisement.advertise(host_port, room.game_session_id, info, identity.nickname)
+		if advertised:
+			advertisement.advertise(host_port, room.game_session_id, info, identity.nickname)
 
 # Optional presentation services. These methods return local data/resources, never network state.
 func get_join_info(address_override: String = "") -> Dictionary:
@@ -270,3 +293,37 @@ func get_join_qr(address_override: String = "") -> Texture2D:
 		qr_uri = invite.uri
 		qr_texture = JoinCode.texture(qr_uri)
 	return qr_texture
+
+# Public presentation services. Returned dictionaries are detached from identity/state.
+func get_local_profile() -> Dictionary:
+	return UserProfile.local_public(identity).duplicate(true)
+
+func get_player_profile(player_seat: int) -> Dictionary:
+	var players: Array = snapshot.get("players", [])
+	if player_seat < 0 or player_seat >= players.size(): return UserProfile.normalize({})
+	var player: Dictionary = players[player_seat]
+	return UserProfile.normalize(player.get("profile", {}), str(player.get("code", "")), str(player.get("nickname", "Player")))
+
+func get_avatar_texture(profile: Dictionary) -> Texture2D:
+	return UserProfile.texture(profile)
+
+func get_profile_color(profile: Dictionary) -> Color:
+	return UserProfile.color(profile)
+
+func update_user_profile(local: Dictionary) -> bool:
+	# Mod-facing getters are public; mutation is reserved for the platform UI.
+	var public := UserProfile.local_public(local)
+	identity.nickname = public.display_name
+	identity.avatar = public.avatar.duplicate(true)
+	identity.theme_color = public.theme_color
+	if host and room != null:
+		room._update_profile(0, public)
+		if advertised and advertisement != null:
+			advertisement.stop_advertise()
+			advertised = false
+		_publish()
+		return true
+	if profile_supported and wire != null and wire.peers.has(0):
+		wire.send(0, {"type":"profile_update", "profile":public})
+		return true
+	return false

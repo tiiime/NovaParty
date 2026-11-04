@@ -37,3 +37,7 @@ python3 tools/pack_mod.py mods/<id> build/<id>.zip
 涉及局域网发现、Mod 传递或连接二维码时，读取 [发现、传递与二维码契约](../../docs/lan-sharing.md)。普通 SDK 的 `ModSender` 和 `PeerMods` 可传包，不依赖 Debug。接收方先展示来源与下载确认，确认后才拉取；使用 `Loader.install_peer_zip` 验证并安装，不覆盖原有版本。扫码与发现加入复用同一下载确认流程，不能因二维码而跳过确认。
 
 表现可实现 `set_session_services(services)`，调用 `services.get_join_info()` 或 `services.get_join_qr()` 获取公开连接信息和本地 Texture2D；实现 `controls_join_qr()` 后自行管理显示，否则平台提供初始等待二维码。不要把服务 Node 或 Texture 放进规则/快照，不把身份或恢复令牌编码进二维码。原生能力新增需要基础包支持，不能仅靠 Mod 热更新宣称可用。
+
+制作固定人数的多方回合制游戏时，使用 0.1.14 新增的 `session_mode: "fixed"`，不要用 Drop-in 放宽 revision。读取 [固定多人契约](../../docs/sdk.md) 和 [UNO 示例](../../docs/uno.md)：规则管理等待/开始、参与座位、断线暂停和 `can_join`；公共屏幕必须在 `view_for` 层移除手牌，不只隐藏按钮。该能力需要新基座，不能只靠 Mod/UI 热更新。处理 JSON 座位或牌 ID 数组时，用数值比较适配 float，而不是类型敏感的 Array.has(int)。
+
+涉及玩家名字、头像或身份强调色时，读 [用户配置 SDK](../../docs/user-profile.md)。0.1.15 提供 `snapshot.players[seat].profile` 和公开表现服务 `get_local_profile`、`get_player_profile`、`get_avatar_texture`、`get_profile_color`。使用稳定角色/配色 ID，旧快照走默认外观；不要读取完整本地 profile 或恢复令牌，不把纹理、颜色对象和头像偏好写入规则状态。

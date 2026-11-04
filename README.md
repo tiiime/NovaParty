@@ -38,7 +38,7 @@ Godot --path . -- --profile=guest
 
 ## Mod 开发与打包
 
-参考 `mods/gomoku`（公开棋盘）和 `mods/hidden_cards`（私有手牌），阅读 [SDK 契约](docs/sdk.md) 与 [AI 开发 Skill](skills/novaparty-mod/SKILL.md)。客户端仅内置五子棋。默认棋牌会话为两位玩家；可选 Drop-in 模式支持动态加入/离开，外部跳绳 Mod 已使用最多五台设备的配置。
+参考 `mods/gomoku`（公开棋盘）、`mods/hidden_cards`（私有手牌）和 [UNO 聚会版](docs/uno.md)（固定多人、公共屏幕与手机私有手牌），阅读 [SDK 契约](docs/sdk.md) 与 [AI 开发 Skill](skills/novaparty-mod/SKILL.md)。客户端仅内置五子棋。默认棋牌会话为两位玩家；0.1.14 增加保持严格版本检查的固定多人模式。可选 Drop-in 模式支持动态加入/离开，外部跳绳 Mod 已使用最多五台设备的配置。
 
 ```sh
 python3 tools/pack_mod.py mods/gomoku build/gomoku.zip
@@ -54,7 +54,9 @@ Mod 支持清单列出的 GDScript 与原始文件；通用 Godot 导入资源�
 python3 tools/build_android.py
 ```
 
-输出 `build/android/novaparty-debug.apk`，包含 ARM32 与 ARM64。已构建的最新基础包位于 `build/android/novaparty-0.1.13-debug.apk`，历史 Release 原型包为 `build/android/novaparty-0.1.13-release.apk`。Android/iOS 导出均只保留五子棋 Mod；项目导出插件使用白名单，其他 Mod 源码留作外部包。本次已直接将工程、包 ID、原生桥接、发现服务与二维码协议统一为 NovaParty；Android ARM64 与 iOS 模拟器已安装新包并完成发现、二维码解析和加入验证。电视上的旧包需首次手动安装新包，之后继续使用同包更新。构建与设备边界见 [Android 指南](docs/android.md)和[开发现状](docs/status.md)。
+输出 `build/android/novaparty-debug.apk`，包含 ARM32 与 ARM64。最新本地调试基座为 `build/android/novaparty-0.1.14-debug.apk`，已验证 Android 手机/电视模拟器的 UNO 联机与操作。所有平台仍只内置五子棋；UNO、跳绳等作为外部 Mod 导入或通过 SDK 接收。正式签名 Release 使用 GitHub Actions 或本地正式密钥配置。
+
+UNO 需要先更新到 0.1.14 基座，再导入 `build/mods/uno-0.1.0.zip`；旧基座无法仅靠 UI/Mod 热更获得固定多人 SDK。真实电视与真实 iPhone 的新版本尚未验证。构建与设备边界见 [Android 指南](docs/android.md)和[开发现状](docs/status.md)。
 
 GitHub 已配置 Android APK、Windows x64、macOS Universal 和 iOS 模拟器测试包。触发方式、签名边界和下载产物的方法见 [GitHub Actions 指南](docs/github-actions.md)。
 
@@ -112,3 +114,5 @@ Godot --path . --script tests/capture.gd
 0.1.11 已加入系统 mDNS 游戏发现、普通 SDK 的设备间 Mod 传递与确认下载、二维码生成及相机扫码加入。缺少游戏时下载校验后自动加入；游戏可以控制二维码布局。参见 [局域网共享与二维码 SDK](docs/lan-sharing.md)。新原生能力需安装一次 0.1.11 基础包，之后仍支持 UI / Mod 热更新。
 
 Android Debug 0.1.12 支持通过认证 HTTP 上传 APK 并触发系统安装，默认端口 27842，提供 `tools/apkctl.py`。参见 [APK 网络更新](docs/apk-updates.md)。Release 不包含该服务与安装权限。
+
+0.1.15 新增用户信息入口、系统设备默认名、六种动物角色 × 四种配色及个人主题色。参见 [角色 UI cheat sheet](docs/design/profile/cheat-sheet.svg) 与 [用户配置 SDK](docs/user-profile.md)。该能力需要升级基础包，Mod 可读取公开外观并获取平台头像纹理。

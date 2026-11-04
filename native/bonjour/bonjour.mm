@@ -53,6 +53,13 @@ static NSString *exchange(Bonjour *b, NSString *input) {
  NSDictionary *request=[NSJSONSerialization JSONObjectWithData:[input dataUsingEncoding:NSUTF8StringEncoding] options:0 error:nil];
  if(![request isKindOfClass:NSDictionary.class])request=@{};
  NSString *op=request[@"op"];
+ if([op isEqual:@"device_name"]){
+#if TARGET_OS_IPHONE
+ b->event(@{@"type":@"device_name",@"name":UIDevice.currentDevice.name ?: @"iPhone"});
+#else
+ b->event(@{@"type":@"device_name",@"name":NSHost.currentHost.localizedName ?: @"Mac"});
+#endif
+ }
  if([op isEqual:@"qr_encode"]){NSString *value=request[@"value"];if([value isKindOfClass:NSString.class]&&value.length<=1024)b->event(@{@"type":@"qr_image",@"data":qrPNG(value)});}
  if([op isEqual:@"qr_decode_image"]){NSString *data=request[@"data"];if([data isKindOfClass:NSString.class]&&data.length<=4000000)b->event(@{@"type":@"qr_decoded",@"value":qrDecode(data)});}
 #if TARGET_OS_IPHONE
