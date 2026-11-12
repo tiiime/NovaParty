@@ -18,7 +18,7 @@ static func device_name() -> String:
 	var result := ""
 	if OS.has_feature("android") and Engine.has_singleton("JavaClassWrapper") and Engine.has_singleton("AndroidRuntime"):
 		var klass = Engine.get_singleton("JavaClassWrapper").wrap("org.novaparty.sdk.LanDiscovery")
-		if klass != null: result = str(klass.deviceName(Engine.get_singleton("AndroidRuntime").get_activity()))
+		if klass != null: result = str(klass.deviceName(Engine.get_singleton("AndroidRuntime").getActivity()))
 	elif ClassDB.class_exists("NovaBonjour"):
 		var bridge = ClassDB.instantiate("NovaBonjour")
 		var events = JSON.parse_string(bridge.call("exchange", '{"op":"device_name"}'))

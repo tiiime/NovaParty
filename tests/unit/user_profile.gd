@@ -88,5 +88,19 @@ func run() -> void:
 	DirAccess.remove_absolute(app.profile_path)
 	app.queue_free()
 	await process_frame
+	# Legacy fallback names saved by older builds are cleared so the device name applies.
+	for legacy in [[1, "Player", ""], [1, "Android", ""], [1, "小明", "小明"], [2, "Player", "Player"]]:
+		var path := "user://profile-legacy-" + str(OS.get_process_id()) + ".json"
+		var file := FileAccess.open(path, FileAccess.WRITE)
+		file.store_string(JSON.stringify({"id": "legacy", "nickname": legacy[1], "profile_schema": legacy[0]}))
+		file.close()
+		var legacy_app = load("res://app/main.tscn").instantiate()
+		legacy_app.profile_path = path
+		root.add_child(legacy_app)
+		await process_frame
+		check(legacy_app.profile.nickname == legacy[2] and legacy_app.profile.profile_schema == 2, "schema %d nickname %s migrates to '%s'" % legacy)
+		legacy_app.queue_free()
+		await process_frame
+		DirAccess.remove_absolute(path)
 	print("USER_PROFILE: %d checks, %d failures" % [checks,failures])
 	quit(1 if failures else 0)

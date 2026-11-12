@@ -83,9 +83,11 @@ func _ready() -> void:
 			profile_path = "user://profile_" + argument.substr(10).sha256_text().left(12) + ".json"
 	var saved = JSON.parse_string(FileAccess.get_file_as_string(profile_path)) if FileAccess.file_exists(profile_path) else null
 	profile = saved if saved is Dictionary and saved.has("id") else {"id": Crypto.new().generate_random_bytes(16).hex_encode(), "nickname": ""}
-	if not profile.has("profile_schema") and profile.get("nickname", "") in ["玩家", "Player"]:
+	# Schema 2: names saved by older builds' fallbacks ("Player", or "Android" from a broken
+	# device-name lookup) are defaults, not choices; clear them so the device name applies.
+	if int(profile.get("profile_schema", 0)) < 2 and profile.get("nickname", "") in ["玩家", "Player", "Android"]:
 		profile.nickname = ""
-	profile.profile_schema = 1
+	profile.profile_schema = 2
 	var appearance := UserProfile.local_public(profile)
 	profile.avatar = appearance.avatar.duplicate(true)
 	profile.theme_color = appearance.theme_color
