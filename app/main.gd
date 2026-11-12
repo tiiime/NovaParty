@@ -269,8 +269,7 @@ func _open_setup(as_host: bool) -> void:
 	if as_host:
 		discovery.stop_browse()
 	else:
-		# Asking here (not at startup) ties the system prompt to the user's intent to find games.
-		Bluetooth.shared(get_tree()).request_access()
+		# Bluetooth scans only when already permitted; the explicit button asks (see join_browser).
 		discovery.browse()
 	create_button.visible = as_host
 	settings_action.visible = not as_host
@@ -1086,6 +1085,8 @@ func _build_lan_ui() -> void:
 	join_browser.refresh_requested.connect(discovery.browse)
 	join_browser.manual_requested.connect(_show_manual_join)
 	join_browser.scan_requested.connect(_start_scan)
+	join_browser.bluetooth_requested.connect(_request_bluetooth)
+	join_browser.set_bluetooth_available(Bluetooth.shared(get_tree()).backend != null)
 	qr_scanner = preload("res://sdk/net/qr_scanner.gd").new()
 	add_child(qr_scanner)
 	qr_scanner.scanned.connect(_join_scanned_code)
@@ -1262,6 +1263,23 @@ func debug_lan_command(method: String, params: Dictionary) -> Dictionary:
 func _exit_tree() -> void:
 	if peer_transfer != null:
 		peer_transfer.cancel()
+
+# The Android system prompt pauses the app, so it is only shown after an explicit tap.
+func _request_bluetooth() -> void:
+	var radio = Bluetooth.shared(get_tree())
+	if radio.state == "on":
+		discovery.browse()
+		return
+	if not radio.state_changed.is_connected(_bluetooth_state_changed):
+		radio.state_changed.connect(_bluetooth_state_changed)
+	_set_status("BLUETOOTH_PERMISSION")
+	radio.request_access()
+
+func _bluetooth_state_changed(state: String) -> void:
+	if state == "on" and join_browser.is_visible_in_tree():
+		discovery.browse()
+	elif state in ["unauthorized", "off"] and join_browser.is_visible_in_tree():
+		_set_status("BLUETOOTH_UNAVAILABLE")
 
 func _start_scan() -> void:
 	if session == null:

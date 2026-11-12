@@ -104,6 +104,17 @@ func run() -> void:
 
 	check(resumed.wire.connect_to("ble:ZZ:99", 0) == OK, "unknown device starts as a pending link")
 	check(await wait_until(func(): return not resumed.wire.peers.has(0)), "failed Bluetooth connect is reported as lost")
+	var off_air := {}
+	var refused := radio(off_air, "CC:22")
+	refused.backend.powered = false
+	refused.host("abcdef")
+	refused.scan()
+	check(not refused.hosting and not refused.advertising and not refused.scanning and refused.last_error == "bluetooth_off", "a refusing radio does not report hosting, advertising or scanning")
+	refused.backend.powered = true
+	refused.stop_scan()
+	refused.scan()
+	check(refused.scanning, "scanning restarts once the radio is available")
+	refused.queue_free()
 	var silent: Node = Bluetooth.new()
 	root.add_child(silent)
 	check(not silent.available() and silent.connect_peer("AA:00") == null and not silent.host("abcdef"), "no bridge means Bluetooth is cleanly unavailable")

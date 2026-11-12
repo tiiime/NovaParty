@@ -30,6 +30,9 @@ func _handle(command: Dictionary) -> void:
 	match command.get("op", ""):
 		"ble_state": events.append({"type": "ble_state", "state": "on" if powered else "off"})
 		"ble_host":
+			if not powered:
+				events.append({"type": "ble_error", "code": "bluetooth_off"})
+				return
 			host_name = str(command.name)
 			advertising = true
 		"ble_advertise": advertising = bool(command.enabled)
@@ -38,7 +41,11 @@ func _handle(command: Dictionary) -> void:
 			host_name = ""
 			for link in links.keys():
 				if link.begins_with("p:"): _close(link, true)
-		"ble_scan": scanning = true
+		"ble_scan":
+			if not powered:
+				events.append({"type": "ble_error", "code": "bluetooth_off"})
+				return
+			scanning = true
 		"ble_scan_stop": scanning = false
 		"ble_connect":
 			var target = air.get(str(command.key))

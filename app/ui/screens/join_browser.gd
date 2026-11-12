@@ -3,6 +3,8 @@ signal selected(room: Dictionary)
 signal refresh_requested
 signal manual_requested
 signal scan_requested
+signal bluetooth_requested
+var bluetooth: Button
 const Style = preload("res://app/ui/theme/party_theme.gd")
 const T = Style.T
 var message: Label
@@ -48,7 +50,18 @@ func _ready() -> void:
 	manual.size_flags_horizontal = SIZE_EXPAND_FILL
 	row.add_child(manual)
 	manual.pressed.connect(func(): manual_requested.emit())
+	bluetooth = Button.new()
+	Style.button(bluetooth, "secondary")
+	bluetooth.text = "BLUETOOTH_SEARCH"
+	bluetooth.size_flags_horizontal = SIZE_EXPAND_FILL
+	row.add_child(bluetooth)
+	row.move_child(bluetooth, 1)
+	bluetooth.pressed.connect(func(): bluetooth_requested.emit())
 	populate([])
+
+func set_bluetooth_available(value: bool) -> void:
+	if is_instance_valid(bluetooth):
+		bluetooth.visible = value
 func populate(rooms: Array) -> void:
 	items = rooms
 	search_elapsed = 0.0

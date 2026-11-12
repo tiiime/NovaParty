@@ -150,5 +150,8 @@
   "HAPTICS": "Haptic feedback",
   "BLUETOOTH_GAME": "Bluetooth game",
   "BLUETOOTH_ROW": "Nearby device · code %s",
-  "CONNECTING_BLUETOOTH": "Connecting over Bluetooth…"
+  "CONNECTING_BLUETOOTH": "Connecting over Bluetooth…",
+  "BLUETOOTH_SEARCH": "Bluetooth",
+  "BLUETOOTH_PERMISSION": "Allow Bluetooth to find nearby devices (Android may call it location access)",
+  "BLUETOOTH_UNAVAILABLE": "Bluetooth is off or not allowed; you can still join over Wi-Fi or by scanning"
 }

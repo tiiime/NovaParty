@@ -150,5 +150,8 @@
   "HAPTICS": "触感反馈",
   "BLUETOOTH_GAME": "蓝牙游戏",
   "BLUETOOTH_ROW": "附近设备 · 代码 %s",
-  "CONNECTING_BLUETOOTH": "正在通过蓝牙连接…"
+  "CONNECTING_BLUETOOTH": "正在通过蓝牙连接…",
+  "BLUETOOTH_SEARCH": "蓝牙搜索",
+  "BLUETOOTH_PERMISSION": "请允许蓝牙权限以搜索附近设备（安卓系统会显示为位置权限）",
+  "BLUETOOTH_UNAVAILABLE": "蓝牙未开启或未授权，仍可通过局域网或扫码加入"
 }

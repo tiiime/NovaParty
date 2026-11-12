@@ -188,6 +188,11 @@ func _event(event: Dictionary) -> void:
 				state_changed.emit(state)
 		"ble_error":
 			last_error = str(event.get("code", "bluetooth_failed"))
+			# The radio refused (off / no permission): nothing is advertising or scanning.
+			if last_error.begins_with("bluetooth_"):
+				hosting = false
+				advertising = false
+				scanning = false
 		"ble_found":
 			var key := str(event.get("key", ""))
 			var label := str(event.get("name", ""))

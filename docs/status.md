@@ -45,7 +45,8 @@ UNO 0.1.0 以独立包提供，**不增加内置游戏**。电视公共屏幕 + 
 - **触感反馈**：tap / select / confirm / warn 四档，仅 Android / iOS 触屏震动，设置可关闭；Mod 通过 `platform_action("haptic:select")` 请求，旧宿主忽略。五子棋落子、UNO 出牌已接入。
 - **蓝牙 LE**：主机同时开放 TCP 与 GATT，加入者用 `ble:<设备键>` 地址复用全部上层协议（握手、心跳、重连、Mod 下载）。Android 与苹果原生桥完成；两台 Android 模拟器经真实 BLE 协议栈联机通过。详见 [蓝牙联机](bluetooth.md)。
 - **目录重构**：`app/ui/{theme,widgets,screens,dialogs}`、`sdk/{net,session,mods}`、`native/apple`、`tests/{unit,integration,devices,capture,support}`、`tools/{build,dev,design}`。顺带修复：iOS 构建脚本与 APK 检查脚本的导入顺序错误、热替换后用户信息面板延迟回调崩溃、若干测试夹具仍假定暗牌为内置游戏。
-- 验证：12 个单元套件（含蓝牙 25 项）、UI 热替换 102 项、13 个桌面集成套件全部通过；Debug APK 签名/权限检查通过。
+- **真机联调（小米 M2011K2G Android 13 + TCL 电视）**：两端装 0.1.16（电视走 HTTP 上传 + 系统确认）。发现两个问题并修复：① 进入「加入游戏」就弹出定位权限框（安卓蓝牙扫描需要），弹窗还会暂停应用、连带中断局域网搜索——改为点「蓝牙搜索」按钮才申请；② 手机组播包被 Wi-Fi 驱动过滤，mDNS 发现时有时无（Mac 能收到电视广播，手机收不到）——`LanDiscovery` 在搜索/广播期间持有 Wi-Fi MulticastLock（新增普通权限 `CHANGE_WIFI_MULTICAST_STATE`）。修复后电视连开 3 个新房间，手机均在 1 秒内发现，从列表加入并完整对局两次，结算与棋盘两端一致。
+- 验证：12 个单元套件（含蓝牙 25 项）、UI 热替换 102 项、13 个桌面集成套件全部通过（蓝牙单元测试现为 27 项）；Debug APK 签名/权限检查通过。
 
 ## 已完成的能力
 
