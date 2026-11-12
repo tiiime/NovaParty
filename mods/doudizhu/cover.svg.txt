@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="300" viewBox="0 0 480 300">
+<rect width="480" height="300" rx="28" fill="#2058E0"/>
+<circle cx="400" cy="40" r="90" fill="#3A78ED"/>
+<g transform="translate(150 70) rotate(-14)"><rect width="110" height="154" rx="14" fill="#FFFFFF" stroke="#BCD2F0" stroke-width="3"/><text x="14" y="44" font-family="Noto Sans SC, sans-serif" font-size="38" font-weight="800" fill="#133464">A</text><text x="58" y="132" font-size="56" fill="#133464">♠</text></g>
+<g transform="translate(200 62)"><rect width="110" height="154" rx="14" fill="#FFFFFF" stroke="#BCD2F0" stroke-width="3"/><text x="14" y="44" font-family="Noto Sans SC, sans-serif" font-size="38" font-weight="800" fill="#D23C3C">2</text><text x="56" y="132" font-size="56" fill="#D23C3C">♥</text></g>
+<g transform="translate(262 74) rotate(14)"><rect width="110" height="154" rx="14" fill="#FFF4B8" stroke="#E0A612" stroke-width="3"/><text x="14" y="42" font-family="Noto Sans SC, sans-serif" font-size="30" font-weight="800" fill="#D23C3C">大</text><text x="14" y="74" font-family="Noto Sans SC, sans-serif" font-size="30" font-weight="800" fill="#D23C3C">王</text><path d="M72 92 80 110 100 112 85 125 89 145 72 135 55 145 59 125 44 112 64 110Z" fill="#FFE34B" stroke="#E0A612" stroke-width="3"/></g>
+<path d="M66 214 76 236 100 238 82 254 87 278 66 266 45 278 50 254 32 238 56 236Z" fill="#FFE34B" stroke="#E0A612" stroke-width="3"/>
+</svg>

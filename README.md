@@ -117,4 +117,6 @@ Android Debug 0.1.12 支持通过认证 HTTP 上传 APK 并触发系统安装，
 
 0.1.15 新增用户信息入口、系统设备默认名、六种动物角色 × 四种配色及个人主题色。参见 [角色 UI cheat sheet](docs/design/profile/cheat-sheet.svg) 与 [用户配置 SDK](docs/user-profile.md)。该能力需要升级基础包，Mod 可读取公开外观并获取平台头像纹理。
 
+新增[斗地主](docs/doudizhu.md) Mod（3 人叫分，电视公共牌桌 + 手机私有手牌）。
+
 0.1.16 采用 v0.4「果冻星星」界面（[cheat sheet](docs/design/cheat-sheet.svg)），加入手机触感反馈和[蓝牙 LE 联机](docs/bluetooth.md)，并按 `app/ui/*`、`sdk/{net,session,mods}`、`tests/{unit,integration,devices}`、`tools/{build,dev,design}` 重组目录；UI 包接口升为 2。

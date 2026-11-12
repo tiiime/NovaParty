@@ -1,0 +1,34 @@
+{
+  "id": "doudizhu",
+  "name": "斗地主",
+  "localized_names": {
+    "zh": "斗地主",
+    "en": "Dou Dizhu"
+  },
+  "version": "0.1.0",
+  "sdk": 1,
+  "session_mode": "fixed",
+  "players": {
+    "min": 2,
+    "max": 4
+  },
+  "rules": "rules.gd",
+  "view": "view.gd",
+  "rules_files": [
+    "rules.gd",
+    "cards.gd"
+  ],
+  "inputs": [
+    "touch",
+    "directional"
+  ],
+  "cover": "cover.svg.txt",
+  "files": [
+    "cards.gd",
+    "rules.gd",
+    "view.gd",
+    "locale-en.json",
+    "locale-zh.json",
+    "cover.svg.txt"
+  ]
+}
