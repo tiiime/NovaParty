@@ -56,8 +56,8 @@ func render(snapshot: Dictionary) -> void:
 ## 验证
 
 ```sh
-Godot --headless --path . --script tests/user_profile.gd
-Godot --headless --path . --script tests/profile_network.gd
+Godot --headless --path . --script tests/unit/user_profile.gd
+Godot --headless --path . --script tests/unit/profile_network.gd
 ```
 
-覆盖全部 24 个头像、枚举回退、字段隔离、昵称清理、保存/取消、空名字回退、原身份保留、手机/电视布局；真实 TCP 验证协商、双方外观、实时更新、伪造座位隔离、游戏状态不变与 getter 副本。可视预览使用 `tests/user_profile.gd -- --capture`，截图输出忽略的 `build/validation/`。
+覆盖全部 24 个头像、枚举回退、字段隔离、昵称清理、保存/取消、空名字回退、原身份保留、手机/电视布局；真实 TCP 验证协商、双方外观、实时更新、伪造座位隔离、游戏状态不变与 getter 副本。可视预览使用 `tests/unit/user_profile.gd -- --capture`，截图输出忽略的 `build/validation/`。

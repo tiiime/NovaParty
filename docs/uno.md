@@ -39,11 +39,11 @@
 ## 开发与验证
 
 ```sh
-python3 tools/pack_mod.py mods/uno build/mods/uno-0.1.0.zip
-python3 tools/pack_mod.py mods/uno build/mods/uno-0.1.0-hot.zip --hot
-Godot --headless --path . --script tests/uno.gd
-Godot --headless --path . --script tests/uno_ui.gd
-python3 tests/uno_network.py
+python3 tools/build/pack_mod.py mods/uno build/mods/uno-0.1.0.zip
+python3 tools/build/pack_mod.py mods/uno build/mods/uno-0.1.0-hot.zip --hot
+Godot --headless --path . --script tests/unit/uno.gd
+Godot --headless --path . --script tests/unit/uno_ui.gd
+python3 tests/integration/uno_network.py
 ```
 
 验证包括 2/3/6 玩家确定性完整对局、108 张牌守恒、非法操作、叠罚、双人反转、抽牌后限制、漏喊窗口、回收、最终罚牌、计分和重赛。UI 测试覆盖中英文、实时语言切换、手机/电视布局、六人短屏、焦点、颜色弹窗和错误提示保留。

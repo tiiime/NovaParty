@@ -1,6 +1,6 @@
 extends Control
 # Immutable host. Debug TCP and live Session identity outlive replaceable UI trees.
-const UI_API = 1
+const UI_API = 2
 var client: Control
 var debug_service
 var ui_build := "builtin:client"

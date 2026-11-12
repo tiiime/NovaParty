@@ -38,11 +38,11 @@ jobs:
         with:
           python-version: '3.12'
       - name: Prepare Godot and native extensions
-        run: python tools/ci_platforms.py --platform ${{ matrix.platform }}
+        run: python tools/build/ci_platforms.py --platform ${{ matrix.platform }}
       - name: Export test package
-        run: python tools/build_platform.py --platform ${{ matrix.platform }} --skip-smoke
+        run: python tools/build/build_platform.py --platform ${{ matrix.platform }} --skip-smoke
       - name: Check packaged application startup
-        run: python tools/build_platform.py --platform ${{ matrix.platform }} --smoke-only
+        run: python tools/build/build_platform.py --platform ${{ matrix.platform }} --smoke-only
       - name: Upload test package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

@@ -32,11 +32,11 @@ Mod 的规则指纹已改变，不能替换正在运行的旧版规则；需先�
 
 ## 验证
 
-- `Godot --headless --path . --script tests/gomoku.gd`（57 项）：确定性计时、断线暂停、重连恢复、双人同意与幂等性、旧轮次防护、横竖屏布局、真实 Viewport 指针输入、弹窗/设置字体与焦点、显式并发同意重试。
-- `python3 tests/gomoku_network.py`：真实 TCP 双客户端，验证计时、断线/凭据重连、胜利弹窗、双方同意后新局和计时重置。
-- `Godot --path . --script tests/capture_gomoku.gd`：桌面横屏、手机长短屏、中英文及结算截图。
-- `python3 tests/gomoku_devices.py --device <UDID> --tv-connection <private.json>`：iPhone 模拟器发起、真实 TCL 电视加入。实际 adb 遥控器落子与再开一局，模拟器通过 Debug 提交操作；截图取自真实应用。`--manual-touch` 仅用于有人/可用原生自动化实际触摸时，此次模拟器原生控制通道启动失败，未使用该模式完成验证。Godot 全视口指针分发测试已通过。
+- `Godot --headless --path . --script tests/unit/gomoku.gd`（57 项）：确定性计时、断线暂停、重连恢复、双人同意与幂等性、旧轮次防护、横竖屏布局、真实 Viewport 指针输入、弹窗/设置字体与焦点、显式并发同意重试。
+- `python3 tests/integration/gomoku_network.py`：真实 TCP 双客户端，验证计时、断线/凭据重连、胜利弹窗、双方同意后新局和计时重置。
+- `Godot --path . --script tests/capture/capture_gomoku.gd`：桌面横屏、手机长短屏、中英文及结算截图。
+- `python3 tests/devices/gomoku_devices.py --device <UDID> --tv-connection <private.json>`：iPhone 模拟器发起、真实 TCL 电视加入。实际 adb 遥控器落子与再开一局，模拟器通过 Debug 提交操作；截图取自真实应用。`--manual-touch` 仅用于有人/可用原生自动化实际触摸时，此次模拟器原生控制通道启动失败，未使用该模式完成验证。Godot 全视口指针分发测试已通过。
 
 设备截图与报告位于 `build/validation/gomoku-iphone-*.png`、`gomoku-tv-device-*.png`、`gomoku-devices.json`。既有联机、Debug、Mod 热更新、整套客户端 UI 热更新和 Release 隔离回归仍保留。
 
-安卓手机基础包已成功覆盖安装到 0.1.8；手动解锁后，`tests/gomoku_android.py` 已通过实际 adb 触屏落子、电视遥控器落子、九手获胜弹窗、双方同意再开一局、同一会话内棋盘和计时重置，保留手机原昵称。报告为 `build/validation/gomoku-android.json`，截图为 `gomoku-android-*.png`。测试结束后两端返回大厅。电视普通 adb 覆盖安装仍被系统校验拒绝，0.1.8 APK 已放 `Download/novaparty-0.1.8-debug.apk`，需手动安装后才能由电视提供权威时钟。
+安卓手机基础包已成功覆盖安装到 0.1.8；手动解锁后，`tests/devices/gomoku_android.py` 已通过实际 adb 触屏落子、电视遥控器落子、九手获胜弹窗、双方同意再开一局、同一会话内棋盘和计时重置，保留手机原昵称。报告为 `build/validation/gomoku-android.json`，截图为 `gomoku-android-*.png`。测试结束后两端返回大厅。电视普通 adb 覆盖安装仍被系统校验拒绝，0.1.8 APK 已放 `Download/novaparty-0.1.8-debug.apk`，需手动安装后才能由电视提供权威时钟。

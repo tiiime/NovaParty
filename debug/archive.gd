@@ -1,1 +1,1 @@
-extends "res://sdk/package_archive.gd"
+extends "res://sdk/mods/package_archive.gd"

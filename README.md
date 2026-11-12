@@ -41,7 +41,7 @@ Godot --path . -- --profile=guest
 参考 `mods/gomoku`（公开棋盘）、`mods/hidden_cards`（私有手牌）和 [UNO 聚会版](docs/uno.md)（固定多人、公共屏幕与手机私有手牌），阅读 [SDK 契约](docs/sdk.md) 与 [AI 开发 Skill](skills/novaparty-mod/SKILL.md)。客户端仅内置五子棋。默认棋牌会话为两位玩家；0.1.14 增加保持严格版本检查的固定多人模式。可选 Drop-in 模式支持动态加入/离开，外部跳绳 Mod 已使用最多五台设备的配置。
 
 ```sh
-python3 tools/pack_mod.py mods/gomoku build/gomoku.zip
+python3 tools/build/pack_mod.py mods/gomoku build/gomoku.zip
 ```
 
 普通 ZIP 目录为 `mods/<id>/...`；网络共享与热更新使用不可变的 `mod_versions/<id>/<build_id>/`。点击“添加游戏”选择可信 ZIP，客户端复制到私有目录并在重启后加载。不同版本不覆盖已挂载内容。打包、指纹兼容与传递流程见 [SDK 契约](docs/sdk.md)及[局域网共享](docs/lan-sharing.md)。Android 真机已通过系统文件选择器导入、重启恢复与联机验证。
@@ -51,7 +51,7 @@ Mod 支持清单列出的 GDScript 与原始文件；通用 Godot 导入资源�
 ## Android
 
 ```sh
-python3 tools/build_android.py
+python3 tools/build/build_android.py
 ```
 
 输出 `build/android/novaparty-debug.apk`，包含 ARM32 与 ARM64。最新本地调试基座为 `build/android/novaparty-0.1.14-debug.apk`，已验证 Android 手机/电视模拟器的 UNO 联机与操作。所有平台仍只内置五子棋；UNO、跳绳等作为外部 Mod 导入或通过 SDK 接收。正式签名 Release 使用 GitHub Actions 或本地正式密钥配置。
@@ -62,7 +62,7 @@ GitHub 已配置 Android APK、Windows x64、macOS Universal 和 iOS 模拟器�
 
 ## 网络 Debug
 
-0.1.3 Debug 包提供令牌认证、玩家可见快照、合法操作、状态订阅及带最终回执的提交接口，配套 `tools/nvctl.py` 供人和 AI 调用。参见 [连接与 RPC 契约](docs/debug.md)。支持网络上传 Mod、局中替换界面/原始资源、回退和重启恢复，见 [热更新指南](docs/hot-updates.md)。规则变化可在大厅选择用于下一局，局中规则迁移尚未实现。Release 排除开发服务。
+0.1.3 Debug 包提供令牌认证、玩家可见快照、合法操作、状态订阅及带最终回执的提交接口，配套 `tools/dev/nvctl.py` 供人和 AI 调用。参见 [连接与 RPC 契约](docs/debug.md)。支持网络上传 Mod、局中替换界面/原始资源、回退和重启恢复，见 [热更新指南](docs/hot-updates.md)。规则变化可在大厅选择用于下一局，局中规则迁移尚未实现。Release 排除开发服务。
 
 ## iPhone 模拟器与常驻玩家
 
@@ -71,15 +71,15 @@ GitHub 已配置 Android APK、Windows x64、macOS Universal 和 iOS 模拟器�
 ## 验证
 
 ```sh
-Godot --headless --path . --script tests/run.gd
-GODOT=/Applications/Godot.app/Contents/MacOS/Godot python3 tests/integration.py
-python3 tests/i18n.py
-python3 tests/debug_integration.py
-python3 tests/hot_integration.py
-python3 tests/player_integration.py
-python3 tests/recovery_integration.py
+Godot --headless --path . --script tests/unit/run.gd
+GODOT=/Applications/Godot.app/Contents/MacOS/Godot python3 tests/integration/integration.py
+python3 tests/unit/i18n.py
+python3 tests/integration/debug_integration.py
+python3 tests/integration/hot_integration.py
+python3 tests/integration/player_integration.py
+python3 tests/integration/recovery_integration.py
 # macOS 原生导出隔离验证
-python3 tests/debug_exports.py
+python3 tests/integration/debug_exports.py
 ```
 
 第一项执行规则和界面实例化检查。第二项启动真实 Godot TCP 房主和客户端，验证完整对局、身份恢复、私有状态、协议异常，以及外部 ZIP 中新规则与界面的运行时加载。Python 需要 3.9 或以上版本，测试会监听临时本地端口。
@@ -87,7 +87,7 @@ python3 tests/debug_exports.py
 截图检查（需要图形会话）：
 
 ```sh
-Godot --path . --script tests/capture.gd
+Godot --path . --script tests/capture/capture.gd
 ```
 
 输出 `/tmp/novaparty-ui-0.png` 与 `/tmp/novaparty-ui-1.png`。
@@ -113,6 +113,8 @@ Godot --path . --script tests/capture.gd
 
 0.1.11 已加入系统 mDNS 游戏发现、普通 SDK 的设备间 Mod 传递与确认下载、二维码生成及相机扫码加入。缺少游戏时下载校验后自动加入；游戏可以控制二维码布局。参见 [局域网共享与二维码 SDK](docs/lan-sharing.md)。新原生能力需安装一次 0.1.11 基础包，之后仍支持 UI / Mod 热更新。
 
-Android Debug 0.1.12 支持通过认证 HTTP 上传 APK 并触发系统安装，默认端口 27842，提供 `tools/apkctl.py`。参见 [APK 网络更新](docs/apk-updates.md)。Release 不包含该服务与安装权限。
+Android Debug 0.1.12 支持通过认证 HTTP 上传 APK 并触发系统安装，默认端口 27842，提供 `tools/dev/apkctl.py`。参见 [APK 网络更新](docs/apk-updates.md)。Release 不包含该服务与安装权限。
 
 0.1.15 新增用户信息入口、系统设备默认名、六种动物角色 × 四种配色及个人主题色。参见 [角色 UI cheat sheet](docs/design/profile/cheat-sheet.svg) 与 [用户配置 SDK](docs/user-profile.md)。该能力需要升级基础包，Mod 可读取公开外观并获取平台头像纹理。
+
+0.1.16 采用 v0.4「果冻星星」界面（[cheat sheet](docs/design/cheat-sheet.svg)），加入手机触感反馈和[蓝牙 LE 联机](docs/bluetooth.md)，并按 `app/ui/*`、`sdk/{net,session,mods}`、`tests/{unit,integration,devices}`、`tools/{build,dev,design}` 重组目录；UI 包接口升为 2。

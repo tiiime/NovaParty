@@ -85,8 +85,8 @@
 生成与预览：
 
 ```sh
-python3 tools/build_uno_design.py
-swift tools/render_design_sheet.swift docs/design/uno/uno-components.svg docs/design/uno/uno-tv-table.svg docs/design/uno/uno-mobile-hand.svg
+python3 tools/design/build_uno_design.py
+swift tools/design/render_design_sheet.swift docs/design/uno/uno-components.svg docs/design/uno/uno-tv-table.svg docs/design/uno/uno-mobile-hand.svg
 ```
 
 本轮交付到规范和效果稿为止；运行中的 `mods/uno/view.gd` 尚未接入这套样式，也没有向电视部署新 UI。

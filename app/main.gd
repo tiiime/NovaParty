@@ -1,17 +1,20 @@
 extends Control
-const Loader = preload("res://sdk/mod_loader.gd")
-const Session = preload("res://sdk/session.gd")
+const Loader = preload("res://sdk/mods/mod_loader.gd")
+const Session = preload("res://sdk/session/session.gd")
 const I18n = preload("res://app/i18n.gd")
-const Style = preload("res://app/ui/party_theme.gd")
-const UI_API = 1
-const UserProfile = preload("res://sdk/user_profile.gd")
+const Style = preload("res://app/ui/theme/party_theme.gd")
+const T = Style.T
+const SwitchRow = preload("res://app/ui/widgets/switch_row.gd")
+const UI_API = 2
+const UserProfile = preload("res://sdk/session/user_profile.gd")
 var user_panel
-const JoinCode = preload("res://sdk/join_code.gd")
+const JoinCode = preload("res://sdk/net/join_code.gd")
 var qr_scanner
 var join_invite
 var invite_dismissed := false
-const Discovery = preload("res://sdk/discovery.gd")
-const PeerMods = preload("res://sdk/peer_mods.gd")
+const Discovery = preload("res://sdk/net/discovery.gd")
+const Bluetooth = preload("res://sdk/net/bluetooth.gd")
+const PeerMods = preload("res://sdk/mods/peer_mods.gd")
 var discovery
 var join_browser
 var download_dialog
@@ -39,11 +42,12 @@ var footer: BoxContainer
 var footer_nav: HBoxContainer
 var footer_session: HBoxContainer
 var back_button: Button
-var motion_choice: CheckBox
-var sound_choice: CheckBox
+var motion_choice: Button
+var sound_choice: Button
+var haptic_choice: Button
 var ui_feedback
 var page_tween: Tween
-var leave_dialog: ConfirmationDialog
+var leave_dialog
 var status_key := "LOBBY_HELP"
 var status_arguments: Array = []
 var settings_opening := false
@@ -85,36 +89,14 @@ func _ready() -> void:
 	var appearance := UserProfile.local_public(profile)
 	profile.avatar = appearance.avatar.duplicate(true)
 	profile.theme_color = appearance.theme_color
-	ui_feedback = preload("res://app/ui/ui_feedback.gd").new()
+	ui_feedback = preload("res://app/ui/theme/ui_feedback.gd").new()
 	set_meta("ui_feedback", ui_feedback)
 	add_child(ui_feedback)
 	I18n.select(str(profile.get("language", "system")))
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--locale="):
 			I18n.select(argument.trim_prefix("--locale="))
-	var ui_theme := Theme.new()
-	var ui_font := FontVariation.new()
-	ui_font.base_font = load("res://assets/fonts/NotoSansSC.ttf")
-	ui_font.variation_opentype = {TextServerManager.get_primary_interface().name_to_tag("wght"): 400.0}
-	ui_theme.default_font = ui_font
-	ui_theme.default_font_size = 24
-	ui_theme.set_color("font_color", "Label", Style.INK)
-	ui_theme.set_color("font_color", "CheckBox", Style.INK)
-	for state in ["font_pressed_color", "font_focus_color", "font_hover_color", "font_hover_pressed_color"]:
-		ui_theme.set_color(state, "CheckBox", Style.INK)
-	ui_theme.set_stylebox("panel", "PopupMenu", Style.pill(Color.WHITE, 20))
-	ui_theme.set_color("font_color", "PopupMenu", Style.INK)
-	ui_theme.set_color("font_color", "LineEdit", Style.INK)
-	ui_theme.set_color("font_placeholder_color", "LineEdit", Color("506786"))
-	ui_theme.set_stylebox("normal", "LineEdit", Style.pill(Color("f0f5ff"), 12, Color("c6d9f6"), 2))
-	ui_theme.set_stylebox("focus", "LineEdit", Style.pill(Color("f0f5ff"), 12, Style.BLUE, 3))
-	for key in ["font_color", "font_focus_color", "font_hover_color", "font_pressed_color"]:
-		ui_theme.set_color(key, "OptionButton", Style.INK)
-	ui_theme.set_stylebox("normal", "OptionButton", Style.pill(Color("e6f0ff"), 12))
-	ui_theme.set_stylebox("hover", "OptionButton", Style.pill(Color("dceaff"), 12))
-	ui_theme.set_stylebox("focus", "OptionButton", Style.pill(Color.TRANSPARENT, 12, Style.BLUE, 3))
-	ui_theme.set_stylebox("focus", "CheckBox", Style.focus_box(12))
-	theme = ui_theme
+	theme = Style.build_theme()
 	get_tree().auto_accept_quit = false
 	get_tree().quit_on_go_back = false
 	if not shell_managed:
@@ -123,11 +105,11 @@ func _ready() -> void:
 		get_window().size_changed.connect(_adapt_display)
 	_adapt_display()
 	var background := ColorRect.new()
-	background.color = Color("eef4ff")
+	background.color = T.PAGE
 	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(background)
-	home = preload("res://app/ui/party_home.gd").new()
+	home = preload("res://app/ui/screens/party_home.gd").new()
 	add_child(home)
 	home.start_requested.connect(func(): _open_setup(true))
 	home.join_requested.connect(func(): _open_setup(false))
@@ -158,7 +140,7 @@ func _ready() -> void:
 	layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	layout.add_theme_constant_override("separation", 12)
 	scroll_content.add_child(layout)
-	page_title = _label(layout, "APP_NAME", 32)
+	page_title = _label(layout, "APP_NAME", T.FONT_SIZE_TITLE, T.FONT_WEIGHT_TITLE)
 	setup = VBoxContainer.new()
 	setup.add_theme_constant_override("separation", 12)
 	layout.add_child(setup)
@@ -171,8 +153,8 @@ func _ready() -> void:
 	choices = OptionButton.new()
 	choices.hide()
 	add_child(choices)
-	library_help = _label(setup, "PICK_GAME_HELP", 21)
-	library = preload("res://app/ui/game_library.gd").new()
+	library_help = _label(setup, "PICK_GAME_HELP", T.FONT_SIZE_BODY, T.FONT_WEIGHT_LABEL, T.MUTED)
+	library = preload("res://app/ui/screens/game_library.gd").new()
 	setup.add_child(library)
 	library.selected.connect(func(index):
 		choices.select(index)
@@ -209,7 +191,7 @@ func _ready() -> void:
 	shell.add_child(footer)
 	create_button = _button(footer, "LAUNCH_GAME", func(): _start(true))
 	create_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	join_button = _button(footer, "JOIN_GAME", func(): token = ""; _start(false))
+	join_button = _button(footer, "JOIN_GAME", func(): token = ""; _start(false), "accent")
 	join_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var actions := HBoxContainer.new()
 	footer_nav = actions
@@ -229,13 +211,14 @@ func _ready() -> void:
 		else:
 			_set_status("NO_RESUME")
 	, true)
-	leave_button = _button(session_actions, "LEAVE_ROOM", _request_leave, true)
+	leave_button = _button(session_actions, "LEAVE_ROOM", _request_leave, "danger")
 	reconnect_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	leave_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	settings_action = _button(actions, "SETTINGS", _open_settings, true)
 	settings_action.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	status = _label(layout, "LOBBY_HELP")
-	roster = _label(layout, "")
+	status = _label(layout, "LOBBY_HELP", T.FONT_SIZE_BODY, T.FONT_WEIGHT_LABEL)
+	status.add_theme_stylebox_override("normal", Style.banner("info"))
+	roster = _label(layout, "", T.FONT_SIZE_META, T.FONT_WEIGHT_LABEL, T.MUTED)
 	roster.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	game_area = VBoxContainer.new()
 	layout.add_child(game_area)
@@ -258,19 +241,20 @@ func _ready() -> void:
 		debug_service.app = self
 		add_child(debug_service)
 
-func _label(parent: Node, key: String, font_size: int = 22) -> Label:
+func _label(parent: Node, key: String, font_size: int = T.FONT_SIZE_BODY, weight: int = T.FONT_WEIGHT_BODY, color: Color = T.INK) -> Label:
 	var label := Label.new()
 	label.text = key
-	label.add_theme_font_size_override("font_size", font_size)
+	Style.label(label, font_size, weight, color)
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	parent.add_child(label)
 	return label
 
-func _button(parent: Node, key: String, callback: Callable, secondary: bool = false) -> Button:
+func _button(parent: Node, key: String, callback: Callable, kind = "primary") -> Button:
 	var button := Button.new()
 	button.text = key
 	button.set_meta("sound_cue", "launch" if key == "LAUNCH_GAME" else "back" if key in ["BACK", "CANCEL", "CLOSE"] else "confirm")
-	Style.button(button, secondary)
+	button.set_meta("haptic", "confirm" if key in ["LAUNCH_GAME", "JOIN_GAME"] else "tap")
+	Style.button(button, kind)
 	button.pressed.connect(callback)
 	parent.add_child(button)
 	return button
@@ -285,6 +269,8 @@ func _open_setup(as_host: bool) -> void:
 	if as_host:
 		discovery.stop_browse()
 	else:
+		# Asking here (not at startup) ties the system prompt to the user's intent to find games.
+		Bluetooth.shared(get_tree()).request_access()
 		discovery.browse()
 	create_button.visible = as_host
 	settings_action.visible = not as_host
@@ -334,6 +320,9 @@ func _set_status(key: String, arguments: Array = []) -> void:
 	status_arguments = arguments
 	status.text = tr(key) % arguments if not arguments.is_empty() else tr(key)
 	status.visible = not immersive_game and key not in ["LOBBY_HELP", "JOIN_HELP", "LEFT_ROOM"]
+	var tone := "success" if key in ["CONNECTED", "INSTALLED_MOD"] else "wait" if key in ["CONNECTING", "CONNECTING_BLUETOOTH", "CHECKING_GAME", "VALIDATING_GAME", "DOWNLOAD_CONFIRMATION", "ROOM_CREATED", "PEER_OFFLINE"] else "danger"
+	status.add_theme_stylebox_override("normal", Style.banner(tone))
+	status.add_theme_color_override("font_color", T.SUCCESS if tone == "success" else T.DANGER if tone == "danger" else T.INK)
 	_send_game_status()
 
 func _handle_notice(code: String) -> void:
@@ -344,11 +333,12 @@ func _handle_notice(code: String) -> void:
 		return
 	if is_instance_valid(game_view) and game_view.has_method("on_command_notice") and game_view.on_command_notice(code):
 		return
+	ui_feedback.haptic("warn")
 	var messages := {"disconnected": "RECONNECT_FIRST", "connection_lost": "CONNECTION_LOST", "not_your_turn": "ERR_NOT_YOUR_TURN", "occupied": "ERR_OCCUPIED", "stale_revision": "ERR_STALE_REVISION", "game_finished": "ERR_GAME_FINISHED", "waiting_for_players": "ERR_WAITING_PLAYERS", "invalid_action": "ERR_INVALID_ACTION", "already_chosen": "ERR_ALREADY_CHOSEN", "card_not_owned": "ERR_CARD_NOT_OWNED", "game_not_finished": "ERR_GAME_NOT_FINISHED", "already_requested": "ERR_ALREADY_REQUESTED"}
 	_set_status(messages.get(code, "NETWORK_ERROR"), [] if messages.has(code) else [code])
 
 func _build_settings() -> void:
-	settings_dialog = preload("res://app/ui/settings_panel.gd").new()
+	settings_dialog = preload("res://app/ui/widgets/sheet.gd").new()
 	settings_dialog.theme = theme
 	var settings_layer := CanvasLayer.new()
 	settings_layer.layer = 50
@@ -362,15 +352,17 @@ func _build_settings() -> void:
 	var body := VBoxContainer.new()
 	body.add_theme_constant_override("separation", 16)
 	settings_dialog.add_content(body)
-	_label(body, "SETTINGS", 32)
-	_label(body, "LANGUAGE")
+	_label(body, "SETTINGS", T.FONT_SIZE_TITLE, T.FONT_WEIGHT_TITLE)
+	_label(body, "LANGUAGE", T.FONT_SIZE_META, T.FONT_WEIGHT_TITLE, T.MUTED)
 	language_choice = OptionButton.new()
 	for entry in [["LANG_SYSTEM", "system"], ["简体中文", "zh_CN"], ["English", "en"]]:
 		language_choice.add_item(entry[0])
 		language_choice.set_item_metadata(language_choice.item_count - 1, entry[1])
+	language_choice.custom_minimum_size.y = T.ROW_HEIGHT
 	body.add_child(language_choice)
 	language_choice.item_selected.connect(func(index): set_language(language_choice.get_item_metadata(index)))
-	sound_choice = CheckBox.new()
+	_label(body, "FEEDBACK", T.FONT_SIZE_META, T.FONT_WEIGHT_TITLE, T.MUTED)
+	sound_choice = SwitchRow.new()
 	sound_choice.text = "UI_SOUNDS"
 	body.add_child(sound_choice)
 	sound_choice.toggled.connect(func(value):
@@ -379,7 +371,15 @@ func _build_settings() -> void:
 		if value: ui_feedback.play("confirm")
 		_save_profile()
 	)
-	motion_choice = CheckBox.new()
+	haptic_choice = SwitchRow.new()
+	haptic_choice.text = "HAPTICS"
+	body.add_child(haptic_choice)
+	haptic_choice.toggled.connect(func(value):
+		profile.haptics = value
+		if value: ui_feedback.haptic("confirm")
+		_save_profile()
+	)
+	motion_choice = SwitchRow.new()
 	motion_choice.text = "REDUCE_MOTION"
 	body.add_child(motion_choice)
 	motion_choice.toggled.connect(func(value):
@@ -389,7 +389,7 @@ func _build_settings() -> void:
 		_send_game_status()
 		_save_profile()
 	)
-	var help := _label(body, "REDUCE_MOTION_HELP", 19)
+	var help := _label(body, "REDUCE_MOTION_HELP", T.FONT_SIZE_META, T.FONT_WEIGHT_BODY, T.MUTED)
 	help.custom_minimum_size.x = 360
 	body.custom_minimum_size.x = 380
 	var credit := RichTextLabel.new()
@@ -397,11 +397,10 @@ func _build_settings() -> void:
 	credit.fit_content = true
 	credit.scroll_active = false
 	credit.add_theme_font_size_override("normal_font_size", 16)
-	credit.add_theme_color_override("default_color", Style.INK)
+	credit.add_theme_color_override("default_color", T.MUTED)
 	credit.text = "[url=https://heyheythere.itch.io/soft-ui-sfx-free]Soft UI SFX Free[/url] · heyheythere\n[url=https://creativecommons.org/licenses/by/4.0/]CC BY 4.0[/url]"
 	credit.meta_clicked.connect(func(url): OS.shell_open(str(url)))
 	body.add_child(credit)
-	Style.button(settings_dialog.get_ok_button())
 	settings_dialog.confirmed.connect(func():
 		_save_profile()
 		_refresh_home()
@@ -421,13 +420,15 @@ func _open_settings() -> void:
 	settings_opening = true
 	sound_choice.set_pressed_no_signal(bool(profile.get("ui_sounds", true)))
 	motion_choice.set_pressed_no_signal(bool(profile.get("reduce_motion", false)))
+	haptic_choice.set_pressed_no_signal(bool(profile.get("haptics", true)))
+	for row in [sound_choice, haptic_choice, motion_choice]: row.queue_redraw()
 	for index in range(language_choice.item_count):
 		if language_choice.get_item_metadata(index) == profile.get("language", "system"):
 			language_choice.select(index)
 	settings_opening = false
-	settings_dialog.popup_centered(Vector2i(mini(520, int(get_viewport_rect().size.x - 48)), 620))
+	settings_dialog.popup_centered(Vector2i(mini(540, int(get_viewport_rect().size.x - 32)), 720))
 	# Keep directional and Tab navigation inside this modal, also during a game.
-	var focus_order := [language_choice, sound_choice, motion_choice, settings_dialog.get_ok_button()]
+	var focus_order := [language_choice, sound_choice, haptic_choice, motion_choice, settings_dialog.get_ok_button()]
 	for index in range(focus_order.size()):
 		var control: Control = focus_order[index]
 		control.focus_neighbor_top = control.get_path_to(focus_order[(index + focus_order.size() - 1) % focus_order.size()])
@@ -461,22 +462,20 @@ func _refresh_translations() -> void:
 		_render_snapshot(session.snapshot)
 
 func _build_leave_dialog() -> void:
-	leave_dialog = ConfirmationDialog.new()
-	leave_dialog.title = "EXIT_MATCH_TITLE"
-	leave_dialog.dialog_text = "EXIT_MATCH_TEXT"
-	leave_dialog.dialog_autowrap = true
-	leave_dialog.ok_button_text = "CONFIRM_LEAVE"
-	leave_dialog.cancel_button_text = "CANCEL"
-	Style.button(leave_dialog.get_ok_button())
-	Style.button(leave_dialog.get_cancel_button(), true)
+	var layer := CanvasLayer.new()
+	layer.layer = 55
+	add_child(layer)
+	leave_dialog = preload("res://app/ui/widgets/confirm_dialog.gd").new()
+	leave_dialog.theme = theme
+	layer.add_child(leave_dialog)
+	leave_dialog.setup("EXIT_MATCH_TITLE", "EXIT_MATCH_TEXT", "CONFIRM_LEAVE", "CANCEL")
 	leave_dialog.confirmed.connect(_leave)
 	leave_dialog.canceled.connect(_restore_exit_focus)
 	leave_dialog.visibility_changed.connect(_send_game_status)
-	add_child(leave_dialog)
 
 func _request_leave() -> void:
 	if is_instance_valid(session):
-		leave_dialog.popup_centered(Vector2i(mini(580, int(get_viewport_rect().size.x - 48)), 220))
+		leave_dialog.popup_centered(Vector2i(mini(580, int(get_viewport_rect().size.x - 32)), 300))
 
 func _render_snapshot(data: Dictionary) -> void:
 	# A confirmed snapshot ends the join transaction. Later transport loss must
@@ -548,7 +547,8 @@ func _start(as_host: bool) -> Error:
 	if logic == null:
 		_set_status("NETWORK_ERROR", [loader.error])
 		return ERR_INVALID_DATA
-	profile.last_address = address.text.strip_edges()
+	if not address.text.begins_with("ble:"):
+		profile.last_address = address.text.strip_edges()
 	# The editor owns nickname; empty means follow the current device name.
 	if nickname.text != UserProfile.local_public(profile).display_name:
 		profile.nickname = UserProfile.clean_name(nickname.text, "")
@@ -660,6 +660,7 @@ func _install_package(path: String) -> void:
 	_refresh_library()
 	library.focus_selected()
 	_set_status("INSTALLED_MOD", [I18n.game_name(info)])
+	ui_feedback.haptic("confirm")
 
 func _choose_package() -> void:
 	if session != null:
@@ -1039,6 +1040,9 @@ func _disconnect_game_controls(view: Control) -> void:
 		view.disconnect("platform_action", _game_platform_action)
 
 func _game_platform_action(action: String) -> void:
+	if action.begins_with("haptic:"):
+		ui_feedback.haptic(action.trim_prefix("haptic:"))
+		return
 	match action:
 		"settings": _open_settings()
 		"reconnect": reconnect_button.pressed.emit()
@@ -1076,20 +1080,20 @@ func _restore_exit_focus() -> void:
 func _build_lan_ui() -> void:
 	discovery = Discovery.new()
 	add_child(discovery)
-	join_browser = preload("res://app/ui/join_browser.gd").new()
+	join_browser = preload("res://app/ui/screens/join_browser.gd").new()
 	setup.add_child(join_browser)
 	join_browser.selected.connect(_inspect_peer)
 	join_browser.refresh_requested.connect(discovery.browse)
 	join_browser.manual_requested.connect(_show_manual_join)
 	join_browser.scan_requested.connect(_start_scan)
-	qr_scanner = preload("res://sdk/qr_scanner.gd").new()
+	qr_scanner = preload("res://sdk/net/qr_scanner.gd").new()
 	add_child(qr_scanner)
 	qr_scanner.scanned.connect(_join_scanned_code)
 	qr_scanner.failed.connect(func(code): _set_status("CAMERA_PERMISSION_DENIED" if code == "camera_permission_denied" else "CAMERA_UNAVAILABLE"))
 	var invite_layer := CanvasLayer.new()
 	invite_layer.layer = 25
 	add_child(invite_layer)
-	join_invite = preload("res://app/ui/join_invite.gd").new()
+	join_invite = preload("res://app/ui/dialogs/join_invite.gd").new()
 	join_invite.theme = theme
 	invite_layer.add_child(join_invite)
 	join_invite.hide()
@@ -1103,7 +1107,7 @@ func _build_lan_ui() -> void:
 	var layer := CanvasLayer.new()
 	layer.layer = 60
 	add_child(layer)
-	download_dialog = preload("res://app/ui/mod_download.gd").new()
+	download_dialog = preload("res://app/ui/dialogs/mod_download.gd").new()
 	download_dialog.theme = theme
 	layer.add_child(download_dialog)
 	download_dialog.confirmed.connect(func():
@@ -1135,7 +1139,7 @@ func _inspect_peer(target: Dictionary) -> void:
 	peer_transfer.progress.connect(download_dialog.update_progress)
 	peer_transfer.completed.connect(_peer_downloaded)
 	peer_transfer.failed.connect(_peer_failed)
-	_set_status("CHECKING_GAME")
+	_set_status("CONNECTING_BLUETOOTH" if str(target.address).begins_with("ble:") else "CHECKING_GAME")
 	var error: Error = peer_transfer.inspect_remote(str(target.address), int(target.port), str(target.get("session_id", "")))
 	if error != OK:
 		_peer_failed("connect_failed")
@@ -1229,12 +1233,20 @@ func debug_lan_command(method: String, params: Dictionary) -> Dictionary:
 	if method == "qr.join" and params.get("value") is String:
 		_join_scanned_code(params.value)
 		return {"phase": peer_phase}
+	if method == "ble.status":
+		return Bluetooth.shared(get_tree()).diagnostic()
+	if method == "ble.request_access":
+		Bluetooth.shared(get_tree()).request_access()
+		return {"requested": true}
 	if method == "lan.status":
 		return {"rooms": discovery.list_rooms(), "backend": discovery.backend, "discovery_error": discovery.last_error, "phase": peer_phase, "last_error": peer_error, "confirmation": download_dialog.visible and not download_dialog.working, "received": peer_transfer.received if peer_transfer != null else 0}
 	if method == "lan.search":
 		_open_setup(false)
 		return {"searching": true}
 	if method == "lan.inspect":
+		if params.get("address") is String and params.address.begins_with("ble:") and params.address.length() <= 68:
+			_inspect_peer({"address": params.address, "port": 0})
+			return {"inspecting": true}
 		if not params.get("address") is String or not params.address.is_valid_ip_address() or not (params.get("port") is int or params.get("port") is float) or params.port != int(params.port) or params.port < 1024 or params.port > 65535:
 			return {"error": "invalid_address"}
 		_inspect_peer(params)
@@ -1285,7 +1297,7 @@ func _build_user_profile() -> void:
 	var layer := CanvasLayer.new()
 	layer.layer = 52
 	add_child(layer)
-	user_panel = preload("res://app/ui/user_panel.gd").new()
+	user_panel = preload("res://app/ui/dialogs/user_panel.gd").new()
 	user_panel.theme = theme
 	layer.add_child(user_panel)
 	user_panel.saved.connect(_save_user_profile)

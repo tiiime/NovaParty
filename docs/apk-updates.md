@@ -7,15 +7,15 @@ Android Debug 基础包提供 HTTP 接收 APK 并触发系统安装的入口，�
 使用现有私有 `debug/connection.json`，新增 `apk_http` 字段提供 HTTP 端口和路径。默认 HTTP 为 **27842**，与 Debug RPC 27841 使用相同的 Bearer token、绑定地址。自定义 RPC 端口时 HTTP 使用其后一端口；HTTP 监听失败或非 Android 时 `apk_http` 为空。凭据不要提交到 Git。
 
 ```sh
-python3 tools/apkctl.py --connection /private/path/connection.json upload build/android/novaparty-0.1.12-debug.apk
-python3 tools/apkctl.py --connection /private/path/connection.json status
+python3 tools/dev/apkctl.py --connection /private/path/connection.json upload build/android/novaparty-0.1.12-debug.apk
+python3 tools/dev/apkctl.py --connection /private/path/connection.json status
 ```
 
 工具以固定大小缓冲区传输文件，自动计算 SHA-256；token 只从文件读取，不放进命令参数。使用 adb 转发测试时：
 
 ```sh
 adb -s emulator-5554 forward tcp:29843 tcp:27842
-python3 tools/apkctl.py --connection /private/path/connection.json --host 127.0.0.1 --port 29843 status
+python3 tools/dev/apkctl.py --connection /private/path/connection.json --host 127.0.0.1 --port 29843 status
 ```
 
 上传完成并校验后自动发起安装。Android 8+ 如果尚未允许此应用安装 APK，会打开该应用的“允许来自此来源”设置；授权并返回后继续。保留系统安装确认，安装校验或厂商策略仍可能拒绝。更新会替换运行中的应用，当前对局可能断线；安装后从系统安装器或启动器重新打开。Debug token 随应用进程重启而变化，需要重新获取连接凭据。
@@ -41,5 +41,5 @@ python3 tools/apkctl.py --connection /private/path/connection.json --host 127.0.
 - 原生实现位于 `native/android_debug`，由构建工具仅注入 Debug APK。Release 不包含该 DEX 类、安装权限或 Debug 服务；`--release` 使用独立 Release 导出配置。
 - 此接口沿用现有局域网 Debug 的明文传输方式，不用于公网服务。
 
-构建：`python3 tools/build_android.py --output build/android/novaparty-0.1.12-debug.apk`。
-验证入口：`tests/apk_update.py`、`tests/debug_exports.py`。
+构建：`python3 tools/build/build_android.py --output build/android/novaparty-0.1.12-debug.apk`。
+验证入口：`tests/devices/apk_update.py`、`tests/integration/debug_exports.py`。

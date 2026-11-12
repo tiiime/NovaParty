@@ -38,7 +38,7 @@ func _mount(path: String) -> Dictionary:
 		zip.close()
 		return {"error": "invalid_ui_manifest"}
 	var manifest = JSON.parse_string(zip.read_file(manifests[0]).get_string_from_utf8())
-	if not manifest is Dictionary or manifest.get("kind") != "client_ui" or manifest.get("ui_api") != 1 or manifest.get("sdk") != 1 or manifest.get("engine") != Engine.get_version_info().string or manifest.get("entry") != UI_ENTRY or not manifest.get("build_id") is String or not manifest.build_id.is_valid_identifier() or not manifest.get("files") is Array:
+	if not manifest is Dictionary or manifest.get("kind") != "client_ui" or manifest.get("ui_api") != 2 or manifest.get("sdk") != 1 or manifest.get("engine") != Engine.get_version_info().string or manifest.get("entry") != UI_ENTRY or not manifest.get("build_id") is String or not manifest.build_id.is_valid_identifier() or not manifest.get("files") is Array:
 		zip.close()
 		return {"error": "incompatible_ui_manifest"}
 	var prefix: String = "ui_versions/" + manifest.build_id + "/"
@@ -90,7 +90,7 @@ func _mount(path: String) -> Dictionary:
 	if not ProjectSettings.load_resource_pack(path, false):
 		return {"error": "mount_failed"}
 	var script = load(root.path_join(UI_ENTRY))
-	if not script is GDScript or not script.can_instantiate() or not ClassDB.is_parent_class(script.get_instance_base_type(), "Control") or script.get_script_constant_map().get("UI_API") != 1:
+	if not script is GDScript or not script.can_instantiate() or not ClassDB.is_parent_class(script.get_instance_base_type(), "Control") or script.get_script_constant_map().get("UI_API") != 2:
 		return {"error": "invalid_ui_entry"}
 	return {"root": root, "manifest": manifest}
 
@@ -129,7 +129,7 @@ func _activate(params: Dictionary) -> Dictionary:
 
 func _describe(hash: String) -> Dictionary:
 	var info: Dictionary = builds[hash]
-	return {"build": hash, "build_id": info.manifest.get("build_id", "builtin"), "kind": "client_ui", "ui_api": 1}
+	return {"build": hash, "build_id": info.manifest.get("build_id", "builtin"), "kind": "client_ui", "ui_api": 2}
 
 func _restore() -> void:
 	builds[BUILTIN] = {"root": "res://", "manifest": {"build_id": "builtin"}}

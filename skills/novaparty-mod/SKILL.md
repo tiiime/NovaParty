@@ -18,16 +18,16 @@ description: 为 NovaParty 制作或修改可信 Godot 游戏 Mod，包含规则
 为规则增加有意义的验证：合法对局、拒绝非法操作、终局、确定性，以及私有状态边界。使用当前 Godot 运行验证；未运行的步骤如实记录。打包命令：
 
 ```sh
-python3 tools/pack_mod.py mods/<id> build/<id>.zip
+python3 tools/build/pack_mod.py mods/<id> build/<id>.zip
 ```
 
-需要验证新增包的动态加载时，可参照 `tests/load_pack.gd`，使用宿主中不存在的唯一 Mod ID。动态加载已在 macOS 和一台 Android 13 手机上验证；TCL Android 9 电视已验证内置 Mod、遥控器与联机，电视已验证网络可信包热更新，原生文件选择器导入尚未验证。iPhone 16 / iOS 18.5 模拟器已验证联机、网络热更新、回滚和重启恢复；真实 iPhone 与 iOS 原生文件选择器尚未验证。
+需要验证新增包的动态加载时，可参照 `tests/support/load_pack.gd`，使用宿主中不存在的唯一 Mod ID。动态加载已在 macOS 和一台 Android 13 手机上验证；TCL Android 9 电视已验证内置 Mod、遥控器与联机，电视已验证网络可信包热更新，原生文件选择器导入尚未验证。iPhone 16 / iOS 18.5 模拟器已验证联机、网络热更新、回滚和重启恢复；真实 iPhone 与 iOS 原生文件选择器尚未验证。
 
 需要让 AI 读取合法操作时，为规则实现可选的 `describe_actions(view, seat)`，返回 JSON Schema 和 `legal_actions`，仅根据传入的本玩家视图计算，不读取完整房间状态。参考两个内置规则的实现。
 
-对 Debug 真机或客户端联调，先读 [网络 Debug 契约](../../docs/debug.md)。用 `tools/nvctl.py` 的连接配置文件认证，读取快照和动作描述后再提交；保留请求文件中的 ID、对局 ID、代次和预期版本，原样重试。等待最终 `action_result` 或查询 `game.result`，不要把 `queued` 当成落子成功。令牌配置与带私有手牌的诊断文件不要提交仓库。0.1.3 已支持网络表现更新，先读 [热更新契约](../../docs/hot-updates.md)。在清单中准确声明 `rules_files`，覆盖全部规则脚本和配置依赖；表现文件可独立更新。用 `pack_mod.py --hot` 生成新的 UUID 构建，再通过 `nvctl.py --activate mods.push` 上传切换。使用构建根相对资源路径，不能硬编码旧命名空间。实现可选的 `capture_view_state` / `restore_view_state` 并为焦点子节点命名。规则变化只能在大厅选为下一局版本，不能单端替换进行中的规则。
+对 Debug 真机或客户端联调，先读 [网络 Debug 契约](../../docs/debug.md)。用 `tools/dev/nvctl.py` 的连接配置文件认证，读取快照和动作描述后再提交；保留请求文件中的 ID、对局 ID、代次和预期版本，原样重试。等待最终 `action_result` 或查询 `game.result`，不要把 `queued` 当成落子成功。令牌配置与带私有手牌的诊断文件不要提交仓库。0.1.3 已支持网络表现更新，先读 [热更新契约](../../docs/hot-updates.md)。在清单中准确声明 `rules_files`，覆盖全部规则脚本和配置依赖；表现文件可独立更新。用 `pack_mod.py --hot` 生成新的 UUID 构建，再通过 `nvctl.py --activate mods.push` 上传切换。使用构建根相对资源路径，不能硬编码旧命名空间。实现可选的 `capture_view_state` / `restore_view_state` 并为焦点子节点命名。规则变化只能在大厅选为下一局版本，不能单端替换进行中的规则。
 
-需要持续自动玩游戏时读取 [常驻玩家说明](../../docs/player.md)，使用 `tools/nvplayer.py` 的独立进程；一次 CLI 读取或聊天订阅不会自行唤醒模型。策略仅接收当前本地玩家过滤视图，持续遵守回执和上下文规则。0.1.4 提供远程创建、加入、离开和凭据重连，见 Debug 契约；默认保护已绑定的对局，切换新局应显式授权控制器采用新房间。
+需要持续自动玩游戏时读取 [常驻玩家说明](../../docs/player.md)，使用 `tools/dev/nvplayer.py` 的独立进程；一次 CLI 读取或聊天订阅不会自行唤醒模型。策略仅接收当前本地玩家过滤视图，持续遵守回执和上下文规则。0.1.4 提供远程创建、加入、离开和凭据重连，见 Debug 契约；默认保护已绑定的对局，切换新局应显式授权控制器采用新房间。
 
 平台 0.1.5 对协议 2 连接可协商心跳，心跳和重连属于 Session，不放入 Mod 规则或动作列表，不增加规则版本。涉及失联恢复时读 [恢复契约](../../docs/recovery.md)，未确认动作保持 ID 与完整有效载荷，凭据重连不代表新对局。不要声称应用重启后可恢复进行中的房间。
 

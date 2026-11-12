@@ -55,7 +55,7 @@
 
 ```sh
 set -a; . ./.env; set +a
-python3 tests/android_hot.py --connection /tmp/novaparty-tv.connection.json --serial "$TV_ADB_SERIAL" --adb-server-port "$TV_ADB_PORT" --artifact-prefix tv --remote-first-move --restart --create-tap 85,480
+python3 tests/devices/android_hot.py --connection /tmp/novaparty-tv.connection.json --serial "$TV_ADB_SERIAL" --adb-server-port "$TV_ADB_PORT" --artifact-prefix tv --remote-first-move --restart --create-tap 85,480
 ```
 
 截图：`build/validation/tv-hot-update.png`。此次覆盖网络可信包热更新，不代表已经验证电视原生文件选择器导入。

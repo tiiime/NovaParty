@@ -44,7 +44,7 @@ jobs:
           packages: platform-tools platforms;android-35 build-tools;35.0.1
           log-accepted-android-sdk-licenses: false
       - name: Prepare Godot and export templates
-        run: python3 tools/ci_android.py
+        run: python3 tools/build/ci_android.py
       - name: Restore stable Debug signing key
         if: github.event_name != 'pull_request'
         env:
@@ -64,18 +64,19 @@ jobs:
         run: |
           "$GODOT" --headless --editor --path . --quit > "$RUNNER_TEMP/import.log" 2>&1
           if grep -E 'ERROR:|SCRIPT ERROR:' "$RUNNER_TEMP/import.log"; then exit 1; fi
-          python3 tests/development_config.py
-          python3 tests/android_build_config.py
-          python3 tests/i18n.py
+          python3 tests/unit/development_config.py
+          python3 tests/unit/android_build_config.py
+          python3 tests/unit/i18n.py
+          python3 tools/design/build_design_tokens.py --check
           set -o pipefail
-          for suite in run uno uno_ui user_profile profile_network ui; do
-            "$GODOT" --headless --path . --script "tests/$suite.gd" 2>&1 | tee "$RUNNER_TEMP/$suite.log"
+          for suite in run uno uno_ui user_profile profile_network ui bluetooth; do
+            "$GODOT" --headless --path . --script "tests/unit/$suite.gd" 2>&1 | tee "$RUNNER_TEMP/$suite.log"
             if grep -E 'ERROR:|SCRIPT ERROR:' "$RUNNER_TEMP/$suite.log"; then exit 1; fi
           done
       - name: Build Debug APK
         run: |
-          python3 tools/build_android.py --output build/android/novaparty-debug.apk
-          python3 tools/check_android_apk.py build/android/novaparty-debug.apk --debug
+          python3 tools/build/build_android.py --output build/android/novaparty-debug.apk
+          python3 tools/build/check_android_apk.py build/android/novaparty-debug.apk --debug
       - name: Upload Debug APK
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -101,8 +102,8 @@ jobs:
           path.write_bytes(base64.b64decode(os.environ['KEYSTORE_BASE64'], validate=True))
           path.chmod(0o600)
           PY
-          python3 tools/build_android.py --release --output build/android/novaparty-release.apk
-          python3 tools/check_android_apk.py build/android/novaparty-release.apk
+          python3 tools/build/build_android.py --release --output build/android/novaparty-release.apk
+          python3 tools/build/check_android_apk.py build/android/novaparty-release.apk
       - name: Upload Release APK
         if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release)
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

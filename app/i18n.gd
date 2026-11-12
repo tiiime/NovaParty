@@ -1,6 +1,6 @@
 extends Node
 
-const Catalogs = preload("res://sdk/ui_catalogs.gd")
+const Catalogs = preload("res://sdk/mods/ui_catalogs.gd")
 const UI_ROOT := "res://"
 
 func _enter_tree() -> void:

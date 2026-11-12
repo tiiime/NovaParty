@@ -5,15 +5,15 @@ Debug 包通过已有的局域网令牌认证 TCP 服务更新完整平台 UI。
 ## 使用
 
 ```sh
-python3 tools/pack_client_ui.py build/ui/client-ui.zip
-python3 tools/nvctl.py --connection /private/path/tv.json ui.updates
-python3 tools/nvctl.py --connection /private/path/tv.json --activate ui.push build/ui/client-ui.zip
-python3 tools/nvctl.py --connection /private/path/tv.json ui.rollback
+python3 tools/build/pack_client_ui.py build/ui/client-ui.zip
+python3 tools/dev/nvctl.py --connection /private/path/tv.json ui.updates
+python3 tools/dev/nvctl.py --connection /private/path/tv.json --activate ui.push build/ui/client-ui.zip
+python3 tools/dev/nvctl.py --connection /private/path/tv.json ui.rollback
 ```
 
 连接文件获取方式同 [Debug 指南](debug.md)，令牌不写在参数或仓库中。`ui.status` 保留当前页面/语言/动画状态查询，并新增 `ui_api`、`ui_build`；`ui.updates` 返回 UI 构建、当前/上一版本、上传数及运行状态。`ui.upload.begin/chunk/abort/commit` 与现有 Mod 上传格式一致，拥有独立存储目录、命名空间和目录文件。激活成功发布 `client_ui_changed`，原连接和订阅继续有效。
 
-每次打包生成唯一的 `ui_versions/u_<uuid>/`，清单声明 `kind=client_ui`、`ui_api=1`、`sdk=1`、完整 Godot 引擎版本、入口和全部文件。整个包以 SHA-256 标识，分片可重试；校验大小、归档路径、文件清单、版本、翻译目录以及入口契约后才允许激活。禁止包直接覆盖 `app/bootstrap.gd`、SDK、项目配置或原有路径。
+每次打包生成唯一的 `ui_versions/u_<uuid>/`，清单声明 `kind=client_ui`、`ui_api=2`、`sdk=1`、完整 Godot 引擎版本、入口和全部文件。整个包以 SHA-256 标识，分片可重试；校验大小、归档路径、文件清单、版本、翻译目录以及入口契约后才允许激活。禁止包直接覆盖 `app/bootstrap.gd`、SDK、项目配置或原有路径。
 
 打包工具将 SVG/PNG/JPEG/WebP 烘焙为携带原始 Image 的可移植 Godot `.res`，TTF/OTF 字体打包为 FontFile `.res`，附带字体许可说明，脚本引用统一改到新命名空间；不依赖目标设备执行 Godot 编辑器导入，也不携带本机 `.godot/imported` 路径或显卡专用压缩纹理。外部 Mod 自带封面和翻译仍随各自的 Mod 更新。
 
@@ -35,8 +35,8 @@ Godot 引擎、原生插件、Android/iOS 权限、APK 图标/安装名称、Pro
 
 ## 验证
 
-`python3 tests/client_ui_hot.py` 启动真实生产宿主，通过认证 TCP 上传整包，验证不兼容版本/坏翻译拒绝、候选准备失败、局中切换、回滚、重启恢复和启动保护回退；五子棋与暗牌都在 UI 替换后实际提交操作，核对对局 ID、状态、玩家视图及会话代数不变。
+`python3 tests/integration/client_ui_hot.py` 启动真实生产宿主，通过认证 TCP 上传整包，验证不兼容版本/坏翻译拒绝、候选准备失败、局中切换、回滚、重启恢复和启动保护回退；五子棋与暗牌都在 UI 替换后实际提交操作，核对对局 ID、状态、玩家视图及会话代数不变。
 
 仍需配合既有 UI、联机、Mod 热更新、Debug 和导出隔离回归。实际设备验证情况以 [验证记录](validation.md) 为准。
 
-`python3 tests/client_ui_ios.py --device <UDID>` 对已安装 0.1.7 的 iOS 模拟器执行真实包更新、局中回滚后继续联机操作、重启恢复与回滚，并保存截图和 JSON 报告。
+`python3 tests/devices/client_ui_ios.py --device <UDID>` 对已安装 0.1.7 的 iOS 模拟器执行真实包更新、局中回滚后继续联机操作、重启恢复与回滚，并保存截图和 JSON 报告。

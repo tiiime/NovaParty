@@ -22,10 +22,10 @@ cp .env.example .env
 构建脚本、UI 打包器和通过共享测试入口运行的 Python 测试自动读取 `.env`。直接执行 Godot 不会读取 `.env`；SDK/游戏本身也不依赖该文件。Debug 签名默认沿用本机 Godot 编辑器设置。Release 使用 `.env.example` 中的正式签名环境变量，缺少配置时不会回退 Debug 密钥；详见 [GitHub 打包与签名](github-actions.md)。
 
 ```sh
-python3 tools/build_android.py
-python3 tools/build_ios_simulator.py --install --launch
-python3 tests/gomoku_android.py --phone-connection <private-phone.json> --tv-connection <private-tv.json>
-python3 tests/gomoku_devices.py --tv-connection <private-tv.json>
+python3 tools/build/build_android.py
+python3 tools/build/build_ios_simulator.py --install --launch
+python3 tests/devices/gomoku_android.py --phone-connection <private-phone.json> --tv-connection <private-tv.json>
+python3 tests/devices/gomoku_devices.py --tv-connection <private-tv.json>
 ```
 
 `android_hot.py` 的通用 `--serial` 可传手机或电视；电视测试应显式传 `--serial` 和 `--adb-server-port`，避免误用默认手机。

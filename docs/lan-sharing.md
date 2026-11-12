@@ -19,10 +19,10 @@ ZIP 最多 16 MB，展开最多 32 MB、129 个文件（含清单）。包放在
 
 `Session.create()` 自动提供发现和共享端点，只有活动 Mod 的清单文件会被打包。它与游戏消息共享 TCP 端口；目录和包传输不分配玩家座位。表现热更新成功后，Session 更新共享的表现与版本信息，游戏会话和规则状态保留。
 
-接收端使用 `sdk/peer_mods.gd`：
+接收端使用 `sdk/mods/peer_mods.gd`：
 
 ```gdscript
-var receiver = preload("res://sdk/peer_mods.gd").new()
+var receiver = preload("res://sdk/mods/peer_mods.gd").new()
 add_child(receiver)
 receiver.catalog_received.connect(func(metadata):
     # 先向用户显示来源、大小及下载确认；这里只接收目录。
@@ -46,7 +46,7 @@ receiver.inspect_remote(address, port, expected_session_id)
 不启动游戏也可以提供 Mod：
 
 ```gdscript
-var sender = preload("res://sdk/mod_sender.gd").new()
+var sender = preload("res://sdk/mods/mod_sender.gd").new()
 add_child(sender)
 var info = loader.inspect("res://mods/my_game")
 var error = sender.listen(info, "我的设备", 27900)
@@ -78,26 +78,26 @@ func controls_join_qr() -> bool:
 
 这些方法是可选扩展，`services` 为稳定 Session Node；不要把 Texture、Node 放进规则状态或网络消息。跳绳 0.1.1 在展示角色无人加入时显示二维码，控制器到场后自行隐藏。
 
-扫描使用 `sdk/qr_scanner.gd` 的 `start(title, close_text)`、`scanned`、`failed`、`canceled` 与 `stop()`。Android 使用相机预览和离线 ZXing，iOS 使用 AVFoundation。相机仅在点击扫码后请求权限/打开；取消、识别完成和退出扫描时释放。帧留在设备，不录制、不上传。`JoinCode.decode_png()` 提供离线图片解码，`JoinCode.decode()` 独立验证连接格式。
+扫描使用 `sdk/net/qr_scanner.gd` 的 `start(title, close_text)`、`scanned`、`failed`、`canceled` 与 `stop()`。Android 使用相机预览和离线 ZXing，iOS 使用 AVFoundation。相机仅在点击扫码后请求权限/打开；取消、识别完成和退出扫描时释放。帧留在设备，不录制、不上传。`JoinCode.decode_png()` 提供离线图片解码，`JoinCode.decode()` 独立验证连接格式。
 
 ## 构建与环境
 
 需要 0.1.11 基础包：原生 Bonjour/NSD、相机入口、iOS 隐私声明及 SDK 协议无法通过原有 UI/Mod 热更新补齐。之后可继续热更新客户端界面与 Mod。
 
-- Apple 适配层由 `python3 tools/build_bonjour.py` 使用已安装 Godot 的 C ABI 和 Xcode 构建；生成的 framework 不入 Git。iOS 声明 `_novaparty._tcp` 与局域网、相机用途，使用系统 Bonjour，不手工接收组播，因此不要求额外 multicast entitlement。
-- `python3 tools/build_android.py` 把普通 SDK 的 Java 适配层及固定版本 ZXing Core 3.5.3 打入官方非 Gradle 模板的附加 DEX，并重新对齐、签名、验证；不是 Debug RPC 实现。依赖下载校验 SHA-256，许可证随 APK 提供。`--release` 可构建关闭 Debug 服务的原型包，仍使用本机原型签名；生产签名与发布流程另行配置。
-- iOS 模拟器构建 `tools/build_ios_simulator.py` 会替换为匹配的模拟器 framework；物理 iPhone 的签名和相机实测不在模拟器验证范围内。
+- Apple 适配层由 `python3 tools/build/build_apple_bridge.py` 使用已安装 Godot 的 C ABI 和 Xcode 构建；生成的 framework 不入 Git。iOS 声明 `_novaparty._tcp` 与局域网、相机用途，使用系统 Bonjour，不手工接收组播，因此不要求额外 multicast entitlement。
+- `python3 tools/build/build_android.py` 把普通 SDK 的 Java 适配层及固定版本 ZXing Core 3.5.3 打入官方非 Gradle 模板的附加 DEX，并重新对齐、签名、验证；不是 Debug RPC 实现。依赖下载校验 SHA-256，许可证随 APK 提供。`--release` 可构建关闭 Debug 服务的原型包，仍使用本机原型签名；生产签名与发布流程另行配置。
+- iOS 模拟器构建 `tools/build/build_ios_simulator.py` 会替换为匹配的模拟器 framework；物理 iPhone 的签名和相机实测不在模拟器验证范围内。
 - 当前自动发现优先 IPv4；路由器隔离/组播过滤或局域网权限拒绝时，可改用二维码/手动地址，但设备之间仍需可直连。
 
 ## 验证入口
 
-- `tests/lan.gd`：包指纹、ZIP 边界、确认前不持久化、连接格式、真实二维码像素编解码。
-- `tests/mod_sender.gd`：无游戏 Session 的 SDK 独立传递、确认和安装。
-- `tests/lan_integration.py`：真实双客户端的取消、确认、安装、自动加入、落子、已安装复用和重启恢复。
-- `tests/lan_failures.py`：超大目录、损坏 SHA、非 ZIP 均不安装/不加入。
-- `tests/lan_devices.py`：ARM64 模拟设备间真实 NSD、adb 点击房间/下载确认、普通 SDK 传输与连接码加入。
-- `tests/capture_lan.gd`：桌面渲染的中英文页面及 Mod 自控二维码；列表和下载详情使用明确的测试数据。
+- `tests/unit/lan.gd`：包指纹、ZIP 边界、确认前不持久化、连接格式、真实二维码像素编解码。
+- `tests/support/mod_sender.gd`：无游戏 Session 的 SDK 独立传递、确认和安装。
+- `tests/integration/lan_integration.py`：真实双客户端的取消、确认、安装、自动加入、落子、已安装复用和重启恢复。
+- `tests/integration/lan_failures.py`：超大目录、损坏 SHA、非 ZIP 均不安装/不加入。
+- `tests/devices/lan_devices.py`：ARM64 模拟设备间真实 NSD、adb 点击房间/下载确认、普通 SDK 传输与连接码加入。
+- `tests/capture/capture_lan.gd`：桌面渲染的中英文页面及 Mod 自控二维码；列表和下载详情使用明确的测试数据。
 
 设备记录在 `build/validation/lan-arm-devices.json`；界面和真实模拟器截图位于同目录。真实手机与 iOS 模拟器的 mDNS 双向发现已验证；后续操作按用户要求改用 ARM64 安卓模拟器。
 
-Android ARM64 验证使用自有 AVD `NovaParty_ARM64` 与 `NovaParty_TV_ARM64`（Android 16、API 36、硬件加速）。`tools/emulator_camera.py` 仅连接本机自有 NovaParty AVD 的认证 gRPC 端点，用于移动合成相机；没有关闭认证或使用真实摄像头。已通过虚拟场景图片→相机预览→识码→实际加入的完整测试。
+Android ARM64 验证使用自有 AVD `NovaParty_ARM64` 与 `NovaParty_TV_ARM64`（Android 16、API 36、硬件加速）。`tools/dev/emulator_camera.py` 仅连接本机自有 NovaParty AVD 的认证 gRPC 端点，用于移动合成相机；没有关闭认证或使用真实摄像头。已通过虚拟场景图片→相机预览→识码→实际加入的完整测试。

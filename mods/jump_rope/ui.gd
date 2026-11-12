@@ -1,6 +1,8 @@
 extends RefCounted
-const INK = Color("18395e")
-const BLUE = Color("2464db")
+# Mod-local copy of the platform's juicy flat look (design v0.4). Mods must not import app code.
+const INK = Color("133464")
+const BLUE = Color("2058e0")
+const LIP = 4
 
 static func box(fill: Color, radius: int = 20, border: Color = Color.TRANSPARENT, width: int = 0) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
@@ -14,14 +16,33 @@ static func box(fill: Color, radius: int = 20, border: Color = Color.TRANSPARENT
 	style.content_margin_bottom = 14
 	return style
 
+# Face on a 4-unit lip; pressing removes the lip and sinks the face.
+static func slab(fill: Color, lip: Color, outlined: bool, pressed: bool = false) -> StyleBoxFlat:
+	var edge := 2 if outlined else 0
+	var style := box(fill, 16, lip, edge)
+	style.content_margin_top = 10
+	style.content_margin_bottom = 10
+	if pressed:
+		style.expand_margin_top = -LIP
+		style.content_margin_top += LIP
+	else:
+		style.border_width_bottom = edge + LIP
+		style.content_margin_bottom += LIP
+	return style
+
 static func button(target: Button, primary: bool = false) -> void:
-	target.custom_minimum_size.y = 58
+	target.custom_minimum_size.y = 60
 	target.add_theme_font_size_override("font_size", 23)
 	for key in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
-		target.add_theme_color_override(key, INK)
-	target.add_theme_color_override("font_disabled_color", Color("73849b"))
-	target.add_theme_stylebox_override("normal", box(Color("ffe261") if primary else Color.WHITE, 18, Color("e6bb39") if primary else Color("d6e2f4"), 1))
-	target.add_theme_stylebox_override("hover", box(Color("ffec96") if primary else Color("e6f1ff"), 18, BLUE, 2))
-	target.add_theme_stylebox_override("pressed", box(Color("f4ce39") if primary else Color("cddfff"), 18))
-	target.add_theme_stylebox_override("disabled", box(Color("e6ebf2"), 18))
-	target.add_theme_stylebox_override("focus", box(Color.TRANSPARENT, 18, Color("13bedb"), 4))
+		target.add_theme_color_override(key, INK if primary else BLUE)
+	target.add_theme_color_override("font_disabled_color", Color("8294a3"))
+	var fill := Color("ffe34b") if primary else Color.WHITE
+	var lip := Color("e0a612") if primary else Color("bcd2f0")
+	target.add_theme_stylebox_override("normal", slab(fill, lip, not primary))
+	target.add_theme_stylebox_override("hover", slab(Color("ffec8a") if primary else Color("e1efff"), lip, not primary))
+	target.add_theme_stylebox_override("pressed", slab(Color("f7d13a") if primary else Color("e1efff"), lip, not primary, true))
+	target.add_theme_stylebox_override("disabled", slab(Color("e1eaf0"), Color("e1eaf0"), false))
+	var focus := box(Color.TRANSPARENT, 19, Color("ff8a1c"), 6)
+	focus.draw_center = false
+	focus.set_expand_margin_all(3)
+	target.add_theme_stylebox_override("focus", focus)

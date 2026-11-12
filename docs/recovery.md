@@ -31,9 +31,9 @@
 ## 复现与证据
 
 ```sh
-python3 tests/recovery_integration.py
-python3 tools/build_ios_simulator.py --device <UDID> --install --launch
-python3 tests/recovery_integration.py --ios-device <UDID>
+python3 tests/integration/recovery_integration.py
+python3 tools/build/build_ios_simulator.py --device <UDID> --install --launch
+python3 tests/integration/recovery_integration.py --ios-device <UDID>
 ```
 
 第二项模拟器测试会离开现有测试房间。测试包括：

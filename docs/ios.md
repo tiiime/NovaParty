@@ -9,7 +9,7 @@ xcrun simctl list devices available
 xcrun simctl boot <UDID>
 xcrun simctl bootstatus <UDID> -b
 open -a Simulator
-python3 tools/build_ios_simulator.py --device <UDID> --install --launch
+python3 tools/build/build_ios_simulator.py --device <UDID> --install --launch
 ```
 
 产物为 `build/ios/SimulatorBuild/NovaParty.app`。预设 `iOS Simulator Debug` 携带 `novaparty_debug`，包括本地网络用途说明。只面向开发模拟器，不含分发签名；其中的占位 Team ID 不代表已配置真机签名。
@@ -25,8 +25,8 @@ python3 tools/build_ios_simulator.py --device <UDID> --install --launch
 ```sh
 container=$(xcrun simctl get_app_container <UDID> org.novaparty.prototype data)
 (umask 077; cp "$container/Documents/debug/connection.json" /tmp/novaparty-iphone.connection.json)
-python3 tools/nvctl.py --connection /tmp/novaparty-iphone.connection.json device.info
-python3 tools/nvctl.py --connection /tmp/novaparty-iphone.connection.json room.create '{"game_id":"gomoku","port":27840,"nickname":"iPhone"}'
+python3 tools/dev/nvctl.py --connection /tmp/novaparty-iphone.connection.json device.info
+python3 tools/dev/nvctl.py --connection /tmp/novaparty-iphone.connection.json room.create '{"game_id":"gomoku","port":27840,"nickname":"iPhone"}'
 ```
 
 `user://` 在本次模拟器映射到 Documents。每次进程重启后重新取连接文件；不要依赖固定容器 UUID。Debug 默认监听 Mac 的 LAN 地址，注意避免与桌面实例的 Debug 端口冲突。桌面测试实例使用独立 127.0.0.1 临时端口。
@@ -34,7 +34,7 @@ python3 tools/nvctl.py --connection /tmp/novaparty-iphone.connection.json room.c
 完整复现（会离开模拟器中的现有测试房间）：
 
 ```sh
-python3 tests/ios_simulator.py --device <UDID>
+python3 tests/devices/ios_simulator.py --device <UDID>
 ```
 
 ## 实测结果
@@ -51,4 +51,4 @@ python3 tests/ios_simulator.py --device <UDID>
 
 ## 0.1.5 联机恢复补测
 
-已安装模拟器新构建，使用 `tests/recovery_integration.py --ios-device <UDID>` 验证游戏 TCP 明确断开以及静默、单向丢包时的心跳与自动凭据重连。具体结果和边界见 [联机恢复](recovery.md)；不推断真实设备后台或网络切换能力。
+已安装模拟器新构建，使用 `tests/integration/recovery_integration.py --ios-device <UDID>` 验证游戏 TCP 明确断开以及静默、单向丢包时的心跳与自动凭据重连。具体结果和边界见 [联机恢复](recovery.md)；不推断真实设备后台或网络切换能力。

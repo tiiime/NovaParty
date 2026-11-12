@@ -50,7 +50,11 @@ func _ready() -> void:
 		var config = JSON.parse_string(FileAccess.get_file_as_string(theme_path))
 		if config is Dictionary and config.get("board_color") is String:
 			board.board_color = Color.from_string(config.board_color, board.board_color)
-	board.place.connect(func(x, y): command.emit({"type": "place", "x": x, "y": y}))
+	board.place.connect(func(x, y):
+		# Unknown platform actions are ignored by older hosts, so this stays compatible.
+		platform_action.emit("haptic:select")
+		command.emit({"type": "place", "x": x, "y": y})
+	)
 	board.focus_actions.connect(_focus_actions)
 	add_child(board)
 	sidebar = Control.new()

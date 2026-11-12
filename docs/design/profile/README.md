@@ -19,4 +19,4 @@
 
 保存后原子替换本地配置并刷新首页。取消/返回丢弃草稿；保存失败留在编辑页并提示。默认名称以空昵称保存，避免把当前设备名永久写成自定义名字。已有自定义名字、语言、声音、减少动态效果及本地身份 ID 均保留。当前编辑仅通过首页进入。
 
-矢量源由 `tools/build_profile_design.py` 生成，公共资源位于 `assets/ui/characters.json`，共 24 个独立 SVG。SDK 在本地解码并缓存头像纹理，不通过网络传图片。协议见 [用户配置 SDK](../../user-profile.md)。
+矢量源由 `tools/design/build_profile_design.py` 生成，公共资源位于 `assets/ui/characters.json`，共 24 个独立 SVG。SDK 在本地解码并缓存头像纹理，不通过网络传图片。协议见 [用户配置 SDK](../../user-profile.md)。

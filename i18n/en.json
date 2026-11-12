@@ -17,7 +17,7 @@
   "LEAVE_ROOM": "Leave game",
   "IMPORT_MOD": "Add game",
   "MOD_FILTER": "NovaParty game package",
-  "HOST_ADDRESS": "Friend’s device IP address",
+  "HOST_ADDRESS": "Friend's device IP address",
   "PORT": "Port",
   "LOCAL_ID": "Local ID %s",
   "LOBBY_HELP": "Choose the same game and play on the same local network.",
@@ -53,7 +53,7 @@
   "CANCEL": "Cancel",
   "CONFIRM_LEAVE": "Leave",
   "SETUP_TITLE": "Choose a game",
-  "JOIN_TITLE": "Join a friend’s game",
+  "JOIN_TITLE": "Join a friend's game",
   "HOME_NICKNAME": "★  %s",
   "OPEN_MODS": "Game packages",
   "WORKING": "Working…",
@@ -145,5 +145,10 @@
   "THEME_ROSE": "Rose",
   "THEME_MINT": "Mint",
   "THEME_ORANGE": "Orange",
-  "THEME_GOLD": "Honey"
+  "THEME_GOLD": "Honey",
+  "FEEDBACK": "Sound and touch",
+  "HAPTICS": "Haptic feedback",
+  "BLUETOOTH_GAME": "Bluetooth game",
+  "BLUETOOTH_ROW": "Nearby device · code %s",
+  "CONNECTING_BLUETOOTH": "Connecting over Bluetooth…"
 }

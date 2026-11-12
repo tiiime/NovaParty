@@ -1,17 +1,17 @@
 # 常驻玩家（0.1.5，房间管理最低 0.1.4）
 
-`tools/nvplayer.py` 是独立 Python 进程，通过认证 Debug SDK 控制一个客户端的本地座位。开始后持续接收网络事件，运行本地策略、提交并等待房主最终回执；聊天回复结束不影响它。它不是持续调用大模型的服务。目前策略为五子棋启发式和 SDK 合法操作适配器，不能承诺棋力。
+`tools/dev/nvplayer.py` 是独立 Python 进程，通过认证 Debug SDK 控制一个客户端的本地座位。开始后持续接收网络事件，运行本地策略、提交并等待房主最终回执；聊天回复结束不影响它。它不是持续调用大模型的服务。目前策略为五子棋启发式和 SDK 合法操作适配器，不能承诺棋力。
 
 ## 使用
 
 先按 [Debug 指南](debug.md) 获取私有连接文件。已有房间可直接附着：
 
 ```sh
-python3 tools/nvplayer.py start --connection /tmp/novaparty-debug/tv.json --state /tmp/nv-tv-player.json --strategy gomoku --daemon
-python3 tools/nvplayer.py status --state /tmp/nv-tv-player.json
-python3 tools/nvplayer.py pause --state /tmp/nv-tv-player.json
-python3 tools/nvplayer.py resume --state /tmp/nv-tv-player.json
-python3 tools/nvplayer.py stop --state /tmp/nv-tv-player.json
+python3 tools/dev/nvplayer.py start --connection /tmp/novaparty-debug/tv.json --state /tmp/nv-tv-player.json --strategy gomoku --daemon
+python3 tools/dev/nvplayer.py status --state /tmp/nv-tv-player.json
+python3 tools/dev/nvplayer.py pause --state /tmp/nv-tv-player.json
+python3 tools/dev/nvplayer.py resume --state /tmp/nv-tv-player.json
+python3 tools/dev/nvplayer.py stop --state /tmp/nv-tv-player.json
 ```
 
 省略 `--daemon` 在前台运行。`--once` 在本局结束且已确认最后回执后退出；默认结束后保持监听。`stop` 只停止控制器，不离开游戏房间。暂停前已发送的操作仍可能被房主接受。
@@ -19,8 +19,8 @@ python3 tools/nvplayer.py stop --state /tmp/nv-tv-player.json
 0.1.4 客户端支持联网开房/加入：
 
 ```sh
-python3 tools/nvplayer.py start --connection /tmp/iphone.json --state /tmp/iphone-player.json --create --game gomoku --port 27840 --nickname iPhone --daemon
-python3 tools/nvplayer.py start --connection /tmp/desktop.json --state /tmp/desktop-player.json --join 192.0.2.10 --game gomoku --port 27840 --daemon
+python3 tools/dev/nvplayer.py start --connection /tmp/iphone.json --state /tmp/iphone-player.json --create --game gomoku --port 27840 --nickname iPhone --daemon
+python3 tools/dev/nvplayer.py start --connection /tmp/desktop.json --state /tmp/desktop-player.json --join 192.0.2.10 --game gomoku --port 27840 --daemon
 ```
 
 旧 0.1.3 客户端可以附着现有房间，但没有远程房间管理。平台 SDK 的变化需要一次基础包安装，不能通过仅替换 Mod 升级。
@@ -38,7 +38,7 @@ python3 tools/nvplayer.py start --connection /tmp/desktop.json --state /tmp/desk
 - `latency_ms` 衡量策略计算开始到最终回执，不包括设定的 think delay；是最近一次操作值。默认 think delay 30 毫秒。操作回执缓存、去重边界见 Debug 契约。
 
 ```sh
-python3 tests/player_integration.py
+python3 tests/integration/player_integration.py
 ```
 
 实际双 Godot 客户端验证：完整 225 手五子棋、暗牌 6 次提交、暂停恢复、单实例锁、SIGKILL 后恢复、房间变化保护，以及代理转发落子后丢掉回执并断开连接，恢复后只确认一次落子。五子棋策略检查直接获胜、强制防守及双三预防。

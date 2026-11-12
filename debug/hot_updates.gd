@@ -1,5 +1,5 @@
 extends Node
-const Loader = preload("res://sdk/mod_loader.gd")
+const Loader = preload("res://sdk/mods/mod_loader.gd")
 const Archive = preload("res://debug/archive.gd")
 const MAX_SIZE = 16 * 1024 * 1024
 const CHUNK = 24576

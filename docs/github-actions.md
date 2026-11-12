@@ -25,8 +25,8 @@ Windows 目前没有原生 mDNS / 二维码适配器，需手动地址加入；�
 本地 macOS 构建：
 
 ```sh
-python3 tools/build_bonjour.py --platform macos
-python3 tools/build_platform.py --platform macos
+python3 tools/build/build_apple_bridge.py --platform macos
+python3 tools/build/build_platform.py --platform macos
 ```
 
 ## Android APK
@@ -82,4 +82,4 @@ Linux Android 构建不使用 Apple Bonjour 扩展，CI 在临时 checkout 中�
 
 正式签名只发生于标签和手动触发；PR 不接触签名 Secrets，使用临时 Debug key。推送 main / 标签的 Debug 包使用固定 Debug key；首次切换到正式签名时，旧 Debug 包通常需卸载后安装，之后正式包保持同一签名即可更新。
 
-`tools/android_config.py` 优先从环境变量 / 本地 `.env` 读取 SDK、Java 和签名配置，未配置时读取对应平台 Godot 编辑器设置。Release 缺少正式密钥配置会直接失败，不再回退 Debug 签名。签名密码通过子进程环境传给 apksigner，不出现在命令参数；临时密钥在作业结束时清理，产物只包含 APK。
+`tools/build/android_config.py` 优先从环境变量 / 本地 `.env` 读取 SDK、Java 和签名配置，未配置时读取对应平台 Godot 编辑器设置。Release 缺少正式密钥配置会直接失败，不再回退 Debug 签名。签名密码通过子进程环境传给 apksigner，不出现在命令参数；临时密钥在作业结束时清理，产物只包含 APK。

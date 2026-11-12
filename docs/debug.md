@@ -12,8 +12,8 @@
 set -a; . ./.env; set +a
 mkdir -p /tmp/novaparty-debug
 (umask 077; "${ADB:-adb}" -P "$TV_ADB_PORT" -s "$TV_ADB_SERIAL" exec-out run-as org.novaparty.prototype cat files/debug/connection.json > /tmp/novaparty-debug/tv.json)
-python3 tools/nvctl.py --connection /tmp/novaparty-debug/tv.json device.info
-python3 tools/nvctl.py --connection /tmp/novaparty-debug/tv.json game.snapshot
+python3 tools/dev/nvctl.py --connection /tmp/novaparty-debug/tv.json device.info
+python3 tools/dev/nvctl.py --connection /tmp/novaparty-debug/tv.json game.snapshot
 ```
 
 配置包含 `host`、`port`、`token`、`app_instance_id`，不要提交到仓库。令牌每次启动生成新的 32 字节随机值。之后 CLI 直接访问该地址，无需持续 adb。传输为局域网明文 TCP，目前没有 TLS。Android 私有目录中的连接文件路径由 Godot 的 `user://debug/connection.json` 映射而来；已在 Android 13 手机通过此方式获取凭据并连接；TCL Android 9 电视也已通过相同流程与 LAN 热更新验证。
@@ -22,7 +22,7 @@ macOS 开发运行：
 
 ```sh
 GODOT_EDITOR_CUSTOM_FEATURES=novaparty_debug Godot --path . -- --debug-bind=127.0.0.1 --debug-port=27841 --debug-connection=/tmp/nv-local.json
-python3 tools/nvctl.py --connection /tmp/nv-local.json game.snapshot
+python3 tools/dev/nvctl.py --connection /tmp/nv-local.json game.snapshot
 ```
 
 `--debug-bind`、`--debug-port`、`--debug-connection` 只在 Debug 服务已启用时生效。普通编辑器启动不启用服务。文件在 Unix 开发机上设为 0600。
@@ -42,9 +42,9 @@ python3 tools/nvctl.py --connection /tmp/nv-local.json game.snapshot
 ```
 
 ```sh
-python3 tools/nvctl.py --connection /tmp/novaparty-debug/tv.json --wait game.submit @/tmp/move.json
-python3 tools/nvctl.py --connection /tmp/novaparty-debug/tv.json game.result '{"game_session_id":"从快照复制","request_id":"tv-move-006"}'
-python3 tools/nvctl.py --connection /tmp/novaparty-debug/tv.json --watch events.subscribe
+python3 tools/dev/nvctl.py --connection /tmp/novaparty-debug/tv.json --wait game.submit @/tmp/move.json
+python3 tools/dev/nvctl.py --connection /tmp/novaparty-debug/tv.json game.result '{"game_session_id":"从快照复制","request_id":"tv-move-006"}'
+python3 tools/dev/nvctl.py --connection /tmp/novaparty-debug/tv.json --watch events.subscribe
 ```
 
 `--watch` 持续输出 JSON 行；空闲达到 `--timeout` 会结束，可增加超时并记录游标重连。命令行错误写入 stderr，退出码 1；规则拒绝是成功取得的回执，stdout 中 `accepted: false`，调用方应检查该字段。
@@ -84,10 +84,10 @@ python3 tools/nvctl.py --connection /tmp/novaparty-debug/tv.json --watch events.
 `Android Debug` 带 `novaparty_debug` 导出特性；应用与服务均检查 `OS.is_debug_build()` 和该特性。`Android Release` 不带特性，并排除整个 `debug/`。Release 预设默认不签名，正式分发前需要配置正式签名。
 
 ```sh
-python3 tests/integration.py
-python3 tests/debug_integration.py
+python3 tests/integration/integration.py
+python3 tests/integration/debug_integration.py
 # macOS：实际 Debug/Release 模板与导出资源的四种组合
-python3 tests/debug_exports.py
+python3 tests/integration/debug_exports.py
 ```
 
 第二项运行真实 Godot 房主和加入方，验证认证、私有手牌与合法操作过滤、双方回执、重复请求、过期保护、订阅回放/溢出、CLI 读取及 `--wait` 完成两种整局。0.1.3 已在 Android 13 手机上通过 LAN 热更新与整局验证。TCL Android 9 电视也已通过遥控器、热更新、完整对局及重启恢复回归。D2 使用方式见 [热更新指南](hot-updates.md)，D3 局中规则升级仍见 [设计草案](debug-design.md)。
@@ -101,8 +101,8 @@ python3 tests/debug_exports.py
 `nvctl.py` 对上述方法自动补齐缺失上下文，显式传入的旧字段不会被覆盖。对不确定结果的重试应保存完整 JSON，原样调用；不要依赖重新补上下文。开房示例：
 
 ```sh
-python3 tools/nvctl.py --connection /tmp/nv-local.json room.create '{"game_id":"gomoku","port":27840}'
-python3 tools/nvctl.py --connection /tmp/nv-local.json room.leave
+python3 tools/dev/nvctl.py --connection /tmp/nv-local.json room.create '{"game_id":"gomoku","port":27840}'
+python3 tools/dev/nvctl.py --connection /tmp/nv-local.json room.leave
 ```
 
 常驻策略控制器及进程恢复流程见 [常驻玩家](player.md)，模拟器凭据获取见 [iOS 指南](ios.md)。0.1.4 接口需要新的基础客户端，局中 Mod 表现更新不会升级平台 SDK。
@@ -120,4 +120,4 @@ python3 tools/nvctl.py --connection /tmp/nv-local.json room.leave
 
 ## Android APK 更新（0.1.12）
 
-Android Debug 的连接配置增加 `apk_http`，提供认证 HTTP 上传、状态查询与系统安装入口；`debug.capabilities` 也返回该字段。默认端口 27842，沿用同一 Debug token。用 `tools/apkctl.py` 上传完整基础包，详见 [APK 网络更新](apk-updates.md)。非 Android 或监听失败时该字段为空，Release 不包含原生实现或安装权限。
+Android Debug 的连接配置增加 `apk_http`，提供认证 HTTP 上传、状态查询与系统安装入口；`debug.capabilities` 也返回该字段。默认端口 27842，沿用同一 Debug token。用 `tools/dev/apkctl.py` 上传完整基础包，详见 [APK 网络更新](apk-updates.md)。非 Android 或监听失败时该字段为空，Release 不包含原生实现或安装权限。

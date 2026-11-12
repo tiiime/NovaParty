@@ -1,6 +1,6 @@
 # 跳绳 0.1.1
 
-参考 Jump Rope Challenge 的轻量运动形式，使用原创矢量小动物和场景。内置 `jump_rope` Mod，需要基础客户端 0.1.9。封面使用 SVG 原文（`cover.svg.txt`），避免引擎导入删除源文件而导致跨设备指纹不同。普通包和热更新包分别由 `tools/pack_mod.py` 和 `--hot` 生成。
+参考 Jump Rope Challenge 的轻量运动形式，使用原创矢量小动物和场景。内置 `jump_rope` Mod，需要基础客户端 0.1.9。封面使用 SVG 原文（`cover.svg.txt`），避免引擎导入删除源文件而导致跨设备指纹不同。普通包和热更新包分别由 `tools/build/pack_mod.py` 和 `--hot` 生成。
 
 ## 使用
 
@@ -32,10 +32,10 @@ TCP 关闭即移除小动物；网络静默失联沿用 SDK 心跳超时检测�
 
 ## 验证
 
-- `Godot --headless --path . --script tests/jump_rope.gd`：动态人数、并发计数、去重、无效数据、代次隔离、空位复用、棋牌行为不变、传感器校准/阈值/冷却、布局和减少动态效果。
-- `python3 tests/jump_rope_network.py`：三个真实 Godot 客户端通过 TCP 验证等待、双控制器并发计数、离开/再加入、位置复用、角色切换、无人后继续等待，以及活动会话中的 Mod 表现热更新。
-- `Godot --path . --script tests/capture_jump_rope.gd`：真实渲染的等待、单人、双人、四人、手机及英文截图；人数与次数为测试数据，不作为硬件动作识别证据。
-- `tests/jump_rope_devices.py`：安卓真机传感器、实际 adb 角色触屏与校准，以及 iOS 模拟器展示端的加入/离开。物理跳跃识别需真人另测，不能用 Debug 提交代替。
+- `Godot --headless --path . --script tests/unit/jump_rope.gd`：动态人数、并发计数、去重、无效数据、代次隔离、空位复用、棋牌行为不变、传感器校准/阈值/冷却、布局和减少动态效果。
+- `python3 tests/integration/jump_rope_network.py`：三个真实 Godot 客户端通过 TCP 验证等待、双控制器并发计数、离开/再加入、位置复用、角色切换、无人后继续等待，以及活动会话中的 Mod 表现热更新。
+- `Godot --path . --script tests/capture/capture_jump_rope.gd`：真实渲染的等待、单人、双人、四人、手机及英文截图；人数与次数为测试数据，不作为硬件动作识别证据。
+- `tests/devices/jump_rope_devices.py`：安卓真机传感器、实际 adb 角色触屏与校准，以及 iOS 模拟器展示端的加入/离开。物理跳跃识别需真人另测，不能用 Debug 提交代替。
 
 电视普通 adb 安装 0.1.9 被系统校验拒绝，未修改安全设置；APK 已放电视 `Download/novaparty-0.1.9-debug.apk`。手动更新基础包后才能加载此 Mod，旧基础包不能仅靠 UI 热更新获得动态人数和传感器配置。
 

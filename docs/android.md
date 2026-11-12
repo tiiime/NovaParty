@@ -5,7 +5,7 @@
 使用 Godot 4.6.1、对应 Android 导出模板、OpenJDK 17 和 Android SDK。在 Godot 编辑器设置中配置 Java SDK 与 Android SDK 路径。
 
 ```sh
-python3 tools/build_android.py
+python3 tools/build/build_android.py
 ```
 
 输出：`build/android/novaparty-debug.apk`；详细日志：`build/android/export.log`。当前为 ARM32 / ARM64 通用调试包，包名 `org.novaparty.prototype`，不用于商店发布。

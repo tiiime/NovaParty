@@ -145,5 +145,10 @@
   "THEME_ROSE": "玫瑰",
   "THEME_MINT": "薄荷",
   "THEME_ORANGE": "橘子",
-  "THEME_GOLD": "蜂蜜"
+  "THEME_GOLD": "蜂蜜",
+  "FEEDBACK": "声音与触感",
+  "HAPTICS": "触感反馈",
+  "BLUETOOTH_GAME": "蓝牙游戏",
+  "BLUETOOTH_ROW": "附近设备 · 代码 %s",
+  "CONNECTING_BLUETOOTH": "正在通过蓝牙连接…"
 }

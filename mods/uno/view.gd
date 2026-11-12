@@ -552,6 +552,8 @@ func _submit(action: Dictionary) -> void:
 	call_deferred("_emit_action", action)
 
 func _emit_action(action: Dictionary) -> void:
+	# Touch pulse via the platform; hosts without haptics ignore the unknown action.
+	platform_action.emit("haptic:select")
 	command.emit(action)
 
 func _t(key: String) -> String:

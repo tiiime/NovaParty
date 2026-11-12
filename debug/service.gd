@@ -1,8 +1,8 @@
 extends Node
 # Excluded from Release exports. No shell/eval; only trusted Mod packages.
-const Wire = preload("res://sdk/wire.gd")
-const Loader = preload("res://sdk/mod_loader.gd")
-const METHODS = ["qr.image", "qr.decode_image", "qr.status", "qr.scan", "qr.stop", "qr.join", "lan.search", "lan.status", "lan.inspect", "lan.confirm_download", "lan.cancel", "ui.status", "ui.updates", "ui.upload.begin", "ui.upload.chunk", "ui.upload.abort", "ui.upload.commit", "ui.activate", "ui.rollback", "device.info", "debug.capabilities", "room.status", "room.create", "room.join", "room.leave", "room.reconnect", "game.snapshot", "game.describe_actions", "game.submit", "game.result", "events.subscribe", "events.unsubscribe", "mods.upload.begin", "mods.upload.chunk", "mods.upload.abort", "mods.upload.commit", "mods.status", "mods.activate", "mods.rollback"]
+const Wire = preload("res://sdk/net/wire.gd")
+const Loader = preload("res://sdk/mods/mod_loader.gd")
+const METHODS = ["qr.image", "qr.decode_image", "qr.status", "qr.scan", "qr.stop", "qr.join", "lan.search", "lan.status", "lan.inspect", "lan.confirm_download", "lan.cancel", "ble.status", "ble.request_access", "ui.status", "ui.updates", "ui.upload.begin", "ui.upload.chunk", "ui.upload.abort", "ui.upload.commit", "ui.activate", "ui.rollback", "device.info", "debug.capabilities", "room.status", "room.create", "room.join", "room.leave", "room.reconnect", "game.snapshot", "game.describe_actions", "game.submit", "game.result", "events.subscribe", "events.unsubscribe", "mods.upload.begin", "mods.upload.chunk", "mods.upload.abort", "mods.upload.commit", "mods.status", "mods.activate", "mods.rollback"]
 var app: Object
 var wire
 var hot_updates
@@ -215,7 +215,7 @@ func _message(peer: int, request: Dictionary) -> void:
 		else:
 			_reply(peer, id, result)
 		return
-	if (method.begins_with("lan.") or method.begins_with("qr.")) and app.has_method("debug_lan_command"):
+	if (method.begins_with("lan.") or method.begins_with("qr.") or method.begins_with("ble.")) and app.has_method("debug_lan_command"):
 		var result: Dictionary = app.debug_lan_command(method, params)
 		if result.has("error"):
 			_error(peer, id, -32011, result.error)
@@ -252,7 +252,7 @@ func _message(peer: int, request: Dictionary) -> void:
 		"device.info":
 			_reply(peer, id, {"app_instance_id": app_instance_id, "os": OS.get_name(), "model": OS.get_model_name(), "version": ProjectSettings.get_setting("application/config/version"), "mode": "play"})
 		"debug.capabilities":
-			_reply(peer, id, {"protocol": 1, "methods": METHODS, "mode": "play", "session_modes": ["two_player", "drop_in", "fixed"], "apk_http": apk_http, "hot_update": {"upload": true, "presentation": true, "live_rules": false, "client_ui": ui_updates != null, "ui_api": 1, "max_ui_package_bytes": 67108864, "max_package_bytes": 16777216, "chunk_bytes": 24576}, "event_capacity": 128, "result_capacity": 256})
+			_reply(peer, id, {"protocol": 1, "methods": METHODS, "mode": "play", "session_modes": ["two_player", "drop_in", "fixed"], "apk_http": apk_http, "hot_update": {"upload": true, "presentation": true, "live_rules": false, "client_ui": ui_updates != null, "ui_api": 2, "max_ui_package_bytes": 67108864, "max_package_bytes": 16777216, "chunk_bytes": 24576}, "event_capacity": 128, "result_capacity": 256})
 		"room.status":
 			var status := state.duplicate(true)
 			status.erase("view")

@@ -19,10 +19,10 @@
 五子棋的 `theme.json` 中可以修改 `board_color`，例如 `4b85b4`。打包及推送：
 
 ```sh
-python3 tools/pack_mod.py /path/to/gomoku-copy build/gomoku-blue.zip --hot
-python3 tools/nvctl.py --connection /tmp/tv.connection.json --activate mods.push build/gomoku-blue.zip
-python3 tools/nvctl.py --connection /tmp/tv.connection.json mods.status
-python3 tools/nvctl.py --connection /tmp/tv.connection.json mods.rollback '{"game_id":"gomoku"}'
+python3 tools/build/pack_mod.py /path/to/gomoku-copy build/gomoku-blue.zip --hot
+python3 tools/dev/nvctl.py --connection /tmp/tv.connection.json --activate mods.push build/gomoku-blue.zip
+python3 tools/dev/nvctl.py --connection /tmp/tv.connection.json mods.status
+python3 tools/dev/nvctl.py --connection /tmp/tv.connection.json mods.rollback '{"game_id":"gomoku"}'
 ```
 
 `mods.push` 是 CLI 组合命令，依次调用上传 RPC；`--activate` 在上传完成后切换。省略该参数只存储候选构建。已有完全相同的 ZIP 会返回现有构建。调用 `mods.activate` 时使用上传结果中的 `build`（ZIP SHA-256），不是清单中的 `build_id`。
@@ -83,10 +83,10 @@ func restore_view_state(state: Dictionary) -> void:
 ## 验证
 
 ```sh
-python3 tests/hot_integration.py
-python3 tests/hot_integration.py --visual
-python3 tests/debug_integration.py
-python3 tests/debug_exports.py
+python3 tests/integration/hot_integration.py
+python3 tests/integration/hot_integration.py --visual
+python3 tests/integration/debug_integration.py
+python3 tests/integration/debug_exports.py
 ```
 
 前两项运行真实应用的双客户端，验证切换资源、局面不变、继续对局、焦点/选格与单一输入连接、坏包拒绝、回退、重启恢复和不同表现的协议 2 加入。可视验证截图输出 `/tmp/novaparty-hot-update.png`。
@@ -94,7 +94,7 @@ python3 tests/debug_exports.py
 Android 真机回归需要手机已安装 0.1.3、在前台创建一个全新五子棋房间，并有连接配置：
 
 ```sh
-python3 tests/android_hot.py --connection /tmp/phone.connection.json --serial <serial> --restart --create-tap <已观察的创建按钮x,y>
+python3 tests/devices/android_hot.py --connection /tmp/phone.connection.json --serial <serial> --restart --create-tap <已观察的创建按钮x,y>
 ```
 
 此脚本连接一个真实 Godot 对手，通过手机的 LAN 接口完成热更新和九手整局，再重启验证恢复，回退到内置界面并返回大厅。它会结束所创建的测试对局。手机测试截图保存在 `build/validation/android-hot-update.png`。

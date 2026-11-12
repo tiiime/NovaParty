@@ -20,7 +20,7 @@ connection.json
 *.aab
 *.ipa
 
-# Rebuilt by tools/build_bonjour.py
+# Rebuilt by tools/build/build_apple_bridge.py
 addons/novaparty_bonjour/macos/
 addons/novaparty_bonjour/ios/
 addons/novaparty_bonjour/simulator/

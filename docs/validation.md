@@ -48,20 +48,20 @@
 [Android 指南](android.md) 包含构建、安装与手动测试步骤。桌面回归运行：
 
 ```sh
-GODOT=/Applications/Godot.app/Contents/MacOS/Godot python3 tests/integration.py
+GODOT=/Applications/Godot.app/Contents/MacOS/Godot python3 tests/integration/integration.py
 ```
 
 真机对手脚本支持指定手机地址和独立包：
 
 ```sh
-Godot --headless --path . --script tests/bot.gd -- gomoku 27840 <手机Wi-Fi地址> 180
-Godot --headless --path . --script tests/bot.gd -- mobile_gomoku 27840 <手机Wi-Fi地址> 180 <ZIP绝对路径>
+Godot --headless --path . --script tests/support/bot.gd -- gomoku 27840 <手机Wi-Fi地址> 180
+Godot --headless --path . --script tests/support/bot.gd -- mobile_gomoku 27840 <手机Wi-Fi地址> 180 <ZIP绝对路径>
 ```
 
 电脑主持重连测试：
 
 ```sh
-Godot --headless --path . --script tools/host.gd -- gomoku 27840 autoplay trace drop_once
+Godot --headless --path . --script tools/dev/host.gd -- gomoku 27840 autoplay trace drop_once
 ```
 
 第三版状态后只断开一次连接，房间与凭据保留。它验证的是主动 TCP 断开，不是 Wi-Fi 静默失联或网络切换。
@@ -83,8 +83,8 @@ Godot --headless --path . --script tools/host.gd -- gomoku 27840 autoplay trace 
 ## 历史：0.1.2 网络 Debug（2026-11-01）
 
 - 原有规则 50 项、界面 7 项，以及 TCP 协议、两种完整对局、外部 Mod 安装恢复回归通过。
-- `python3 tests/debug_integration.py`：真实 Godot 房主/加入方分别启用 Debug，验证认证、私有状态与动作过滤、双方最终回执、幂等重试、版本/对局保护、事件订阅与缓存溢出重同步、连接恢复，以及通过 CLI `--wait` 完成五子棋和暗牌整局。
-- `python3 tests/debug_exports.py`：实际导出 Debug / Release PCK，分别由 Godot 4.6.1 macOS Debug / Release 原生模板执行；四种组合均加载主场景，只有 Debug 模板 + Debug 资源启用服务。Release 导出资源不含 debug/、tests/、tools/。该测试使用本机已安装的 macOS 模板。
+- `python3 tests/integration/debug_integration.py`：真实 Godot 房主/加入方分别启用 Debug，验证认证、私有状态与动作过滤、双方最终回执、幂等重试、版本/对局保护、事件订阅与缓存溢出重同步、连接恢复，以及通过 CLI `--wait` 完成五子棋和暗牌整局。
+- `python3 tests/integration/debug_exports.py`：实际导出 Debug / Release PCK，分别由 Godot 4.6.1 macOS Debug / Release 原生模板执行；四种组合均加载主场景，只有 Debug 模板 + Debug 资源启用服务。Release 导出资源不含 debug/、tests/、tools/。该测试使用本机已安装的 macOS 模板。
 - 0.1.2 ARM32 / ARM64 通用 APK 已构建；当前手机与电视上的旧对局未被中断。新 Debug 包的手机/电视网络连接、adb 首次取凭据和返回键回归，需更新安装后验证。
 - 当时尚未实现 D2 / D3；0.1.2 接口报告 `hot_update: false`。后续状态见下节。
 
@@ -94,7 +94,7 @@ Godot --headless --path . --script tools/host.gd -- gomoku 27840 autoplay trace 
 - 同一五子棋对局热更新前后，对局 ID、代次、版本、座位、玩家列表与棋盘完全一致；光标和焦点保持，输入信号只有一条连接。双方在单端更新后继续落子通过。
 - 暗牌示例中，一方已提交且另一方等待响应时替换加入方界面，私有手牌、焦点与局面保持，三轮全部完成。
 - 规则不同的候选在对局中被拒绝；大厅可选择规则新版本供下一局使用。协议 2 已验证不同表现构建可正常加入，协议 1 的完整包匹配回归通过。
-- Android 13 / Mi 11：已安装 0.1.3，通过局域网读取凭据后上传、激活和回退；含两颗棋子的局面保持不变，Android PID 未变，继续完成九手五子棋整局。强制停止/重新启动后恢复所选构建，再创建房间验证蓝色资源加载，随后回退并返回大厅。见 `tests/android_hot.py` 与 `build/validation/android-hot-update.png`。
+- Android 13 / Mi 11：已安装 0.1.3，通过局域网读取凭据后上传、激活和回退；含两颗棋子的局面保持不变，Android PID 未变，继续完成九手五子棋整局。强制停止/重新启动后恢复所选构建，再创建房间验证蓝色资源加载，随后回退并返回大厅。见 `tests/devices/android_hot.py` 与 `build/validation/android-hot-update.png`。
 - 实际 Debug / Release 导出资源与 macOS 原生模板四种组合通过；只有 Debug 模板 + Debug 特性启用服务，Release 不携带热更新代码。既有 Debug 整局、规则/界面、网络与外部 ZIP 回归通过。
 - TCL ARM32 电视安装 0.1.3 后，已通过遥控器方向键/确认键落子、LAN 热更新、九手整局、回退、强制停止重启恢复及真实返回键回到大厅。见 `build/validation/tv-hot-update.png`。iPhone 仍未验证。
 - 局中规则迁移、原生/平台 SDK 自更新、完整 Godot 导入资源流水线和任意脚本异常自动回滚尚未实现。
@@ -130,8 +130,8 @@ Godot --headless --path . --script tools/host.gd -- gomoku 27840 autoplay trace 
 ## 0.1.7 客户端 UI 热更新
 
 - 生产入口改为稳定宿主 `app/bootstrap.tscn`；完整 UI 包通过认证 TCP 更新，Session、Mod 游戏视图及 Debug 连接保留。
-- `tests/client_ui_hot.py`：完整包上传、版本与翻译拒绝、准备失败、五子棋/暗牌局中换壳并继续实际操作、回滚、重启恢复、启动保护标记回退通过。
-- `tests/client_ui_state.gd`：15 项页面状态检查通过，覆盖封面选择、启动/加入页、地址端口、设置弹层、语言、减少动态效果和焦点。
+- `tests/integration/client_ui_hot.py`：完整包上传、版本与翻译拒绝、准备失败、五子棋/暗牌局中换壳并继续实际操作、回滚、重启恢复、启动保护标记回退通过。
+- `tests/unit/client_ui_state.gd`：15 项页面状态检查通过，覆盖封面选择、启动/加入页、地址端口、设置弹层、语言、减少动态效果和焦点。
 - iPhone 16 / iOS 18.5 模拟器：真实导出应用更新平台脚本、纹理和字体，保持原 TCP 连接；局中回滚后与桌面设备继续落子，重启恢复及回滚通过。证据 `build/validation/client-ui-ios.json`、`iphone-ui-hot.png`。
 - 规则 50 项、UI 38 项、完整联机与 ZIP 安装恢复、Debug、原 Mod 热更新回归通过。四种 Debug/Release 模板与导出组合验证通过，Release 不开放开发更新服务。
 - Android 0.1.7 已生成双 ARM 签名 Debug 包。电视仍需安装一次新基础包，之后才能执行 `ui.push`；尚未声称本版 UI 包已在电视运行。
@@ -141,11 +141,11 @@ Godot --headless --path . --script tools/host.gd -- gomoku 27840 autoplay trace 
 
 五子棋改为电视左右布局和手机上下布局，明确展示身份、执棋、在线状态、当前回合及累计用时。确定性规则增加双人同意再开一局，发起端 SDK 增加独立时钟采样与断线暂停。结算弹窗、原生返回、设置返回焦点及跨 CanvasLayer 的中文字体均有回归覆盖。
 
-`tests/gomoku_network.py` 已通过真实 TCP 的计时、暂停、重连、获胜、双人同意和新局时钟归零。TCL 电视基础包 0.1.7 已通过网络更新客户端 UI 与 Mod，并与基础包 0.1.8 的 iPhone 模拟器完成对局、结算和再开一局；实际遥控器输入落子/同意操作通过。模拟器原生触屏控制通道不可用，设备测试用 Debug 提交操作；触屏路径由 Godot Viewport 输入分发测试覆盖。证据见 `build/validation/gomoku-devices.json` 和对应原生截图。
+`tests/integration/gomoku_network.py` 已通过真实 TCP 的计时、暂停、重连、获胜、双人同意和新局时钟归零。TCL 电视基础包 0.1.7 已通过网络更新客户端 UI 与 Mod，并与基础包 0.1.8 的 iPhone 模拟器完成对局、结算和再开一局；实际遥控器输入落子/同意操作通过。模拟器原生触屏控制通道不可用，设备测试用 Debug 提交操作；触屏路径由 Godot Viewport 输入分发测试覆盖。证据见 `build/validation/gomoku-devices.json` 和对应原生截图。
 
 安卓手机已成功覆盖安装基础包 0.1.8；电视普通 adb 安装仍返回 `INSTALL_FAILED_VERIFICATION_FAILURE`，未关闭系统校验。0.1.8 APK 已复制到电视下载目录，电视当前仍是基础包 0.1.7 + 最新 UI/Mod 热更新。
 
-用户解锁手机后，`tests/gomoku_android.py` 已通过安卓真机与电视联机验证：手机实际 adb 触屏落子、电视遥控器落子、九手黑棋获胜弹窗、电视发起再开一局、手机触屏同意。同一会话进入第二局，棋盘和双方时钟重置，电视光标回到中心。手机原昵称保留；两端已返回大厅。报告为 `build/validation/gomoku-android.json`，原生截图为 `gomoku-android-playing.png`、`gomoku-android-result-waiting.png` 和 `gomoku-android-rematch.png`。
+用户解锁手机后，`tests/devices/gomoku_android.py` 已通过安卓真机与电视联机验证：手机实际 adb 触屏落子、电视遥控器落子、九手黑棋获胜弹窗、电视发起再开一局、手机触屏同意。同一会话进入第二局，棋盘和双方时钟重置，电视光标回到中心。手机原昵称保留；两端已返回大厅。报告为 `build/validation/gomoku-android.json`，原生截图为 `gomoku-android-playing.png`、`gomoku-android-result-waiting.png` 和 `gomoku-android-rematch.png`。
 
 五子棋专门回归最终为 57 项、0 失败；客户端 UI 状态回归 15 项、0 失败。已修复并截图复核 iOS 结算弹窗的中文字体继承。计时与新局、原 Mod 热更新、Debug、客户端 UI 热更新、常驻玩家 225 手及四种 Debug/Release 导出隔离均通过。
 
@@ -183,7 +183,7 @@ Mi 11 已覆盖安装基础包 0.1.9。实际 adb 触屏选择控制器、真实
 
 Android 16 ARM64 模拟器已完成：首次安装来源授权页面、HTTP 上传完整 APK、实际 adb 点击系统“Update”、同版本覆盖安装、启动后持久记录恢复为 installed，系统 lastUpdateTime 推进。过程中修复安装会话输出流重复关闭导致会话被撤销的问题。
 
-未认证、过大请求、缺 SHA、SHA 不符、非 APK、Release APK、版本降级、不同签名与不同包名均拒绝，临时包和最终可安装包清理通过。Debug 原有认证/两款游戏/结果重试/事件/CLI 回归、实际 Debug/Release 模板与资源四种组合通过。验证入口 tests/apk_update.py，记录 build/validation/apk-update.json，截图 apk-update-source-permission.png、apk-update-confirmation.png、apk-update-completed.png。未声称本版已在真实电视安装通过。使用与限制见 [APK 网络更新](apk-updates.md)。
+未认证、过大请求、缺 SHA、SHA 不符、非 APK、Release APK、版本降级、不同签名与不同包名均拒绝，临时包和最终可安装包清理通过。Debug 原有认证/两款游戏/结果重试/事件/CLI 回归、实际 Debug/Release 模板与资源四种组合通过。验证入口 tests/devices/apk_update.py，记录 build/validation/apk-update.json，截图 apk-update-source-permission.png、apk-update-confirmation.png、apk-update-completed.png。未声称本版已在真实电视安装通过。使用与限制见 [APK 网络更新](apk-updates.md)。
 
 
 ## 电视游戏选择页焦点修复（0.1.12 UI 热更新）
@@ -210,7 +210,7 @@ Android 16 ARM64 模拟器已完成：首次安装来源授权页面、HTTP 上�
 
 电视历史 UI 包达到容量上限后，先备份 5 个较旧测试包到 build/device-backups/tv-ui-before-audio-final，保留当前/上一版及最近无音效版本，停止应用后再清理并重启，随后热更新最终版本。没有修改系统安装校验或电视安全设置。
 
-补测 Release 音频资源：导出后 OGG 会变为 Godot 导入资源，已增加原始 OGG / 导入资源双路径加载；tests/export_audio.py 在没有源码及导入缓存的隔离项目中加载实际 Release 包，5 个音效均可读，署名与许可存在，Debug 目录不存在。
+补测 Release 音频资源：导出后 OGG 会变为 Godot 导入资源，已增加原始 OGG / 导入资源双路径加载；tests/integration/export_audio.py 在没有源码及导入缓存的隔离项目中加载实际 Release 包，5 个音效均可读，署名与许可存在，Debug 目录不存在。
 
 
 ## Android 手机形态补测
@@ -227,7 +227,7 @@ Android 16 ARM64 模拟器已完成：首次安装来源授权页面、HTTP 上�
 
 客户端默认根目录仅保留 gomoku。新增编辑器导出白名单插件，所有 Android Debug/Release、iOS 导出只打入 mods/gomoku；导出插件本身不进入客户端。跳绳与暗牌源码保留，可独立打包导入；不删除用户已经安装的外部游戏。ModLoader 对缺失内置清单安静返回验证失败，使旧 UI 热更新包仍探测 removed builtins 时能够正常启动。
 
-tests/bundled_mods.py 检查三个实际导出包，只存在五子棋；临时新增 Mod 的脚本和导入贴图均被过滤。在无源码的隔离导出环境中验证默认仅五子棋 + 添加游戏、旧 UI 探测兼容，以及外部跳绳 ZIP 安装。Android Debug/Release 原生模板四种组合与 UI 热更新/回退/恢复通过；三个客户端通过外部包加载跳绳并完成并发、加入离开和表现热更回归。
+tests/integration/bundled_mods.py 检查三个实际导出包，只存在五子棋；临时新增 Mod 的脚本和导入贴图均被过滤。在无源码的隔离导出环境中验证默认仅五子棋 + 添加游戏、旧 UI 探测兼容，以及外部跳绳 ZIP 安装。Android Debug/Release 原生模板四种组合与 UI 热更新/回退/恢复通过；三个客户端通过外部包加载跳绳并完成并发、加入离开和表现热更回归。
 
 0.1.13 Debug 和 Release APK 均已构建，实际 APK 资源列表仅含 assets/mods/gomoku。手机 ARM64 模拟器通过现有认证 HTTP 更新到 0.1.13，触屏确认系统安装，旧 UI 热更新包恢复后游戏列表仅显示五子棋。截图 gomoku-only-android.png，记录 gomoku-only-android.json。电视按用户要求保持不操作；iOS 本轮验证导出内容，没有重新安装模拟器应用。
 

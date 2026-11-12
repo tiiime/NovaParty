@@ -1,0 +1,114 @@
+extends SceneTree
+# Bluetooth transport contract, exercised with two in-process radios (no hardware needed).
+const Bluetooth = preload("res://sdk/net/bluetooth.gd")
+const FakeRadio = preload("res://tests/support/fake_radio.gd")
+const Loader = preload("res://sdk/mods/mod_loader.gd")
+const Session = preload("res://sdk/session/session.gd")
+const Discovery = preload("res://sdk/net/discovery.gd")
+const PeerMods = preload("res://sdk/mods/peer_mods.gd")
+var checks := 0
+var failures := 0
+
+func check(value: bool, message: String) -> void:
+	checks += 1
+	if not value:
+		failures += 1
+		printerr("FAIL BLUETOOTH: " + message)
+
+func _initialize() -> void:
+	call_deferred("run")
+
+func wait_until(condition: Callable, frames: int = 600) -> bool:
+	for i in range(frames):
+		if condition.call(): return true
+		await process_frame
+	return condition.call()
+
+func radio(air: Dictionary, id: String) -> Node:
+	var node: Node = Bluetooth.new()
+	root.add_child(node)
+	node.use_backend(FakeRadio.new(air, id), "fake")
+	return node
+
+func run() -> void:
+	var air := {}
+	var host_radio := radio(air, "AA:00")
+	var guest_radio := radio(air, "BB:11")
+	check(host_radio.available() and host_radio.state == "on", "bridge reports a powered radio")
+	var loader = Loader.new()
+	var info: Dictionary = loader.inspect("res://mods/gomoku")
+	var host = Session.new()
+	root.add_child(host)
+	host.wire.bluetooth = host_radio
+	check(host.create(info, loader.rules(info), {"id": "host-player", "nickname": "Host"}, 29931) == OK, "host starts TCP and Bluetooth together")
+	check(host.bluetooth_hosting and host_radio.advertising, "joinable host advertises over Bluetooth")
+	var sid: String = host.room.game_session_id
+
+	var discovery = Discovery.new()
+	root.add_child(discovery)
+	discovery.bluetooth = guest_radio
+	guest_radio.devices_changed.connect(func(_devices): discovery.changed.emit(discovery.list_rooms()))
+	discovery.browse()
+	check(await wait_until(func(): return discovery.list_rooms().any(func(room): return room.get("transport") == "ble")), "scan lists the Bluetooth host")
+	var rows: Array = discovery.list_rooms().filter(func(room): return room.get("transport") == "ble")
+	check(rows.size() == 1 and rows[0].address == "ble:AA:00" and rows[0].code == sid.left(6), "row carries ble: address and session code")
+
+	# Catalog + package download through the ordinary Mod sharing endpoint, in 20-byte chunks.
+	var transfer = PeerMods.new()
+	root.add_child(transfer)
+	transfer.wire.bluetooth = guest_radio
+	var catalog := [{}]
+	var done := [""]
+	transfer.catalog_received.connect(func(metadata): catalog[0] = metadata)
+	transfer.completed.connect(func(path, _metadata): done[0] = path)
+	check(transfer.inspect_remote(rows[0].address, 0) == OK, "inspect over Bluetooth starts")
+	check(await wait_until(func(): return not catalog[0].is_empty()), "catalog arrives over Bluetooth")
+	check(catalog[0].get("session_id") == sid and catalog[0].get("game_id") == "gomoku", "catalog identifies the live game")
+	transfer.confirm_download()
+	check(await wait_until(func(): return not done[0].is_empty(), 4000), "package download completes over Bluetooth")
+	check(not done[0].is_empty() and FileAccess.get_sha256(done[0]) == catalog[0].get("sha256"), "downloaded package hash matches")
+	var peak := 0
+	for stream in guest_radio.streams.values(): peak = maxi(peak, stream.outstanding)
+	check(peak <= Bluetooth.WINDOW, "send window bounds unacknowledged bytes")
+	transfer.cancel()
+	transfer.queue_free()
+	check(await wait_until(func(): return host_radio.streams.is_empty()), "host sees the transfer link close")
+
+	var guest = Session.new()
+	root.add_child(guest)
+	guest.wire.bluetooth = guest_radio
+	guest.expected_remote_session = sid
+	check(guest.join(info, {"id": "guest-player", "nickname": "Guest"}, rows[0].address, 0) == OK, "guest joins by ble: address")
+	check(await wait_until(func(): return guest.seat == 1 and not guest.snapshot.is_empty()), "handshake and first snapshot cross the link")
+	check(guest.connection_state == "connected" and host.snapshot.players.size() == 2, "both sides agree on two players")
+	host.submit({"type": "place", "x": 7, "y": 7})
+	check(await wait_until(func(): return int(guest.snapshot.get("revision", 0)) == int(host.snapshot.revision) and int(host.snapshot.revision) > 0), "host move reaches the guest")
+	guest.submit({"type": "place", "x": 8, "y": 7})
+	check(await wait_until(func(): return int(host.snapshot.revision) >= 2 and int(guest.snapshot.revision) == int(host.snapshot.revision)), "guest move is executed by the host")
+	# A host that stops being joinable keeps its links but disappears from scans.
+	host_radio.set_advertising(false)
+	await create_timer(Bluetooth.DEVICE_TTL_MS / 1000.0 + 0.5).timeout
+	check(guest_radio.list_devices().is_empty(), "stale Bluetooth device expires from the scan list")
+	check(host_radio.streams.size() == 1 and guest.connection_state == "connected", "stopping advertising keeps the live link")
+
+	# Link loss and resume with the same seat.
+	var token: String = guest.resume_token
+	guest_radio.backend.drop_all()
+	check(await wait_until(func(): return guest.connection_state == "disconnected" and not host.snapshot.players[1].connected), "both ends observe the lost link")
+	guest.queue_free()
+	var resumed = Session.new()
+	root.add_child(resumed)
+	resumed.wire.bluetooth = guest_radio
+	check(resumed.join(info, {"id": "guest-player", "nickname": "Guest"}, rows[0].address, 0, token) == OK, "reconnect uses the remembered device key")
+	check(await wait_until(func(): return resumed.seat == 1 and int(resumed.snapshot.get("revision", -1)) == int(host.snapshot.revision)), "resume restores seat and state")
+
+	check(resumed.wire.connect_to("ble:ZZ:99", 0) == OK, "unknown device starts as a pending link")
+	check(await wait_until(func(): return not resumed.wire.peers.has(0)), "failed Bluetooth connect is reported as lost")
+	var silent: Node = Bluetooth.new()
+	root.add_child(silent)
+	check(not silent.available() and silent.connect_peer("AA:00") == null and not silent.host("abcdef"), "no bridge means Bluetooth is cleanly unavailable")
+	for node in [resumed, host, discovery, silent, host_radio, guest_radio]:
+		node.queue_free()
+	await process_frame
+	print("BLUETOOTH: %d checks, %d failures" % [checks, failures])
+	quit(1 if failures else 0)
