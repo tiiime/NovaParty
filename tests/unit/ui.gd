@@ -27,6 +27,7 @@ func run() -> void:
 	check(not quit_on_go_back, "Android back must not auto-quit")
 	check(main.home.visible and not main.content_margin.visible, "real startup opens party home")
 	check(root.gui_get_focus_owner() == main.home.start_button, "home focuses the primary action")
+	check(main.home.header.size.y < 82 and main.home.start_button.get_global_rect().end.y <= root.get_visible_rect().size.y, "landscape brand and badge leave room for the primary action")
 	main.set_language("en")
 	check(TranslationServer.translate("APP_NAME") == "NovaParty", "English title installed")
 	check(TranslationServer.translate("START_GAME") == "Choose a game", "English home selection label")
@@ -70,7 +71,7 @@ func run() -> void:
 	check(main.choices.selected == 1 and main.library.selection == 1, "cover selection drives actual launch selection")
 	check(root.gui_get_focus_owner() == main.create_button, "selected card moves focus to launch")
 	check(not main.settings_action.visible, "selection footer omits settings")
-	check(main.library.cards[1].get_meta("detail").text == "GAME_SELECTED", "selected game has explicit feedback")
+	check(main.library.cards[1].button_pressed and main.library.cards[1].get_meta("detail").text == main.tr("GAME_PICKED_SHORT"), "selected game has explicit visual and semantic feedback")
 	check(main.create_button.text == "LAUNCH_GAME", "launch action avoids room terminology")
 	check(main.back_button.global_position.y > main.library.global_position.y, "back follows game grid in fixed footer")
 	check(main.library._cover({"id": "unknown"}) != null, "unknown games receive a default cover")
@@ -102,6 +103,8 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	check(root.content_scale_size == Vector2i(540, 960), "portrait scale")
+	check(main.home.header.size.y < 82 and main.home.join_button.get_global_rect().end.y < main.home.nickname_button.global_position.y, "portrait join stays above the quick-access dock")
+	await verify_join_routes(main)
 	if root.gui_get_focus_owner():
 		root.gui_get_focus_owner().release_focus()
 	var view = load("res://mods/hidden_cards/view.gd").new()
@@ -126,3 +129,34 @@ func run() -> void:
 	await create_timer(0.06).timeout
 	print("UI_RESULT checks=%d failures=%d" % [checks, failures])
 	quit(1 if failures else 0)
+
+func verify_join_routes(main: Control) -> void:
+	main._open_setup(false)
+	check(main.flow.page == main.Page.NEARBY and main.discovery.browsing, "join starts discovery")
+	var room := {"key": "fixture", "name": "Test game", "version": "1", "source_name": "Friend", "address": "127.0.0.1", "port": 27840}
+	main.join_browser.populate([room])
+	var room_button: Button = main.join_browser.room_buttons.fixture
+	room_button.grab_focus()
+	main.join_browser.populate([room.merged({"version": "2"}, true)])
+	check(main.join_browser.room_buttons.fixture == room_button and root.gui_get_focus_owner() == room_button, "discovery refresh retains room and focus by key")
+	main._show_manual_join()
+	check(not main.discovery.browsing and main.network_row.visible and not main.library.visible, "manual join is a dedicated form with no guessed game")
+	main.address.text = "not an address"
+	main._submit_manual_join()
+	check(main.manual_error.visible and root.gui_get_focus_owner() == main.address and main.peer_transfer == null, "invalid host focuses the field without connecting")
+	var server := TCPServer.new()
+	check(server.listen(0, "127.0.0.1") == OK, "fixture holds an unresponsive connection")
+	main.address.text = "127.0.0.1:" + str(server.get_local_port())
+	main._submit_manual_join()
+	check(main.peer_phase == "inspecting" and main.pending_cancel.visible and main.join_button.disabled, "manual catalog check is cancelable and single-submit")
+	var transfer = main.peer_transfer
+	main._submit_manual_join()
+	check(main.peer_transfer == transfer and main.address.text == "127.0.0.1" and int(main.port.value) == server.get_local_port(), "pasted endpoint is retained; duplicate tap is ignored")
+	main._go_back()
+	check(main.flow.page == main.Page.MANUAL and main.peer_transfer == null and not main.join_button.disabled, "first back cancels work, not the form")
+	main._go_back()
+	check(main.flow.page == main.Page.NEARBY and main.discovery.browsing, "second back returns to nearby discovery")
+	main._go_back()
+	check(main.home.visible and not main.discovery.browsing, "back from nearby stops discovery and returns home")
+	server.stop()
+	await process_frame

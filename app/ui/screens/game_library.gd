@@ -9,6 +9,7 @@ var entries: Array = []
 var selection := 0
 var last_focus := 0
 var launch_target: Button
+var covers := {}
 
 func _ready() -> void:
 	add_theme_constant_override("h_separation", 16)
@@ -26,7 +27,9 @@ func populate(items: Array, current: int) -> void:
 	for index in range(items.size() + 1):
 		var adding := index == items.size()
 		var card := Button.new()
-		card.custom_minimum_size = Vector2(0, 252)
+		card.custom_minimum_size = Vector2(0, 246)
+		card.toggle_mode = not adding
+		card.accessibility_name = tr("ADD_GAME") if adding else str(items[index].name)
 		card.set_meta("haptic", "tap" if adding else "select")
 		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		card.clip_contents = false # Focus halo must extend beyond the rounded card.
@@ -56,12 +59,10 @@ func populate(items: Array, current: int) -> void:
 		body.add_theme_constant_override("separation", 8)
 		margin.add_child(body)
 		if adding:
-			var plus := Label.new()
-			plus.text = "+"
-			plus.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			plus.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			var plus := TextureRect.new()
+			plus.texture = preload("res://app/ui/theme/party_icons.gd").get_icon("plus", T.SKY, 64)
+			plus.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 			plus.size_flags_vertical = Control.SIZE_EXPAND_FILL
-			Style.label(plus, 76, T.FONT_WEIGHT_TITLE, T.SKY)
 			plus.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			body.add_child(plus)
 		else:
@@ -82,7 +83,9 @@ func populate(items: Array, current: int) -> void:
 		body.add_child(title)
 		var detail := Label.new()
 		detail.name = "Detail"
-		detail.text = "ADD_GAME_HINT" if adding else "GAME_TWO_PLAYERS"
+		detail.text = tr("ADD_GAME_HINT") if adding else _player_count(items[index])
+		detail.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		detail.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		Style.label(detail, T.FONT_SIZE_META, T.FONT_WEIGHT_LABEL, T.MUTED)
 		detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -91,8 +94,15 @@ func populate(items: Array, current: int) -> void:
 	select_game(current)
 	_adapt()
 
+func _player_count(info: Dictionary) -> String:
+	var players: Dictionary = info.get("players", {})
+	var lo := int(players.get("min", 2))
+	var hi := int(players.get("max", lo))
+	return tr("GAME_PLAYERS") % [lo] if lo == hi else tr("GAME_PLAYER_RANGE") % [lo, hi]
+
 func _cover(info: Dictionary) -> Texture2D:
-	var path: String = info.get("cover_path", "")
+	var path := str(info.get("cover_path", ""))
+	if covers.has(path): return covers[path]
 	if not path.is_empty() and FileAccess.file_exists(path + ".import"):
 		var texture = load(path)
 		if texture is Texture2D:
@@ -101,7 +111,9 @@ func _cover(info: Dictionary) -> Texture2D:
 		var picture := Image.new()
 		var error: Error = picture.load_svg_from_string(FileAccess.get_file_as_string(path)) if path.get_extension() == "svg" or path.ends_with(".svg.txt") else picture.load(path)
 		if error == OK:
-			return ImageTexture.create_from_image(picture)
+			var texture := ImageTexture.create_from_image(picture)
+			covers[path] = texture
+			return texture
 	return load("res://assets/ui/cover-" + (str(info.id) if info.id in ["gomoku", "hidden_cards"] else "default") + ".svg")
 
 func select_game(index: int) -> void:
@@ -110,8 +122,9 @@ func select_game(index: int) -> void:
 		var active := i == selection and i < entries.size()
 		Style.card(cards[i], active)
 		if i < entries.size():
+			cards[i].set_pressed_no_signal(active)
 			var detail: Label = cards[i].get_meta("detail")
-			detail.text = "GAME_SELECTED" if active else "GAME_TWO_PLAYERS"
+			detail.text = tr("GAME_PICKED_SHORT") if active else _player_count(entries[i])
 			detail.add_theme_color_override("font_color", T.SKY if active else T.MUTED)
 
 func _adapt() -> void:

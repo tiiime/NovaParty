@@ -62,7 +62,11 @@ func run() -> void:
 			check(commands.size() == 1, "touch plus emulated mouse submits once")
 			mouse.device = 0
 			view.board._gui_input(mouse)
-			check(commands.size() == 2, "physical mouse still works")
+			check(commands.size() == 1 and not view.board.active, "duplicate input is blocked while a move is pending")
+			view.on_command_notice("occupied")
+			view.board._gui_input(mouse)
+			check(commands.size() == 2, "physical mouse retries after rejection")
+			view.on_command_notice("occupied")
 			var key := InputEventAction.new()
 			key.action = "ui_right"
 			key.pressed = true

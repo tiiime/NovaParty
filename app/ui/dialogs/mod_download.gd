@@ -1,78 +1,69 @@
-extends Control
-signal confirmed
+extends "res://app/ui/widgets/sheet.gd"
 signal canceled
-const Style = preload("res://app/ui/theme/party_theme.gd")
-const T = Style.T
-var panel: PanelContainer
 var title: Label
 var detail: Label
+var amount: Label
 var bar: ProgressBar
 var confirm: Button
 var cancel: Button
 var working := false
+
 func _ready() -> void:
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var dim := ColorRect.new()
-	dim.color = Color(T.SCRIM, 0.55)
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(dim)
-	panel = PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", Style.sheet())
-	add_child(panel)
-	var stack := VBoxContainer.new()
-	stack.add_theme_constant_override("separation", 16)
-	panel.add_child(stack)
-	title = Label.new()
+	super._ready()
+	done.hide()
+	var body := VBoxContainer.new()
+	body.add_theme_constant_override("separation", 16)
+	add_content(body)
+	title = Style.label(Label.new(), T.FONT_SIZE_TITLE, T.FONT_WEIGHT_TITLE)
 	title.text = "DOWNLOAD_GAME_TITLE"
-	Style.label(title, T.FONT_SIZE_TITLE, T.FONT_WEIGHT_TITLE)
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	stack.add_child(title)
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	stack.add_child(scroll)
-	detail = Label.new()
-	detail.size_flags_horizontal = SIZE_EXPAND_FILL
+	body.add_child(title)
+	detail = Style.label(Label.new(), T.FONT_SIZE_META, T.FONT_WEIGHT_BODY, T.MUTED)
 	detail.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	scroll.add_child(detail)
+	body.add_child(detail)
+	amount = Style.label(Label.new(), T.FONT_SIZE_META, T.FONT_WEIGHT_LABEL)
+	amount.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	body.add_child(amount)
 	bar = ProgressBar.new()
 	Style.progress(bar)
-	stack.add_child(bar)
+	body.add_child(bar)
+	var footer: VBoxContainer = panel.get_child(0)
 	confirm = Button.new()
 	confirm.text = "DOWNLOAD_AND_JOIN"
 	confirm.set_meta("haptic", "confirm")
 	Style.button(confirm, "primary")
-	stack.add_child(confirm)
+	footer.add_child(confirm)
 	confirm.pressed.connect(func():
-		if not working:
-			working = true
-			confirm.hide()
-			bar.show()
-			confirmed.emit()
+		if working: return
+		working = true
+		confirm.hide()
+		amount.show()
+		bar.show()
+		cancel.grab_focus()
+		confirmed.emit()
 	)
 	cancel = Button.new()
 	cancel.text = "CANCEL"
 	cancel.set_meta("sound_cue", "back")
-	Style.button(cancel, "secondary")
-	stack.add_child(cancel)
-	cancel.pressed.connect(func(): canceled.emit())
-	resized.connect(_layout)
-	panel.minimum_size_changed.connect(_layout, CONNECT_DEFERRED)
-	hide()
+	Style.button(cancel, "secondary", T.BUTTON_HEIGHT_SMALL)
+	footer.add_child(cancel)
+	cancel.pressed.connect(close)
+
 func ask(text: String) -> void:
 	working = false
 	detail.text = text
 	confirm.show()
 	bar.hide()
-	bar.value = 0
-	show()
-	_layout()
-	_layout.call_deferred()
+	amount.hide()
+	update_progress(0, 1)
+	popup_centered(Vector2i(558, 560))
 	cancel.grab_focus()
+
 func update_progress(received: int, total: int) -> void:
-	bar.value = 100.0 * received / total
-func _layout() -> void:
-	if is_instance_valid(panel):
-		panel.size = Vector2(540, 560).min(size - Vector2(48, 80))
-		panel.position = (size - panel.size) / 2
+	bar.value = 100.0 * received / maxi(total, 1)
+	amount.text = tr("DOWNLOADING_PERCENT") % int(bar.value)
+
+func close() -> void:
+	hide()
+	canceled.emit()

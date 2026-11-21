@@ -45,16 +45,23 @@ def run():
                 time.sleep(1.1)
                 assert host.call('game.snapshot')['clock']['elapsed_ms'][0] == black_used
                 # Close game sockets while keeping Debug sessions alive; clocks stop.
+                before_recovery = guest.call('game.snapshot')
+                link.reject_new.set()
                 link.interrupt_existing('close')
                 wait_for(lambda: not host.call('game.snapshot')['players'][1]['connected'])
+                wait_for(lambda: guest.call('ui.status')['status'] == 'RECONNECTING')
                 paused = host.call('game.snapshot')
                 assert paused['clock']['running_seat'] == -1
                 time.sleep(1.2)
                 assert host.call('game.snapshot')['clock']['elapsed_ms'] == paused['clock']['elapsed_ms']
                 assert host.call('game.describe_actions')['legal_actions'] == []
-                guest.room('room.reconnect')
+                link.reject_new.clear()
+                wait_for(lambda: guest.call('game.snapshot').get('session_state') == 'connected')
+                recovered_guest = ready(guest)
                 ready(host)
-                ready(guest)
+                assert recovered_guest['local_session_id'] == before_recovery['local_session_id']
+                assert recovered_guest['room_generation'] == before_recovery['room_generation']
+                assert recovered_guest['seat'] == before_recovery['seat']
                 resumed = host.call('game.snapshot')
                 assert resumed['game_session_id'] == game_id and resumed['revision'] == 1
                 assert resumed['clock']['elapsed_ms'][1] < paused['clock']['elapsed_ms'][1] + 800

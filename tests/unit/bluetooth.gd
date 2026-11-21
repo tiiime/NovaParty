@@ -91,16 +91,22 @@ func run() -> void:
 	check(guest_radio.list_devices().is_empty(), "stale Bluetooth device expires from the scan list")
 	check(host_radio.streams.size() == 1 and guest.connection_state == "connected", "stopping advertising keeps the live link")
 
-	# Link loss and resume with the same seat.
+	# Link loss recovers by itself over the same Bluetooth address and seat.
 	var token: String = guest.resume_token
+	var states: Array = []
+	guest.status_changed.connect(func(state, _code): states.append(state))
 	guest_radio.backend.drop_all()
-	check(await wait_until(func(): return guest.connection_state == "disconnected" and not host.snapshot.players[1].connected), "both ends observe the lost link")
-	guest.queue_free()
+	check(await wait_until(func(): return states.has("reconnecting")), "guest starts recovering after the radio link drops")
+	check(await wait_until(func(): return guest.connection_state == "connected" and host.snapshot.players[1].connected, 900), "automatic Bluetooth reconnect")
+	check(guest.seat == 1 and int(guest.snapshot.revision) == int(host.snapshot.revision), "same seat and state after recovery")
+	# A second connection with the same credentials takes the seat over; the old one stops.
 	var resumed = Session.new()
 	root.add_child(resumed)
 	resumed.wire.bluetooth = guest_radio
 	check(resumed.join(info, {"id": "guest-player", "nickname": "Guest"}, rows[0].address, 0, token) == OK, "reconnect uses the remembered device key")
-	check(await wait_until(func(): return resumed.seat == 1 and int(resumed.snapshot.get("revision", -1)) == int(host.snapshot.revision)), "resume restores seat and state")
+	check(await wait_until(func(): return resumed.seat == 1 and int(resumed.snapshot.get("revision", -1)) == int(host.snapshot.revision)), "takeover restores seat and state")
+	check(await wait_until(func(): return guest.connection_state == "rejected" and guest.connection_error == "session_replaced"), "replaced connection is told and does not retry")
+	guest.queue_free()
 
 	check(resumed.wire.connect_to("ble:ZZ:99", 0) == OK, "unknown device starts as a pending link")
 	check(await wait_until(func(): return not resumed.wire.peers.has(0)), "failed Bluetooth connect is reported as lost")

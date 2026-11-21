@@ -1,7 +1,7 @@
 extends RefCounted
 # Mod-local copy of the platform's juicy flat look (design v0.4). Mods must not import app code.
-const INK = Color("133464")
-const BLUE = Color("2058e0")
+const INK = Color("18254d")
+const BLUE = Color("304ce0")
 const LIP = 4
 
 static func box(fill: Color, radius: int = 20, border: Color = Color.TRANSPARENT, width: int = 0) -> StyleBoxFlat:
@@ -31,13 +31,14 @@ static func slab(fill: Color, lip: Color, outlined: bool, pressed: bool = false)
 	return style
 
 static func button(target: Button, primary: bool = false) -> void:
-	target.custom_minimum_size.y = 60
+	target.custom_minimum_size.y = 64
+	target.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	target.add_theme_font_size_override("font_size", 23)
 	for key in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 		target.add_theme_color_override(key, INK if primary else BLUE)
 	target.add_theme_color_override("font_disabled_color", Color("8294a3"))
-	var fill := Color("ffe34b") if primary else Color.WHITE
-	var lip := Color("e0a612") if primary else Color("bcd2f0")
+	var fill := Color("ffde46") if primary else Color.WHITE
+	var lip := Color("d4a524") if primary else Color("c8d0e4")
 	target.add_theme_stylebox_override("normal", slab(fill, lip, not primary))
 	target.add_theme_stylebox_override("hover", slab(Color("ffec8a") if primary else Color("e1efff"), lip, not primary))
 	target.add_theme_stylebox_override("pressed", slab(Color("f7d13a") if primary else Color("e1efff"), lip, not primary, true))

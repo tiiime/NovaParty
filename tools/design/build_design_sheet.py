@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the v0.4 SVG design cheat sheets from docs/design/tokens.json."""
+"""Generate SVG design cheat sheets from docs/design/tokens.json."""
 from __future__ import annotations
 
 import json
@@ -206,7 +206,7 @@ class Board:
 
 
 def foundations() -> Board:
-    b = Board(1600, 1200, "星星大作战 v0.4 基础规范")
+    b = Board(1600, 1200, f'星星大作战 v{TOKENS["version"]} 基础规范')
     b.header("01", "基础规范", "品牌、色彩、天空、字体、间距与果冻厚度")
 
     b.panel(32, 128, 520, 300, "品牌与星星角色", "果冻星星保留金色渐变，其他组件使用纯色块")
@@ -228,14 +228,14 @@ def foundations() -> Board:
         b.text(x + 7, y + 17, name, 12, text_color, T["weight.label"])
         b.text(x + 7, y + 34, color, 11, text_color, T["weight.body"])
 
-    b.panel(32, 452, 648, 252, "晨昏天空渐变", "仅天空与星星角色允许渐变")
+    b.panel(32, 452, 648, 252, "插图配色", "渐变仅用于装饰，不改变控件语义")
     for i, item in enumerate(TOKENS["sky_anchors"]):
         x = 56 + i * 150
         b.rect(x, 528, 132, 112, f'url(#sky-{item["hour"]})', M["radius.card"])
         b.text(x + 66, 574, f'{item["hour"]:02d}:00', T["size.meta"], C["white"], T["weight.label"], "middle")
         b.text(x + 66, 620, f'{item["top"]} →', 13, C["white"], T["weight.body"], "middle")
         b.text(x + 66, 638, item["bottom"], 13, C["white"], T["weight.body"], "middle")
-    b.text(56, 674, "控件颜色保持稳定，天空按当地时间切换。", T["size.meta"], C["muted"])
+    b.text(56, 674, "首页使用固定的纯蓝展台，保持标题对比。", T["size.meta"], C["muted"])
 
     b.panel(704, 452, 448, 252, "字号与字重阶梯")
     type_rows = [
@@ -330,7 +330,7 @@ def banner(b: Board, x, y, w, label, kind) -> None:
 
 
 def components() -> Board:
-    b = Board(1600, 1500, "星星大作战 v0.4 组件规范")
+    b = Board(1600, 1500, f'星星大作战 v{TOKENS["version"]} 组件规范')
     b.header("02", "组件规范", "纯色果冻组件、厚底边、电视焦点与完整状态")
 
     b.panel(32, 124, 1536, 500, "按钮：4 种 × 4 状态", "焦点使用橙色 6 单位外环，并加 focus.outline 深色细轮廓")
@@ -414,29 +414,31 @@ def phone_end(b: Board) -> None:
 
 def screen_home(b: Board, x, y, scale) -> None:
     phone_start(b, x, y, scale, "首页")
-    b.rect(12, 12, 516, 860, "url(#sky-12)", 40)
-    b.path("M12 826Q148 784 270 824T528 810V948H12Z", C["page"])
-    b.text(270, 122, TOKENS["brand"], T["size.display"], C["white"], T["weight.title"], "middle")
-    b.star(202, 142, 1.15, "happy", -7)
-    b.button(54, 398, 432, "选择游戏", "primary", "default", M["button.height.large"])
-    b.button(54, 502, 432, "加入游戏", "secondary", "default", M["button.height.large"])
-    b.button(54, 606, 432, "用户信息", "secondary", "default", M["button.height.large"])
-    b.circle(92, 646, 22, C["sky.soft"])
-    b.star(76, 630, 0.3, "happy", -5, gradient=False)
-    b.button(354, 742, 132, "设置", "secondary", "default", M["button.height.small"], T["size.meta"])
-    b.text(270, 916, "和朋友一起，马上开玩", T["size.meta"], C["muted"], T["weight.body"], "middle")
+    b.star(36, 91, .27, "happy", -5, gradient=False)
+    b.text(76, 115, TOKENS["brand"], T["size.section"], C["ink"], T["weight.title"])
+    b.text(494, 115, "本地联机", T["size.meta"], C["sky.lip"], T["weight.label"], "end")
+    b.rect(36, 156, 468, 404, C["sky.lip"], 28)
+    b.rect(36, 152, 468, 404, C["sky"], 28)
+    b.text(64, 197, "派对街机", T["size.meta"], C["star"], T["weight.title"])
+    b.multiline(64, 258, ["朋友齐了，", "开一局！"], 42, C["white"], gap=55)
+    b.text(64, 352, "和身边的朋友一起玩，不用注册。", T["size.meta"], C["white"])
+    b.star(186, 374, 1.35, "happy", -7)
+    b.text(36, 604, "现在开玩", T["size.meta"], C["sky.lip"], T["weight.title"])
+    b.button(36, 624, 468, "选择游戏", "primary", "default", M["button.height.large"])
+    b.button(36, 726, 468, "加入游戏", "secondary", "default", M["button.height.large"])
+    b.button(36, 861, 228, "用户信息", "secondary", "default", M["button.height.small"], T["size.meta"])
+    b.button(276, 861, 228, "设置", "secondary", "default", M["button.height.small"], T["size.meta"])
     phone_end(b)
 
 
 def screen_games(b: Board, x, y, scale) -> None:
     phone_start(b, x, y, scale, "选择游戏")
-    b.text(36, 126, "选择游戏", T["size.title"], C["ink"], T["weight.title"])
-    game_card(b, 36, 166, 218, "星星棋", selected=True)
-    game_card(b, 286, 166, 218, "连连看")
-    game_card(b, 36, 330, 218, "你画我猜")
-    game_card(b, 286, 330, 218, "抢答王")
-    game_card(b, 36, 494, 218, "小游戏")
-    game_card(b, 286, 494, 218, "添加游戏", plus=True)
+    b.text(36, 108, "发起游戏", T["size.meta"], C["sky.lip"], T["weight.title"])
+    b.text(36, 159, "选择游戏", T["size.title"], C["ink"], T["weight.title"])
+    b.text(36, 213, "挑一个喜欢的游戏，再邀请朋友。", T["size.body"], C["muted"])
+    game_card(b, 36, 258, 218, "五子棋", selected=True)
+    game_card(b, 286, 258, 218, "添加游戏", plus=True)
+    b.text(36, 748, "已选择：五子棋", T["size.meta"], C["muted"], T["weight.label"])
     b.button(36, 776, 468, "启动游戏", "primary", "default", M["button.height.large"])
     b.button(36, 874, 468, "返回", "secondary", "default", M["button.height.small"])
     phone_end(b)
@@ -454,16 +456,16 @@ def room_row(b: Board, y, title, meta, open_room=True) -> None:
 
 def screen_join(b: Board, x, y, scale) -> None:
     phone_start(b, x, y, scale, "加入游戏")
-    b.text(36, 126, "附近的游戏", T["size.title"], C["ink"], T["weight.title"])
-    b.text(504, 126, "刷新", T["size.meta"], C["sky"], T["weight.label"], "end")
-    room_row(b, 158, "小星的房间", "星星棋 · 1 / 2 人", True)
-    room_row(b, 270, "月月的房间", "连连看 · 2 / 2 人", False)
-    room_row(b, 382, "云朵的房间", "你画我猜 · 3 / 4 人", True)
-    b.text(36, 522, "其他方式", T["size.section"], C["ink"], T["weight.title"])
-    b.button(36, 552, 468, "扫码加入", "primary", "default", M["button.height"], icon="i-qr")
-    b.button(36, 628, 468, "蓝牙搜索", "secondary", "default", M["button.height"], icon="i-bluetooth")
-    b.button(36, 704, 468, "重新搜索", "secondary", "default", M["button.height"], icon="i-search")
-    b.button(36, 780, 468, "手动输入", "secondary", "default", M["button.height"], icon="i-keyboard")
+    b.text(36, 108, "加入游戏", T["size.meta"], C["sky.lip"], T["weight.title"])
+    b.text(36, 159, "加入朋友的游戏", T["size.title"], C["ink"], T["weight.title"])
+    b.button(36, 210, 468, "扫码加入", "accent", "default", M["button.height.small"], icon="i-qr")
+    b.button(36, 288, 468, "手动输入", "secondary", "default", M["button.height.small"], icon="i-keyboard")
+    b.button(36, 366, 468, "蓝牙", "secondary", "default", M["button.height.small"], icon="i-bluetooth")
+    b.text(36, 488, "附近的游戏", T["size.section"], C["ink"], T["weight.title"])
+    b.text(504, 488, "重新搜索", T["size.meta"], C["sky"], T["weight.label"], "end")
+    room_row(b, 518, "五子棋", "客厅电视 · 局域网", True)
+    room_row(b, 630, "蓝牙游戏", "附近设备 · 3BA4", True)
+    b.button(36, 874, 468, "返回", "secondary", "default", M["button.height.small"])
     phone_end(b)
 
 
@@ -526,7 +528,7 @@ def screen_profile(b: Board, x, y, scale) -> None:
 
 
 def screens() -> Board:
-    b = Board(1900, 1300, "星星大作战 v0.4 手机与电视屏幕")
+    b = Board(1900, 1300, f'星星大作战 v{TOKENS["version"]} 手机与电视屏幕')
     b.header("03", "关键屏幕", "手机逻辑画布 540×960 等比缩小并排；电视逻辑画布 1280×720")
     scale = 0.58
     xs = [42, 410, 778, 1146, 1514]
@@ -547,23 +549,28 @@ def screens() -> Board:
     tv_x, tv_y = 540, 778
     b.raw(f'<g transform="translate({tv_x} {tv_y}) scale({tv_scale})">')
     b.rect(0, M["lip"] * 2, 1280, 720, C["sky.lip"], M["radius.card"])
-    b.rect(0, 0, 1280, 720, "url(#sky-12)", M["radius.card"], C["ink"], M["stroke"])
-    b.text(56, 76, TOKENS["brand"], T["size.title"], C["white"], T["weight.title"])
-    b.text(56, 112, "电视首页 · 安全区 48", T["size.meta"], C["sky.soft"], T["weight.body"])
-    b.circle(350, 380, 216, C["sky.soft"], opacity=0.2)
-    b.star(178, 190, 3.35, "celebrate", -7)
-    b.text(640, 186, "朋友到齐，快乐起飞！", T["size.title"], C["white"], T["weight.title"])
+    b.rect(0, 0, 1280, 720, C["page"], M["radius.card"], C["ink"], M["stroke"])
+    b.text(56, 76, TOKENS["brand"], T["size.title"], C["ink"], T["weight.title"])
+    b.text(1224, 76, "本地联机", T["size.meta"], C["sky.lip"], T["weight.label"], "end")
+    b.rect(84, 145, 570, 420, C["sky.lip"], 28)
+    b.rect(84, 141, 570, 420, C["sky"], 28)
+    b.text(120, 209, "派对街机", T["size.body"], C["star"], T["weight.title"])
+    b.multiline(120, 280, ["朋友齐了，", "开一局！"], 44, C["white"], gap=63)
+    b.star(375, 243, 2.2, "celebrate", -7)
+    b.text(700, 223, "现在开玩", T["size.body"], C["sky.lip"], T["weight.title"])
     b.button(700, 244, 480, "选择游戏", "primary", "focus", M["button.height.large"])
-    b.button(700, 358, 480, "加入游戏", "secondary", "default", M["button.height.large"])
-    b.button(700, 472, 480, "用户信息", "secondary", "default", M["button.height"])
-    b.text(1180, 650, "方向键移动 · 确认进入", T["size.meta"], C["white"], T["weight.body"], "end")
+    b.text(700, 360, "挑一个喜欢的游戏，开局后邀请朋友。", T["size.body"], C["muted"])
+    b.button(700, 384, 480, "加入游戏", "secondary", "default", M["button.height.large"])
+    b.text(700, 500, "找附近的游戏，或扫描朋友的邀请。", T["size.body"], C["muted"])
+    b.button(56, 608, 576, "用户信息", "secondary", "default", M["button.height.small"])
+    b.button(648, 608, 576, "设置", "secondary", "default", M["button.height.small"])
     b.raw("</g>")
     b.text(540, 1262, "电视首页：左侧星星角色，右侧稳定主操作；焦点与选中状态分离。", T["size.meta"], C["muted"], T["weight.body"])
     return b
 
 
 def feedback() -> Board:
-    b = Board(1600, 900, "星星大作战 v0.4 反馈与无障碍")
+    b = Board(1600, 900, f'星星大作战 v{TOKENS["version"]} 反馈与无障碍')
     b.header("04", "反馈与无障碍", "触感、动效、音效、按下过程与可关闭选项")
 
     b.panel(32, 124, 820, 360, "触感反馈", "ms、amplitude、用途均读取 tokens.haptic")

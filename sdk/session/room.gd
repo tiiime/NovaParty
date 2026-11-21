@@ -44,7 +44,8 @@ func hello(data: Dictionary) -> Dictionary:
 			if data.get("resume_token", "") != players[seat].token:
 				return {"type": "error", "code": "invalid_resume_token"}
 			if players[seat].connected:
-				return {"type": "error", "code": "already_connected"}
+				# Credentials are valid: the session layer may replace the stale connection.
+				return {"type": "error", "code": "already_connected", "seat": seat}
 			_update_profile(seat, data.get("profile", {}), data.nickname)
 			set_connected(seat, true)
 			return welcome(seat, int(protocol))

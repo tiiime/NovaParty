@@ -14,7 +14,6 @@ var theme_buttons := []
 var cancel_button: Button
 var save_button: Button
 var error_label: Label
-var focused_before: Control
 var swatches := {}
 
 func _ready() -> void:
@@ -25,9 +24,11 @@ func _ready() -> void:
 	body.add_theme_constant_override("separation", 12)
 	add_content(body)
 	var title := Label.new()
+	_caption(body, "PROFILE_LOCAL")
 	title.text = "USER_INFO"
 	Style.label(title, T.FONT_SIZE_TITLE, T.FONT_WEIGHT_TITLE)
 	body.add_child(title)
+	_caption(body, "PROFILE_HELP", true)
 	var top_panel := PanelContainer.new()
 	top_panel.add_theme_stylebox_override("panel", Style.pill(T.SKY_SOFT, T.RADIUS_CARD))
 	body.add_child(top_panel)
@@ -49,7 +50,8 @@ func _ready() -> void:
 	_caption(body, "USER_NAME")
 	name_input = LineEdit.new()
 	name_input.max_length = 32
-	name_input.custom_minimum_size.y = 60
+	name_input.custom_minimum_size.y = T.HIT_MIN
+	name_input.accessibility_name = tr("USER_NAME")
 	name_input.placeholder_text = UserProfile.device_name()
 	body.add_child(name_input)
 	name_input.text_changed.connect(func(value): draft.nickname = value; _refresh())
@@ -125,6 +127,7 @@ func _choice(parent: Node, key: String, callback: Callable) -> Button:
 	var button := Button.new()
 	button.text = key
 	button.set_meta("label_key",key)
+	button.toggle_mode = true
 	button.set_meta("haptic", "select")
 	Style.card(button, false, T.RADIUS_BUTTON)
 	button.add_theme_font_override("font", Style.font(T.FONT_WEIGHT_LABEL))
@@ -140,6 +143,7 @@ func edit(local: Dictionary) -> void:
 	var public := UserProfile.local_public(draft)
 	draft.avatar = public.avatar.duplicate(true)
 	draft.theme_color = public.theme_color
+	name_input.accessibility_name = tr("USER_NAME")
 	name_input.text = str(draft.get("nickname",""))
 	name_input.placeholder_text = UserProfile.device_name()
 	error_label.hide()
@@ -152,7 +156,8 @@ func _refresh() -> void:
 	var public := UserProfile.local_public(draft)
 	preview.texture = UserProfile.texture(public)
 	preview_name.text = public.display_name
-	preview_name.add_theme_color_override("font_color", UserProfile.color(public))
+	preview_name.add_theme_color_override("font_color", T.INK)
+	preview.get_parent().get_parent().add_theme_stylebox_override("panel", Style.pill(T.SKY_SOFT, T.RADIUS_CARD, UserProfile.color(public), T.STROKE))
 	for index in range(character_buttons.size()):
 		var appearance := public.duplicate(true)
 		appearance.avatar.character = UserProfile.CHARACTERS[index]
@@ -171,6 +176,7 @@ func _refresh() -> void:
 func _selected(button: Button, selected: bool) -> void:
 	button.text = tr(button.get_meta("label_key"))
 	button.set_meta("selected", selected)
+	button.set_pressed_no_signal(selected)
 	Style.card(button, selected, T.RADIUS_BUTTON)
 
 # Round colour chip used as a button icon; colour is never the only cue (label + selected lip).
@@ -213,9 +219,3 @@ func _layout() -> void:
 	for button in character_buttons + palette_buttons + theme_buttons + [save_button,cancel_button]:
 		button.add_theme_font_size_override("font_size",22 if wide else 18)
 	super._layout()
-	_fit_panel.call_deferred()
-
-func _fit_panel() -> void:
-	if not is_inside_tree(): return
-	panel.size = desired_size.min(size - Vector2(48,100))
-	panel.position = (size - panel.size) * .5

@@ -5,228 +5,201 @@ signal settings_requested
 signal user_requested
 const UserProfile = preload("res://sdk/session/user_profile.gd")
 const Style = preload("res://app/ui/theme/party_theme.gd")
+const Icons = preload("res://app/ui/theme/party_icons.gd")
 const T = Style.T
 const STAR = preload("res://assets/ui/star.svg")
 var start_button: Button
 var join_button: Button
 var settings_button: Button
 var nickname_button: Button
-var title: Label
-var subtitle: Label
-var hint: Label
 var reduced_motion := false
 var motion_time := 0.0
-var safe_insets := {"left": 24, "right": 24, "top": 24, "bottom": 24}
-var star_center := Vector2.ZERO
-var star_extent := 260.0
-var _frame_accumulator := 0.0
-var _clock_accumulator := 0.0
-var sky_top := Color("183cd4")
-var sky_bottom := Color("286de9")
-var sky_texture: GradientTexture2D
-var spot_texture: GradientTexture2D
-var confetti_styles: Array[StyleBoxFlat] = []
+var margin: MarginContainer
+var split: BoxContainer
+var header: HBoxContainer
+var panel: PanelContainer
+var artwork: Control
+var copy: VBoxContainer
+var title: Label
+var tagline: Label
+var hero: BoxContainer
+var profile_name: String
+var _frame_elapsed := 0.0
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	sky_texture = GradientTexture2D.new()
-	sky_texture.width = 8
-	sky_texture.height = 256
-	sky_texture.gradient = Gradient.new()
-	sky_texture.fill_from = Vector2.ZERO
-	sky_texture.fill_to = Vector2(0, 1)
-	spot_texture = GradientTexture2D.new()
-	spot_texture.width = 256
-	spot_texture.height = 256
-	spot_texture.fill = GradientTexture2D.FILL_RADIAL
-	spot_texture.fill_from = Vector2(0.5, 0.5)
-	spot_texture.fill_to = Vector2(0.5, 1.0)
-	spot_texture.gradient = Gradient.new()
-	spot_texture.gradient.colors = PackedColorArray([Color(0.4, 0.78, 1, 0.28), Color(0.4, 0.78, 1, 0)])
-	_update_sky()
-	for color in [T.PINK, T.MINT, T.STAR]:
-		confetti_styles.append(Style.pill(color, 3))
-	title = _label("APP_NAME", 48, true)
-	title.add_theme_color_override("font_shadow_color", T.SKY_LIP)
-	title.add_theme_constant_override("shadow_offset_y", T.LIP)
-	subtitle = _label("HOME_TAGLINE", 23)
-	hint = _label("HOME_HINT", 22)
-	start_button = _button("START_GAME", "primary", func(): start_requested.emit())
-	join_button = _button("JOIN_GAME", "secondary", func(): join_requested.emit())
-	settings_button = _button("SETTINGS", "secondary", func(): settings_requested.emit())
-	nickname_button = _button("USER_INFO", "secondary", func(): user_requested.emit())
-	nickname_button.expand_icon = true
-	nickname_button.add_theme_constant_override("icon_max_width", 48)
-	resized.connect(_layout)
-	visibility_changed.connect(func(): set_process(is_visible_in_tree()); queue_redraw())
-	_layout()
-	start_button.grab_focus()
+	margin = MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(margin)
+	var shell := VBoxContainer.new()
+	shell.add_theme_constant_override("separation", 16)
+	margin.add_child(shell)
+	header = HBoxContainer.new()
+	header.add_theme_constant_override("separation", 8)
+	shell.add_child(header)
+	var mark := TextureRect.new()
+	mark.texture = STAR
+	mark.custom_minimum_size = Vector2(40, 40)
+	mark.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	mark.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	header.add_child(mark)
+	var brand := _label(header, "APP_NAME", 23, T.FONT_WEIGHT_TITLE, T.INK)
+	brand.autowrap_mode = TextServer.AUTOWRAP_OFF
+	brand.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	brand.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var badge := _label(header, "HOME_LOCAL", 16, T.FONT_WEIGHT_LABEL, T.SKY_LIP)
+	badge.autowrap_mode = TextServer.AUTOWRAP_OFF
+	badge.add_theme_stylebox_override("normal", Style.pill(T.SKY_SOFT, T.RADIUS_BUTTON))
 
-func _label(key: String, font_size: int, bold: bool = false) -> Label:
-	var label := Label.new()
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.follow_focus = true
+	scroll.scroll_deadzone = 12
+	Style.scroll_container(scroll, 8)
+	shell.add_child(scroll)
+	var centered := CenterContainer.new()
+	centered.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	centered.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.add_child(centered)
+	split = BoxContainer.new()
+	split.add_theme_constant_override("separation", 24)
+	centered.add_child(split)
+	panel = PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.add_theme_stylebox_override("panel", Style.slab(T.SKY, T.SKY_LIP, 28, false, false, Vector2(28, 24)))
+	split.add_child(panel)
+	hero = BoxContainer.new()
+	hero.vertical = true
+	hero.add_theme_constant_override("separation", 8)
+	panel.add_child(hero)
+	copy = VBoxContainer.new()
+	copy.alignment = BoxContainer.ALIGNMENT_CENTER
+	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	copy.add_theme_constant_override("separation", 8)
+	hero.add_child(copy)
+	_label(copy, "HOME_KICKER", 16, T.FONT_WEIGHT_TITLE, T.STAR)
+	title = _label(copy, "HOME_HERO", 44, T.FONT_WEIGHT_TITLE, T.WHITE)
+	tagline = _label(copy, "HOME_TAGLINE", 22, T.FONT_WEIGHT_BODY, T.WHITE)
+	artwork = Control.new()
+	artwork.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	artwork.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	artwork.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	artwork.draw.connect(_draw_art)
+	hero.add_child(artwork)
+
+	var actions := VBoxContainer.new()
+	actions.alignment = BoxContainer.ALIGNMENT_CENTER
+	actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	actions.add_theme_constant_override("separation", 12)
+	split.add_child(actions)
+	_label(actions, "HOME_PLAY_SECTION", 18, T.FONT_WEIGHT_TITLE, T.SKY_LIP)
+	start_button = _button(actions, "START_GAME", "play", "primary", func(): start_requested.emit())
+	_label(actions, "HOME_START_HINT", 19, T.FONT_WEIGHT_BODY, T.MUTED)
+	join_button = _button(actions, "JOIN_GAME", "join", "secondary", func(): join_requested.emit())
+	_label(actions, "HOME_JOIN_HINT", 19, T.FONT_WEIGHT_BODY, T.MUTED)
+
+	var dock := HBoxContainer.new()
+	dock.add_theme_constant_override("separation", 12)
+	shell.add_child(dock)
+	nickname_button = _button(dock, "USER_INFO", "profile", "secondary", func(): user_requested.emit(), T.BUTTON_HEIGHT)
+	settings_button = _button(dock, "SETTINGS", "settings", "secondary", func(): settings_requested.emit(), T.BUTTON_HEIGHT)
+	for button in [nickname_button, settings_button]:
+		button.add_theme_font_size_override("font_size", 19)
+		button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		button.expand_icon = true
+		button.add_theme_constant_override("icon_max_width", 32)
+	var order := [start_button, join_button, nickname_button, settings_button]
+	for i in range(order.size()):
+		order[i].focus_next = order[i].get_path_to(order[(i + 1) % order.size()])
+		order[i].focus_previous = order[i].get_path_to(order[(i + order.size() - 1) % order.size()])
+	for button in [start_button, join_button, nickname_button, settings_button]:
+		button.focus_neighbor_top = button.get_path_to(start_button if button == join_button else join_button if button != start_button else button)
+	start_button.focus_neighbor_bottom = start_button.get_path_to(join_button)
+	join_button.focus_neighbor_bottom = join_button.get_path_to(nickname_button)
+	nickname_button.focus_neighbor_right = nickname_button.get_path_to(settings_button)
+	settings_button.focus_neighbor_left = settings_button.get_path_to(nickname_button)
+	resized.connect(_layout)
+	scroll.resized.connect(_layout)
+	visibility_changed.connect(_update_processing)
+	_layout()
+	_update_processing()
+
+func _label(parent: Node, key: String, extent: int, weight: int, color: Color) -> Label:
+	var label := Style.label(Label.new(), extent, weight, color)
 	label.text = key
-	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_color", Color.WHITE)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.add_theme_font_override("font", Style.font(T.FONT_WEIGHT_TITLE if bold else T.FONT_WEIGHT_LABEL))
-	add_child(label)
+	parent.add_child(label)
 	return label
 
-func _button(key: String, kind: String, callback: Callable) -> Button:
+func _button(parent: Node, key: String, icon: String, kind: String, callback: Callable, height: int = T.BUTTON_HEIGHT_LARGE) -> Button:
 	var button := Button.new()
 	button.text = key
-	button.focus_mode = Control.FOCUS_ALL
-	Style.button(button, kind)
+	button.icon = Icons.get_icon(icon, T.INK if kind == "primary" else T.SKY)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.add_theme_constant_override("h_separation", 12)
+	Style.button(button, kind, height)
 	button.pressed.connect(callback)
-	add_child(button)
+	parent.add_child(button)
 	return button
 
-func set_nickname(value: String) -> void:
-	if nickname_button: nickname_button.tooltip_text = value
-
 func set_user_profile(value: Dictionary) -> void:
-	if not nickname_button: return
-	nickname_button.text = "USER_INFO"
-	nickname_button.tooltip_text = value.display_name
+	profile_name = str(value.display_name)
+	nickname_button.tooltip_text = profile_name
 	nickname_button.icon = UserProfile.texture(value)
 
 func set_reduced_motion(value: bool) -> void:
 	reduced_motion = value
-	# Freeze the current pose immediately; re-enabling continues without a jump.
-	queue_redraw()
+	_update_processing()
+
+func _update_processing() -> void:
+	set_process(is_visible_in_tree() and not reduced_motion)
 
 func set_safe_insets(value: Dictionary) -> void:
-	safe_insets = value
-	if is_node_ready():
-		_layout()
+	for edge in value:
+		margin.add_theme_constant_override("margin_" + edge, int(value[edge]))
+	_layout()
 
 func _layout() -> void:
-	if not is_instance_valid(title):
-		return
-	var left := float(safe_insets.left) + 12
-	var right := size.x - float(safe_insets.right) - 12
-	var top := float(safe_insets.top) + 10
-	var bottom := size.y - float(safe_insets.bottom) - 8
-	var width := maxf(220, right - left)
-	var portrait := size.x < size.y
-	title.position = Vector2(left, top)
-	title.size = Vector2(width, 94)
-	title.add_theme_font_size_override("font_size", 42 if portrait else 54)
-	subtitle.position = Vector2(left, top + (98 if portrait else 82))
-	subtitle.size = Vector2(width, 64)
-	var buttons_y: float
-	if portrait:
-		buttons_y = bottom - 372
-		start_button.position = Vector2(left + 8, buttons_y)
-		start_button.size = Vector2(width - 16, T.BUTTON_HEIGHT_LARGE + 8)
-		join_button.position = Vector2(left + 8, buttons_y + 104)
-		join_button.size = Vector2(width - 16, T.BUTTON_HEIGHT_LARGE)
-		nickname_button.position = Vector2(left + 8, buttons_y + 200)
-		nickname_button.size = Vector2(width - 16, T.BUTTON_HEIGHT_LARGE)
-		var stage_top := top + 172
-		var stage_bottom := buttons_y - 42
-		star_extent = clampf((stage_bottom - stage_top) * 0.8, 96, minf(270, width * 0.66))
-		star_center = Vector2(size.x * 0.5, (stage_top + stage_bottom) * 0.5)
-	else:
-		buttons_y = top + (bottom - top) * 0.30
-		start_button.position = Vector2(left + width * 0.52, buttons_y)
-		start_button.size = Vector2(width * 0.46, 112)
-		join_button.position = Vector2(start_button.position.x, buttons_y + 136)
-		join_button.size = Vector2(start_button.size.x, 96)
-		nickname_button.position = Vector2(start_button.position.x, buttons_y + 256)
-		nickname_button.size = Vector2(start_button.size.x, 96)
-		star_extent = minf(320, (bottom - top) * 0.49)
-		star_center = Vector2(left + width * 0.24, top + (bottom - top) * 0.55)
-	settings_button.position = Vector2(right - 160, bottom - T.BUTTON_HEIGHT_SMALL - 4)
-	settings_button.size = Vector2(160, T.BUTTON_HEIGHT_SMALL + 4)
-	settings_button.add_theme_font_size_override("font_size", T.FONT_SIZE_META + 2)
-	for button in [start_button, join_button, nickname_button]:
-		button.add_theme_font_size_override("font_size", 28 if portrait else 32)
-	nickname_button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	hint.visible = not portrait
-	hint.position = Vector2(start_button.position.x, buttons_y - 72)
-	hint.size = Vector2(start_button.size.x, 70)
-	# Explicit navigation avoids geometry-based surprises when the canvas rotates.
-	var buttons := [start_button, join_button, nickname_button, settings_button]
-	for i in range(buttons.size()):
-		buttons[i].focus_neighbor_top = buttons[i].get_path_to(buttons[(i + buttons.size() - 1) % buttons.size()])
-		buttons[i].focus_neighbor_bottom = buttons[i].get_path_to(buttons[(i + 1) % buttons.size()])
-	queue_redraw()
+	if not is_instance_valid(split): return
+	var width := size.x - margin.get_theme_constant("margin_left") - margin.get_theme_constant("margin_right")
+	var wide := width >= 840
+	split.vertical = not wide
+	split.custom_minimum_size.x = clampf(width - 40, 240, 1080 if wide else 600)
+	panel.custom_minimum_size = Vector2(560, 410) if wide else Vector2(0, 0)
+	artwork.custom_minimum_size = Vector2(0, 204 if wide else 164)
+	title.add_theme_font_size_override("font_size", 48 if wide else 39)
+	artwork.queue_redraw()
 
 func _process(delta: float) -> void:
-	_clock_accumulator += delta
-	if _clock_accumulator >= 60:
-		_clock_accumulator = 0
-		_update_sky()
-	if reduced_motion:
-		return
+	if reduced_motion: return
 	motion_time += delta
-	_frame_accumulator += delta
-	# UI is native and runs normally; redraw only the decorative layer at 30 fps.
-	if _frame_accumulator >= 1.0 / 30.0:
-		_frame_accumulator = 0
-		queue_redraw()
+	_frame_elapsed += delta
+	if _frame_elapsed >= 1.0 / 30.0:
+		_frame_elapsed = 0.0
+		artwork.queue_redraw()
 
-func _update_sky() -> void:
-	var clock := Time.get_datetime_dict_from_system()
-	var hour := float(clock.hour) + float(clock.minute) / 60.0
-	var index := int(hour / 6.0) % 4
-	var blend := fmod(hour, 6.0) / 6.0
-	var from: Array = T.SKY_ANCHORS[index]
-	var to: Array = T.SKY_ANCHORS[(index + 1) % 4]
-	sky_top = Color(from[1]).lerp(Color(to[1]), blend)
-	sky_bottom = Color(from[2]).lerp(Color(to[2]), blend)
-	if sky_texture:
-		sky_texture.gradient.colors = PackedColorArray([sky_top, sky_bottom])
-	queue_redraw()
-
-# Shared by draw and tests; no GUI state is inferred from animation phase.
 func orbit_positions(at_time: float) -> Array:
-	var points := []
-	for i in range(3):
-		var angle := at_time * (0.24 + i * 0.035) + i * TAU / 3.0
-		points.append(star_center + Vector2(cos(angle) * star_extent * 0.67, sin(angle) * star_extent * 0.39))
-	return points
+	var center := artwork.size * Vector2(0.54, 0.52)
+	var extent := minf(artwork.size.y, artwork.size.x * 0.52)
+	return [center + Vector2(cos(at_time * 0.65) * extent * 0.76, sin(at_time * 0.65) * extent * 0.20), center + Vector2(-extent * 0.78, cos(at_time * 0.78) * 10), center + Vector2(extent * 0.52, -extent * 0.31)]
 
-func _draw_star(center: Vector2, extent: float, angle: float = 0.0) -> void:
-	draw_set_transform(center, angle)
-	draw_texture_rect(STAR, Rect2(Vector2.ONE * -extent / 2, Vector2.ONE * extent), false)
-	draw_set_transform(Vector2.ZERO)
-
-func _draw() -> void:
-	if not sky_texture:
-		return
-	draw_texture_rect(sky_texture, Rect2(Vector2.ZERO, size), false)
-	draw_texture_rect(spot_texture, Rect2(star_center - Vector2.ONE * star_extent, Vector2.ONE * star_extent * 2), false)
-	var floor_points := PackedVector2Array([Vector2(0, size.y)])
-	for i in range(33):
-		var x := size.x * i / 32.0
-		floor_points.append(Vector2(x, size.y - 86 + sin(float(i) / 32 * TAU) * 16))
-	floor_points.append(size)
-	draw_colored_polygon(floor_points, T.PAGE)
-	# Elliptical floating stage; draw transformed circles, not a raster background.
-	var stage := star_center + Vector2(0, star_extent * 0.58)
-	draw_set_transform(stage + Vector2(0, 6), 0, Vector2(1, 0.19))
-	draw_circle(Vector2.ZERO, star_extent * 0.6, T.LINE_LIP)
-	draw_set_transform(stage, 0, Vector2(1, 0.17))
-	draw_circle(Vector2.ZERO, star_extent * 0.6, Color.WHITE)
-	draw_set_transform(Vector2.ZERO)
-	var ring := PackedVector2Array()
-	for i in range(97):
-		var a := i * TAU / 96.0
-		ring.append(star_center + Vector2(cos(a) * star_extent * 0.67, sin(a) * star_extent * 0.39))
-	draw_polyline(ring, Color(0.57, 0.9, 1.0, 0.45), 1.5, true)
-	var float_offset := Vector2(0, sin(motion_time * 1.1) * 5)
-	_draw_star(star_center + float_offset, star_extent, -0.12 + sin(motion_time * 0.7) * 0.025)
-	var points := orbit_positions(motion_time)
-	for i in range(points.size()):
-		var extent := star_extent * (0.13 + i * 0.012) * (1.0 + sin(motion_time * 1.4 + i) * 0.12)
-		_draw_star(points[i], extent, 0.15 * sin(motion_time + i))
-	# Sparse party confetti lives in the periphery and never intercepts input.
-	for i in range(8):
-		var point := Vector2(size.x * (0.03 if i % 2 == 0 else 0.96), size.y * (0.20 + float(i) * 0.075))
-		draw_set_transform(point, float(i) * 0.4)
-		draw_style_box(confetti_styles[i % 3], Rect2(-3, -7, 6, 14))
-	draw_set_transform(Vector2.ZERO)
+func _draw_art() -> void:
+	var center := artwork.size * Vector2(0.54, 0.52)
+	var extent := minf(artwork.size.y, artwork.size.x * 0.52)
+	if extent <= 0: return
+	artwork.draw_set_transform(center + Vector2(0, extent * 0.34), 0.0, Vector2(1, 0.24))
+	artwork.draw_circle(Vector2.ZERO, extent * 0.68, T.SKY_LIP, true, -1.0, true)
+	artwork.draw_set_transform(Vector2.ZERO)
+	var sparks := orbit_positions(motion_time)
+	for i in range(sparks.size()):
+		var at: Vector2 = sparks[i]
+		var radius := 8.0 + i * 2.0
+		var color: Color = [T.MINT, T.PINK, T.STAR_SOFT][i]
+		artwork.draw_line(at - Vector2(radius, 0), at + Vector2(radius, 0), color, 4, true)
+		artwork.draw_line(at - Vector2(0, radius), at + Vector2(0, radius), color, 4, true)
+	center.y += sin(motion_time * 1.5) * 5.0
+	var side := extent * 1.06
+	artwork.draw_set_transform(center, -0.14)
+	artwork.draw_texture_rect(STAR, Rect2(Vector2.ONE * -side * 0.5, Vector2.ONE * side), false)
+	artwork.draw_set_transform(Vector2.ZERO)

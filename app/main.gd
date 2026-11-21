@@ -4,6 +4,10 @@ const Session = preload("res://sdk/session/session.gd")
 const I18n = preload("res://app/i18n.gd")
 const Style = preload("res://app/ui/theme/party_theme.gd")
 const T = Style.T
+const Icons = preload("res://app/ui/theme/party_icons.gd")
+const PartyFlow = preload("res://app/ui/screens/party_flow.gd")
+const Page = PartyFlow.Page
+var flow := PartyFlow.new()
 const SwitchRow = preload("res://app/ui/widgets/switch_row.gd")
 const UI_API = 2
 const UserProfile = preload("res://sdk/session/user_profile.gd")
@@ -34,6 +38,16 @@ var reconnect_button: Button
 var leave_button: Button
 var settings_action: Button
 var page_title: Label
+var page_eyebrow: Label
+var connecting_copy: Label
+var manual_form: PanelContainer
+var manual_error: Label
+var launch_selection: Label
+var invite_button: Button
+var pending_cancel: Button
+var settings_focus: Control
+var leave_focus: Control
+var modal_focus_modes := {}
 var settings_dialog
 var language_choice: OptionButton
 var library
@@ -127,7 +141,13 @@ func _ready() -> void:
 	var shell := VBoxContainer.new()
 	shell.add_theme_constant_override("separation", 16)
 	margin.add_child(shell)
+	var heading := VBoxContainer.new()
+	heading.add_theme_constant_override("separation", 4)
+	shell.add_child(heading)
+	page_eyebrow = _label(heading, "APP_NAME", T.FONT_SIZE_META, T.FONT_WEIGHT_TITLE, T.SKY_LIP)
+	page_title = _label(heading, "APP_NAME", 38, T.FONT_WEIGHT_TITLE)
 	var scroll := ScrollContainer.new()
+	scroll.scroll_deadzone = 12
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.follow_focus = true
@@ -142,7 +162,11 @@ func _ready() -> void:
 	layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	layout.add_theme_constant_override("separation", 12)
 	scroll_content.add_child(layout)
-	page_title = _label(layout, "APP_NAME", T.FONT_SIZE_TITLE, T.FONT_WEIGHT_TITLE)
+	status = _label(layout, "LOBBY_HELP", T.FONT_SIZE_BODY, T.FONT_WEIGHT_LABEL)
+	status.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	connecting_copy = _label(layout, "JOIN_WAIT_HELP", T.FONT_SIZE_BODY, T.FONT_WEIGHT_BODY, T.MUTED)
+	pending_cancel = _button(layout, "CANCEL", _cancel_peer_join, "secondary")
+	pending_cancel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	setup = VBoxContainer.new()
 	setup.add_theme_constant_override("separation", 12)
 	layout.add_child(setup)
@@ -155,11 +179,12 @@ func _ready() -> void:
 	choices = OptionButton.new()
 	choices.hide()
 	add_child(choices)
-	library_help = _label(setup, "PICK_GAME_HELP", T.FONT_SIZE_BODY, T.FONT_WEIGHT_LABEL, T.MUTED)
+	library_help = _label(setup, "PICK_GAME_HELP", T.FONT_SIZE_BODY, T.FONT_WEIGHT_BODY, T.MUTED)
 	library = preload("res://app/ui/screens/game_library.gd").new()
 	setup.add_child(library)
 	library.selected.connect(func(index):
 		choices.select(index)
+		_update_launch_summary()
 		if create_button.visible:
 			create_button.grab_focus()
 	)
@@ -174,26 +199,48 @@ func _ready() -> void:
 	package_dialog.add_filter("*.zip", tr("MOD_FILTER"), "application/zip")
 	package_dialog.file_selected.connect(_install_package)
 	add_child(package_dialog)
+	manual_form = PanelContainer.new()
+	manual_form.add_theme_stylebox_override("panel", Style.sheet())
+	setup.add_child(manual_form)
 	network_row = HBoxContainer.new()
-	setup.add_child(network_row)
+	network_row.add_theme_constant_override("separation", 12)
+	manual_form.add_child(network_row)
+	var host_field := VBoxContainer.new()
+	host_field.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	network_row.add_child(host_field)
+	_label(host_field, "HOST_LABEL", T.FONT_SIZE_META, T.FONT_WEIGHT_LABEL)
 	address = LineEdit.new()
 	address.text = profile.get("last_address", "")
-	address.placeholder_text = "HOST_ADDRESS"
-	address.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	network_row.add_child(address)
+	address.placeholder_text = "192.168.1.24"
+	address.accessibility_name = tr("HOST_LABEL")
+	address.custom_minimum_size.y = T.HIT_MIN
+	address.text_submitted.connect(func(_value): _submit_manual_join())
+	address.text_changed.connect(func(_value): manual_error.hide())
+	host_field.add_child(address)
+	var port_field := VBoxContainer.new()
+	network_row.add_child(port_field)
+	_label(port_field, "PORT", T.FONT_SIZE_META, T.FONT_WEIGHT_LABEL)
 	port = SpinBox.new()
 	port.min_value = 1024
 	port.max_value = 65535
 	port.value = 27840
-	network_row.add_child(port)
+	port.custom_minimum_size = Vector2(128, T.HIT_MIN)
+	port.get_line_edit().accessibility_name = tr("PORT")
+	port_field.add_child(port)
+	manual_error = _label(setup, "INVALID_HOST", T.FONT_SIZE_META, T.FONT_WEIGHT_LABEL, T.DANGER)
+	manual_error.add_theme_stylebox_override("normal", Style.banner("danger"))
+	manual_error.hide()
 	footer = BoxContainer.new()
 	footer.vertical = true
 	footer.resized.connect(_adapt_footer, CONNECT_DEFERRED)
 	footer.add_theme_constant_override("separation", 12)
 	shell.add_child(footer)
-	create_button = _button(footer, "LAUNCH_GAME", func(): _start(true))
+	launch_selection = _label(shell, "", T.FONT_SIZE_META, T.FONT_WEIGHT_LABEL, T.MUTED)
+	launch_selection.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	shell.move_child(launch_selection, footer.get_index())
+	create_button = _button(footer, "LAUNCH_GAME", _launch_game)
 	create_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	join_button = _button(footer, "JOIN_GAME", func(): token = ""; _start(false), "accent")
+	join_button = _button(footer, "JOIN_GAME", _submit_manual_join, "primary")
 	join_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var actions := HBoxContainer.new()
 	footer_nav = actions
@@ -201,25 +248,20 @@ func _ready() -> void:
 	actions.add_theme_constant_override("separation", 12)
 	footer.add_child(actions)
 	back_button = _button(actions, "BACK", _go_back, true)
+	back_button.icon = Icons.get_icon("back", T.SKY)
 	back_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var session_actions := HBoxContainer.new()
 	footer_session = session_actions
 	session_actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	session_actions.add_theme_constant_override("separation", 12)
 	footer.add_child(session_actions)
-	reconnect_button = _button(session_actions, "RECONNECT", func():
-		if joined and not token.is_empty():
-			_start(false)
-		else:
-			_set_status("NO_RESUME")
-	, true)
+	reconnect_button = _button(session_actions, "RECONNECT", _reconnect, true)
+	invite_button = _button(session_actions, "OPEN_INVITE", _open_invite, true)
 	leave_button = _button(session_actions, "LEAVE_ROOM", _request_leave, "danger")
 	reconnect_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	leave_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	settings_action = _button(actions, "SETTINGS", _open_settings, true)
 	settings_action.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	status = _label(layout, "LOBBY_HELP", T.FONT_SIZE_BODY, T.FONT_WEIGHT_LABEL)
-	status.add_theme_stylebox_override("normal", Style.banner("info"))
 	roster = _label(layout, "", T.FONT_SIZE_META, T.FONT_WEIGHT_LABEL, T.MUTED)
 	roster.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	game_area = VBoxContainer.new()
@@ -254,6 +296,7 @@ func _label(parent: Node, key: String, font_size: int = T.FONT_SIZE_BODY, weight
 func _button(parent: Node, key: String, callback: Callable, kind = "primary") -> Button:
 	var button := Button.new()
 	button.text = key
+	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	button.set_meta("sound_cue", "launch" if key == "LAUNCH_GAME" else "back" if key in ["BACK", "CANCEL", "CLOSE"] else "confirm")
 	button.set_meta("haptic", "confirm" if key in ["LAUNCH_GAME", "JOIN_GAME"] else "tap")
 	Style.button(button, kind)
@@ -262,46 +305,93 @@ func _button(parent: Node, key: String, callback: Callable, kind = "primary") ->
 	return button
 
 func _open_setup(as_host: bool) -> void:
-	home.hide()
-	content_margin.show()
-	setup.show()
-	network_row.visible = false
-	library.visible = as_host
-	join_browser.visible = not as_host
-	if as_host:
-		discovery.stop_browse()
-	else:
-		# Bluetooth scans only when already permitted; the explicit button asks (see join_browser).
-		discovery.browse()
-	create_button.visible = as_host
-	settings_action.visible = not as_host
-	join_button.visible = false
-	reconnect_button.hide()
-	leave_button.hide()
-	page_title.text = "SETUP_TITLE" if as_host else "JOIN_TITLE"
-	library_help.text = "PICK_GAME_HELP" if as_host else "JOIN_HELP"
-	roster.hide()
-	status.hide()
-	_refresh_library()
+	if is_instance_valid(session): return
+	_reset_peer_join()
+	_navigate(Page.LIBRARY if as_host else Page.NEARBY)
 	_set_status("LOBBY_HELP" if as_host else "JOIN_HELP")
-	_adapt_footer.call_deferred()
-	if as_host:
-		library.focus_selected()
-	else:
-		join_browser.focus_default()
-	_animate_page(content_margin)
 
 func _show_home() -> void:
-	if peer_transfer != null:
-		_cancel_peer_join()
-	if discovery != null:
-		discovery.stop_browse()
-	content_margin.hide()
-	home.show()
-	_refresh_home()
-	if not ui_preparing:
-		home.start_button.grab_focus()
-	_animate_page(home)
+	_reset_peer_join()
+	_navigate(Page.HOME)
+
+func _navigate(next: PartyFlow.Page, take_focus: bool = true) -> void:
+	var previous := flow.page
+	flow.open(next)
+	if next == Page.NEARBY and previous != Page.NEARBY:
+		_search_nearby()
+	elif next != Page.NEARBY:
+		join_browser.stop_search()
+		if discovery.browsing: discovery.stop_browse()
+	_render_page(take_focus)
+	if previous != next:
+		_animate_page(home if next == Page.HOME else content_margin)
+
+func _render_page(take_focus: bool = false) -> void:
+	var page := flow.page
+	var is_home := page == Page.HOME
+	var choosing := page == Page.LIBRARY
+	var nearby := page == Page.NEARBY
+	var manual := page == Page.MANUAL
+	var connecting := page == Page.CONNECTING
+	var match_page := page == Page.MATCH
+	home.visible = is_home
+	content_margin.visible = not is_home
+	setup.visible = choosing or nearby or manual
+	library.visible = choosing
+	join_browser.visible = nearby
+	manual_form.visible = manual
+	network_row.visible = manual
+	launch_selection.visible = choosing and choices.selected >= 0
+	_update_launch_summary()
+	library_help.visible = choosing or nearby or manual
+	library_help.text = "PICK_GAME_HELP" if choosing else "MANUAL_JOIN_HELP" if manual else "JOIN_HELP"
+	page_title.text = "SETUP_TITLE" if choosing else "MANUAL_JOIN" if manual else "JOIN_TITLE" if nearby or connecting else "APP_NAME"
+	if match_page and not mod_info.is_empty(): page_title.text = I18n.game_name(mod_info)
+	page_title.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED if match_page else Node.AUTO_TRANSLATE_MODE_INHERIT
+	page_eyebrow.text = "STEP_HOST" if choosing else "STEP_JOIN" if nearby or manual or connecting else "APP_NAME"
+	var show_heading := not (match_page and immersive_game)
+	page_title.visible = show_heading
+	page_title.get_parent().visible = show_heading
+	create_button.visible = choosing
+	create_button.disabled = choices.item_count == 0
+	join_button.visible = manual
+	join_button.disabled = peer_phase == "inspecting"
+	if not manual: manual_error.hide()
+	connecting_copy.visible = connecting
+	pending_cancel.visible = peer_phase == "inspecting" and (nearby or manual)
+	join_browser.set_busy(peer_phase == "inspecting")
+	back_button.visible = not match_page
+	back_button.text = "CANCEL" if connecting else "BACK"
+	settings_action.visible = match_page and not immersive_game
+	roster.visible = match_page and not immersive_game
+	game_area.visible = match_page
+	footer_session.visible = match_page and not immersive_game
+	footer_nav.visible = not match_page or not immersive_game
+	leave_button.visible = match_page
+	invite_button.visible = match_page and is_instance_valid(session) and session.get("host") == true
+	reconnect_button.visible = match_page and _can_reconnect()
+	footer.visible = not (match_page and immersive_game)
+	status.visible = _status_visible()
+	_update_setup_focus()
+	if not take_focus or ui_preparing or (_top_modal() != null and not join_invite.visible): return
+	match page:
+		Page.HOME: _refresh_home(); home.start_button.grab_focus()
+		Page.LIBRARY: library.focus_selected()
+		Page.NEARBY: join_browser.focus_default()
+		Page.MANUAL: address.grab_focus()
+		Page.CONNECTING: back_button.grab_focus()
+		Page.MATCH:
+			if join_invite.visible: join_invite.done.grab_focus()
+			elif is_instance_valid(game_view) and game_view.has_method("focus_default"): game_view.focus_default()
+			if get_viewport().gui_get_focus_owner() == null and leave_button.is_visible_in_tree():
+				(invite_button if invite_button.is_visible_in_tree() else leave_button).grab_focus()
+
+func _status_visible() -> bool:
+	return not immersive_game and flow.page != Page.HOME and status_key not in ["LOBBY_HELP", "JOIN_HELP", "LEFT_ROOM"]
+
+func _search_nearby() -> void:
+	join_browser.begin_search()
+	discovery.browse()
 
 func _animate_page(page: Control) -> void:
 	if page_tween != null: page_tween.kill()
@@ -320,23 +410,79 @@ func _set_status(key: String, arguments: Array = []) -> void:
 	status_key = key
 	status_arguments = arguments
 	status.text = tr(key) % arguments if not arguments.is_empty() else tr(key)
-	status.visible = not immersive_game and key not in ["LOBBY_HELP", "JOIN_HELP", "LEFT_ROOM"]
-	var tone := "success" if key in ["CONNECTED", "INSTALLED_MOD"] else "wait" if key in ["CONNECTING", "CONNECTING_BLUETOOTH", "CHECKING_GAME", "VALIDATING_GAME", "DOWNLOAD_CONFIRMATION", "ROOM_CREATED", "PEER_OFFLINE"] else "danger"
+	status.visible = _status_visible()
+	var tone := "success" if key in ["CONNECTED", "INSTALLED_MOD"] else "wait" if key in ["CONNECTING", "CONNECTING_BLUETOOTH", "RECONNECTING", "CHECKING_GAME", "VALIDATING_GAME", "DOWNLOAD_CONFIRMATION", "ROOM_CREATED", "PEER_OFFLINE"] else "danger"
 	status.add_theme_stylebox_override("normal", Style.banner(tone))
 	status.add_theme_color_override("font_color", T.SUCCESS if tone == "success" else T.DANGER if tone == "danger" else T.INK)
 	_send_game_status()
 
 func _handle_notice(code: String) -> void:
-	if peer_phase == "joining" and code in ["room_changed", "room_full", "game_in_progress", "incompatible", "connect_failed", "connection_lost"]:
-		_clear_session()
-		_open_setup(false)
-		_peer_failed(code)
+	if flow.page == Page.CONNECTING:
+		_finish_failed_join.call_deferred(session, code)
 		return
-	if is_instance_valid(game_view) and game_view.has_method("on_command_notice") and game_view.on_command_notice(code):
+	if code == "connection_lost" and is_instance_valid(session) and session.connection_state == "failed":
+		return # Keep the more specific reconnect-timeout message.
+	var is_transport_error: bool = is_instance_valid(session) and code == session.connection_error and session.connection_state in ["failed", "disconnected", "rejected"]
+	if not is_transport_error and is_instance_valid(game_view) and game_view.has_method("on_command_notice") and game_view.on_command_notice(code):
 		return
 	ui_feedback.haptic("warn")
 	var messages := {"disconnected": "RECONNECT_FIRST", "connection_lost": "CONNECTION_LOST", "not_your_turn": "ERR_NOT_YOUR_TURN", "occupied": "ERR_OCCUPIED", "stale_revision": "ERR_STALE_REVISION", "game_finished": "ERR_GAME_FINISHED", "waiting_for_players": "ERR_WAITING_PLAYERS", "invalid_action": "ERR_INVALID_ACTION", "already_chosen": "ERR_ALREADY_CHOSEN", "card_not_owned": "ERR_CARD_NOT_OWNED", "game_not_finished": "ERR_GAME_NOT_FINISHED", "already_requested": "ERR_ALREADY_REQUESTED"}
-	_set_status(messages.get(code, "NETWORK_ERROR"), [] if messages.has(code) else [code])
+	if messages.has(code):
+		_set_status(messages[code])
+	elif is_instance_valid(session) and session.connection_state == "rejected":
+		_set_status(_join_error_key(code, true))
+	else:
+		_set_status("NETWORK_ERROR", [code])
+
+func _finish_failed_join(failed_session: Node, code: String) -> void:
+	if not is_instance_valid(failed_session) or failed_session != session or flow.page != Page.CONNECTING: return
+	_clear_session()
+	joined = false
+	token = ""
+	_peer_failed(code)
+
+func _connection_changed(state: String, code: String) -> void:
+	if flow.page == Page.CONNECTING:
+		if state in ["failed", "disconnected", "rejected"]:
+			_finish_failed_join.call_deferred(session, code)
+		return
+	if flow.page != Page.MATCH: return
+	match state:
+		"reconnecting", "connecting", "handshaking": _set_status("RECONNECTING")
+		"failed": _set_status("RECONNECT_TIMEOUT")
+		"disconnected": _set_status("CONNECTION_LOST")
+		"rejected": _set_status(_join_error_key(code, true))
+	_render_page()
+	_send_game_status()
+
+func _can_reconnect() -> bool:
+	return is_instance_valid(session) and joined and not token.is_empty() and session.get("connection_state") in ["failed", "disconnected"]
+
+func _reconnect() -> void:
+	if _can_reconnect() and session.has_method("reconnect_now"):
+		session.reconnect_now()
+	elif _can_reconnect():
+		_start(false)
+
+func _submit_manual_join() -> void:
+	if flow.page != Page.MANUAL or peer_phase == "inspecting": return
+	var host := address.text.strip_edges()
+	var endpoint_port := int(port.value)
+	if not host.is_valid_ip_address() and host.contains(":"):
+		var separator := host.rfind(":")
+		var candidate := host.left(separator).trim_prefix("[").trim_suffix("]")
+		var suffix := host.substr(separator + 1)
+		if candidate.is_valid_ip_address() and suffix.is_valid_int() and int(suffix) >= 1024 and int(suffix) <= 65535:
+			host = candidate
+			endpoint_port = int(suffix)
+	if not host.is_valid_ip_address():
+		manual_error.show()
+		address.grab_focus()
+		return
+	manual_error.hide()
+	address.text = host
+	port.value = endpoint_port
+	_inspect_peer({"address": host, "port": endpoint_port})
 
 func _build_settings() -> void:
 	settings_dialog = preload("res://app/ui/widgets/sheet.gd").new()
@@ -345,15 +491,13 @@ func _build_settings() -> void:
 	settings_layer.layer = 50
 	add_child(settings_layer)
 	settings_layer.add_child(settings_dialog)
-	settings_dialog.visibility_changed.connect(func():
-		_send_game_status()
-		for button in [home.start_button, home.join_button, home.nickname_button, home.settings_button]:
-			button.focus_mode = Control.FOCUS_NONE if settings_dialog.visible else Control.FOCUS_ALL
-	)
+	settings_dialog.visibility_changed.connect(_modal_changed)
 	var body := VBoxContainer.new()
 	body.add_theme_constant_override("separation", 16)
 	settings_dialog.add_content(body)
+	_label(body, "PROFILE_LOCAL", T.FONT_SIZE_META, T.FONT_WEIGHT_TITLE, T.SKY_LIP)
 	_label(body, "SETTINGS", T.FONT_SIZE_TITLE, T.FONT_WEIGHT_TITLE)
+	_label(body, "SETTINGS_HELP", T.FONT_SIZE_META, T.FONT_WEIGHT_BODY, T.MUTED)
 	_label(body, "LANGUAGE", T.FONT_SIZE_META, T.FONT_WEIGHT_TITLE, T.MUTED)
 	language_choice = OptionButton.new()
 	for entry in [["LANG_SYSTEM", "system"], ["简体中文", "zh_CN"], ["English", "en"]]:
@@ -391,8 +535,7 @@ func _build_settings() -> void:
 		_save_profile()
 	)
 	var help := _label(body, "REDUCE_MOTION_HELP", T.FONT_SIZE_META, T.FONT_WEIGHT_BODY, T.MUTED)
-	help.custom_minimum_size.x = 360
-	body.custom_minimum_size.x = 380
+	help.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var credit := RichTextLabel.new()
 	credit.bbcode_enabled = true
 	credit.fit_content = true
@@ -407,18 +550,21 @@ func _build_settings() -> void:
 		_refresh_home()
 		if home.visible:
 			home.settings_button.grab_focus()
+		elif create_button.is_visible_in_tree():
+			library.focus_selected()
 		elif immersive_game and game_view.has_method("restore_platform_focus"):
 			game_view.restore_platform_focus("settings")
-		elif create_button.visible:
-			library.focus_selected()
+		elif is_instance_valid(settings_focus) and settings_focus.is_visible_in_tree():
+			settings_focus.grab_focus()
 		else:
-			settings_action.grab_focus()
+			_render_page(true)
 	)
 
 func _open_settings() -> void:
 	if settings_opening:
 		return
 	settings_opening = true
+	settings_focus = get_viewport().gui_get_focus_owner()
 	sound_choice.set_pressed_no_signal(bool(profile.get("ui_sounds", true)))
 	motion_choice.set_pressed_no_signal(bool(profile.get("reduce_motion", false)))
 	haptic_choice.set_pressed_no_signal(bool(profile.get("haptics", true)))
@@ -456,11 +602,15 @@ func _refresh_translations() -> void:
 			choices.set_item_text(index, I18n.game_name(info))
 	_refresh_library()
 	language_choice.set_item_text(0, tr("LANG_SYSTEM"))
+	address.accessibility_name = tr("HOST_LABEL")
+	port.get_line_edit().accessibility_name = tr("PORT")
+	join_browser.populate(join_browser.items)
 	_refresh_home()
 	if not status_key.is_empty():
 		_set_status(status_key, status_arguments)
 	if is_instance_valid(session) and not session.snapshot.is_empty():
 		_render_snapshot(session.snapshot)
+		if not mod_info.is_empty(): page_title.text = I18n.game_name(mod_info)
 
 func _build_leave_dialog() -> void:
 	var layer := CanvasLayer.new()
@@ -472,11 +622,13 @@ func _build_leave_dialog() -> void:
 	leave_dialog.setup("EXIT_MATCH_TITLE", "EXIT_MATCH_TEXT", "CONFIRM_LEAVE", "CANCEL")
 	leave_dialog.confirmed.connect(_leave)
 	leave_dialog.canceled.connect(_restore_exit_focus)
-	leave_dialog.visibility_changed.connect(_send_game_status)
+	leave_dialog.visibility_changed.connect(_modal_changed)
 
 func _request_leave() -> void:
-	if is_instance_valid(session):
-		leave_dialog.popup_centered(Vector2i(mini(580, int(get_viewport_rect().size.x - 32)), 300))
+	if is_instance_valid(session) and not leave_dialog.visible:
+		leave_focus = get_viewport().gui_get_focus_owner()
+		leave_dialog.setup("EXIT_MATCH_TITLE", "EXIT_HOST_TEXT" if session.get("host") == true else "EXIT_GUEST_TEXT", "CONFIRM_LEAVE", "CANCEL")
+		leave_dialog.popup_centered(Vector2i(580, 328))
 
 func _render_snapshot(data: Dictionary) -> void:
 	# A confirmed snapshot ends the join transaction. Later transport loss must
@@ -485,18 +637,34 @@ func _render_snapshot(data: Dictionary) -> void:
 		peer_phase = "joined"
 		peer_error = ""
 	token = session.resume_token
-	if data.players.size() == 2:
-		if data.players[1 - int(data.seat)].connected:
-			_set_status("CONNECTED", [int(data.seat) + 1])
-		else:
-			_set_status("PEER_OFFLINE")
-	game_view.render(data)
-	_send_game_status()
-	_update_join_invite()
-	var names := []
+	var entering := flow.page != Page.MATCH
+	if entering: flow.open(Page.MATCH)
+	var names := PackedStringArray()
+	var offline := false
 	for player in data.players:
+		offline = offline or not player.connected
 		names.append(player.nickname + " · " + tr("ONLINE" if player.connected else "OFFLINE"))
-	roster.text = tr("ROSTER") % [" / ".join(names), int(data.revision)]
+	roster.text = "   /   ".join(names)
+	if session.connection_state in ["connected", "hosting"]:
+		if session.host and data.players.size() == 1:
+			_set_status("ROOM_CREATED", [_local_addresses()])
+		elif offline and mod_info.manifest.get("session_mode", "") != "drop_in":
+			_set_status("PEER_OFFLINE")
+		elif entering or status_key in ["PEER_OFFLINE", "RECONNECTING", "RECONNECT_TIMEOUT", "CONNECTION_LOST", "ROOM_CREATED"]:
+			_set_status("CONNECTED", [int(data.seat) + 1])
+	game_view.render(data)
+	if _top_modal() != null: _suspend_focus(game_view)
+	if entering:
+		_navigate(Page.MATCH, false)
+		_layout_game()
+		_render_page(true)
+	else:
+		_send_game_status()
+		_update_join_invite()
+
+func _update_launch_summary() -> void:
+	if is_instance_valid(launch_selection) and choices.selected >= 0:
+		launch_selection.text = tr("LAUNCH_SELECTION") % choices.get_item_text(choices.selected)
 
 func _refresh_library() -> void:
 	if not is_instance_valid(library):
@@ -512,8 +680,9 @@ func _refresh_library() -> void:
 		var cover = info.manifest.get("cover", "")
 		if cover is String and not cover.is_empty() and info.manifest.files.has(cover):
 			cover_path = str(info.root).path_join(cover)
-		items.append({"id": info.manifest.id, "name": I18n.game_name(info), "cover_path": cover_path})
+		items.append({"id": info.manifest.id, "name": I18n.game_name(info), "cover_path": cover_path, "players": info.manifest.get("players", {})})
 	library.populate(items, choices.selected)
+	_update_launch_summary()
 	if focus_index >= 0 and focus_index < library.cards.size():
 		library.cards[focus_index].grab_focus()
 
@@ -533,22 +702,26 @@ func _add_choice(root: String) -> void:
 	choices.set_item_metadata(choices.item_count - 1, root)
 	_refresh_library()
 
-func _start(as_host: bool) -> Error:
+func _launch_game() -> void:
+	# The manual form's remote port must not silently change the local host port.
+	_start(true, 27840)
+
+func _start(as_host: bool, local_port: int = -1) -> Error:
 	# Keep the selected game stable for a resume attempt.
-	var root: String = choices.get_item_metadata(choices.selected)
-	if not as_host and not token.is_empty() and not mod_info.is_empty() and root != mod_info.root:
-		_set_status("RESUME_GAME_MISMATCH")
-		return ERR_INVALID_DATA
+	if choices.selected < 0 or choices.selected >= choices.item_count: return ERR_INVALID_DATA
+	var root: String = mod_info.root if not as_host and not token.is_empty() and not mod_info.is_empty() else choices.get_item_metadata(choices.selected)
 	_clear_session()
 	mod_info = loader.inspect(root)
 	if mod_info.is_empty():
 		_set_status("NETWORK_ERROR", [loader.error])
 		return ERR_INVALID_DATA
-	var logic = loader.rules(mod_info)
-	if logic == null:
-		_set_status("NETWORK_ERROR", [loader.error])
-		return ERR_INVALID_DATA
-	if not address.text.begins_with("ble:"):
+	var logic = null
+	if as_host:
+		logic = loader.rules(mod_info)
+		if logic == null:
+			_set_status("NETWORK_ERROR", [loader.error])
+			return ERR_INVALID_DATA
+	if not as_host and not address.text.begins_with("ble:"):
 		profile.last_address = address.text.strip_edges()
 	# The editor owns nickname; empty means follow the current device name.
 	if nickname.text != UserProfile.local_public(profile).display_name:
@@ -557,7 +730,15 @@ func _start(as_host: bool) -> Error:
 	connection_profile.nickname = UserProfile.local_public(profile).display_name
 	_save_profile()
 	var view_script = load(root.path_join(mod_info.manifest.view))
+	if not view_script is Script or not view_script.can_instantiate() or not ClassDB.is_parent_class(view_script.get_instance_base_type(), "Control"):
+		_set_status("GAME_VIEW_FAILED")
+		return ERR_INVALID_DATA
 	game_view = view_script.new()
+	if not game_view.has_signal("command") or not game_view.has_method("render"):
+		game_view.free()
+		game_view = null
+		_set_status("GAME_VIEW_FAILED")
+		return ERR_INVALID_DATA
 	game_area.add_child(game_view)
 	session = Session.new()
 	session.expected_remote_session = expected_join_session
@@ -568,38 +749,22 @@ func _start(as_host: bool) -> Error:
 	_connect_game_controls(game_view)
 	session.updated.connect(_render_snapshot)
 	session.notice.connect(_handle_notice)
+	session.status_changed.connect(_connection_changed)
 	var error: Error
 	joined = not as_host
 	if as_host:
 		token = ""
-		error = session.create(mod_info, logic, connection_profile, int(port.value))
+		var listen_port := local_port if local_port > 0 else int(port.value)
+		error = session.create(mod_info, logic, connection_profile, listen_port)
+		if error != OK:
+			_clear_session()
+			_navigate(Page.LIBRARY)
+			_set_status("HOST_FAILED", [listen_port])
 	else:
+		_navigate(Page.CONNECTING)
+		_set_status("CONNECTING_BLUETOOTH" if address.text.begins_with("ble:") else "CONNECTING")
 		error = session.join(mod_info, connection_profile, address.text.strip_edges(), int(port.value), token)
-	if as_host:
-		_set_status("ROOM_CREATED", [_local_addresses()])
-	else:
-		_set_status("CONNECTING")
-	if error == OK:
-		discovery.stop_browse()
-		home.hide()
-		content_margin.show()
-		setup.hide()
-		create_button.hide()
-		join_button.hide()
-		settings_action.show()
-		roster.show()
-		reconnect_button.show()
-		leave_button.show()
-		page_title.text = "APP_NAME"
-		_layout_game()
-		if join_invite.visible:
-			join_invite.done.grab_focus()
-		elif game_view.has_method("focus_default"):
-			game_view.focus_default()
-	if error != OK:
-		setup.show()
-		_set_status("CONNECT_FAILED", [error_string(error)])
-		_clear_session()
+		if error != OK: _finish_failed_join(session, "connect_failed")
 	return error
 
 func _clear_session() -> void:
@@ -608,21 +773,21 @@ func _clear_session() -> void:
 		join_invite.hide()
 	if session != null:
 		room_generation += 1
-		session.get_parent().remove_child(session)
-		session.queue_free()
+		var previous: Node = session
 		session = null
+		if previous.has_method("close"): previous.close()
+		previous.get_parent().remove_child(previous)
+		previous.queue_free()
 	if game_view != null:
 		game_area.remove_child(game_view)
 		game_view.queue_free()
 		game_view = null
 	immersive_game = false
-	page_title.show()
-	footer.show()
 	game_area.custom_minimum_size.y = 0
 
 func _leave() -> void:
+	leave_dialog.hide()
 	_clear_session()
-	setup.show()
 	token = ""
 	joined = false
 	roster.text = ""
@@ -657,7 +822,10 @@ func _install_package(path: String) -> void:
 		_set_status("NETWORK_ERROR", [loader.error])
 		return
 	_add_choice(info.root)
-	choices.select(choices.item_count - 1)
+	for index in range(choices.item_count):
+		if choices.get_item_metadata(index) == info.root:
+			choices.select(index)
+			break
 	_refresh_library()
 	library.focus_selected()
 	_set_status("INSTALLED_MOD", [I18n.game_name(info)])
@@ -735,28 +903,28 @@ func _adapt_display() -> void:
 func _go_back() -> void:
 	if qr_scanner != null and qr_scanner.active:
 		qr_scanner.stop()
-	elif join_invite != null and join_invite.visible:
-		join_invite.hide()
-		invite_dismissed = true
-	elif peer_transfer != null or (download_dialog != null and download_dialog.visible):
+		_render_page(true)
+	elif download_dialog.visible or peer_transfer != null or flow.page == Page.CONNECTING:
 		_cancel_peer_join()
-	elif user_panel != null and user_panel.visible:
+	elif leave_dialog.visible:
+		leave_dialog.close()
+	elif user_panel.visible:
 		user_panel.close()
 	elif settings_dialog.visible:
 		settings_dialog.close()
-	elif leave_dialog.visible:
-		leave_dialog.hide()
-		_restore_exit_focus()
+	elif join_invite.visible:
+		join_invite.close()
 	elif is_instance_valid(game_view) and game_view.has_method("handle_platform_back") and game_view.handle_platform_back():
 		pass
 	elif session != null:
 		_request_leave()
-	elif setup.visible and create_button.visible and get_viewport().gui_get_focus_owner() == create_button:
+	elif flow.page == Page.LIBRARY and get_viewport().gui_get_focus_owner() == create_button:
 		ui_feedback.play("back")
 		library.focus_selected()
-	elif not home.visible:
+	elif flow.page != Page.HOME:
 		ui_feedback.play("back")
-		_show_home()
+		_navigate(flow.back_target())
+		_set_status("JOIN_HELP" if flow.is_join() else "LOBBY_HELP")
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
@@ -840,8 +1008,12 @@ func debug_room_command(method: String, params: Dictionary) -> Dictionary:
 			return {"error": "not_resumable"}
 		if session.wire.peers.has(0):
 			return {"error": "already_connected"}
-		var error: Error = _start(false)
-		return {"error": "start_failed"} if error != OK else {"started": true, "room_generation": room_generation, "local_session_id": session.local_session_id}
+		if not session.has_method("reconnect_now"):
+			var error := _start(false)
+			if error != OK: return {"error": "start_failed"}
+		elif not session.reconnect_now():
+			return {"error": "not_resumable"}
+		return {"started": true, "room_generation": room_generation, "local_session_id": session.local_session_id}
 	if is_instance_valid(session):
 		return {"error": "room_busy"}
 	var game = params.get("game_id")
@@ -878,7 +1050,13 @@ func _apply_safe_area() -> void:
 		return
 	if not is_instance_valid(content_margin):
 		return
-	var padding := safe_padding(DisplayServer.get_display_safe_area(), get_window().size, get_viewport_rect().size) if OS.get_name() == "iOS" else {"left": 24, "top": 24, "right": 24, "bottom": 24}
+	var padding := {"left": T.PAGE_MARGIN, "top": T.PAGE_MARGIN, "right": T.PAGE_MARGIN, "bottom": T.PAGE_MARGIN}
+	if OS.get_name() in ["iOS", "Android"]:
+		var safe := DisplayServer.get_display_safe_area()
+		var window_rect := Rect2i(get_window().position, get_window().size)
+		var overlap := safe.intersection(window_rect)
+		if overlap.has_area():
+			padding = safe_padding(Rect2i(overlap.position - window_rect.position, overlap.size), get_window().size, get_viewport_rect().size)
 	if home:
 		home.set_safe_insets(padding)
 	for edge in padding:
@@ -915,9 +1093,9 @@ func debug_ui_status() -> Dictionary:
 	var card_index: int = library.cards.find(focused) if focused is Button else -1
 	if card_index >= 0:
 		focus_control = "game:" + str(library.entries[card_index].id) if card_index < library.entries.size() else "add_game"
-	return {"feedback": ui_feedback.diagnostic(), "focus_scale": [focused.scale.x, focused.scale.y] if focused != null else [], "focus_control": focus_control, "library_columns": library.columns, "game_ids": game_ids, "screen": "user" if user_panel != null and user_panel.visible else "settings" if settings_dialog.visible else "home" if home.visible else "game" if session != null else "setup", "locale": TranslationServer.get_locale(), "reduced_motion": home.reduced_motion, "motion_time": home.motion_time, "animation_processing": home.is_processing(), "orbits": points, "user_profile": UserProfile.local_public(profile), "title": tr("APP_NAME"), "start_label": tr("START_GAME"), "size": [size.x, size.y]}
+	return {"route": Page.keys()[flow.page].to_lower(), "status": status_key, "feedback": ui_feedback.diagnostic(), "focus_scale": [focused.scale.x, focused.scale.y] if focused != null else [], "focus_control": focus_control, "library_columns": library.columns, "game_ids": game_ids, "screen": "user" if user_panel != null and user_panel.visible else "settings" if settings_dialog.visible else "home" if home.visible else "game" if session != null else "setup", "locale": TranslationServer.get_locale(), "reduced_motion": home.reduced_motion, "motion_time": home.motion_time, "animation_processing": home.is_processing(), "orbits": points, "user_profile": UserProfile.local_public(profile), "title": tr("APP_NAME"), "start_label": tr("START_GAME"), "size": [size.x, size.y]}
 
-# UI ABI 1: session, rules and the existing Mod view survive the UI shell swap.
+# UI ABI 2: session, rules and the existing Mod view survive the UI shell swap.
 func ui_apply_catalogs() -> void:
 	I18n.install()
 	I18n.select(str(profile.get("language", "system")))
@@ -953,28 +1131,30 @@ func ui_import(old: Control) -> bool:
 	home.motion_time = old.home.motion_time
 	home.set_reduced_motion(bool(profile.get("reduce_motion", false)))
 	ui_apply_catalogs()
+	var old_flow = old.get("flow")
+	if old_flow != null:
+		flow.join_origin = old_flow.join_origin
 	if old.session != null:
 		session = old.session
 		session.updated.disconnect(old._render_snapshot)
 		session.notice.disconnect(old._handle_notice)
+		if old.has_method("_connection_changed"):
+			var old_handler := Callable(old, "_connection_changed")
+			if session.status_changed.is_connected(old_handler): session.status_changed.disconnect(old_handler)
 		var owner_node: Node = get_parent() if shell_managed else self
 		if session.get_parent() != owner_node:
 			session.reparent(owner_node)
 		session.updated.connect(_render_snapshot)
 		session.notice.connect(_handle_notice)
+		session.status_changed.connect(_connection_changed)
+		invite_dismissed = old.invite_dismissed
+		peer_phase = old.peer_phase if old.peer_phase in ["joining", "joined"] else "idle"
 		game_view = old.game_view
 		if game_view != null:
 			game_view.reparent(game_area)
 		old.session = null
 		old.game_view = null
-		home.hide()
-		content_margin.show()
-		setup.hide()
-		create_button.hide()
-		join_button.hide()
-		reconnect_button.show()
-		leave_button.show()
-		roster.show()
+		_navigate(Page.CONNECTING if session.snapshot.is_empty() else Page.MATCH, false)
 		if not session.snapshot.is_empty():
 			_render_snapshot(session.snapshot)
 	elif not old.home.visible:
@@ -1025,8 +1205,8 @@ func ui_restore_focus(old_focus: Control, old: Control, path: NodePath) -> void:
 			target.grab_focus()
 		elif home.visible:
 			home.start_button.grab_focus()
-		elif setup.visible:
-			library.focus_selected()
+		else:
+			_render_page(true)
 
 # Optional Mod UI extension; no dependency from a Mod on app internals.
 func _connect_game_controls(view: Control) -> void:
@@ -1046,7 +1226,8 @@ func _game_platform_action(action: String) -> void:
 		return
 	match action:
 		"settings": _open_settings()
-		"reconnect": reconnect_button.pressed.emit()
+		"reconnect": _reconnect()
+		"invite": _open_invite()
 		"exit":
 			if session != null and session.snapshot.get("view", {}).get("finished", false):
 				_leave()
@@ -1056,26 +1237,33 @@ func _game_platform_action(action: String) -> void:
 func _send_game_status() -> void:
 	if not is_instance_valid(game_view) or not game_view.has_method("set_platform_state"):
 		return
-	var interrupted: bool = session != null and not session.host and session.connection_state in ["disconnected", "failed", "rejected"]
-	var message := status.text if status_key not in ["CONNECTED", "LOBBY_HELP", "LEFT_ROOM"] else ""
-	game_view.set_platform_state({"enabled": true, "connected": not interrupted, "can_reconnect": joined and interrupted, "message": message, "reduce_motion": bool(profile.get("reduce_motion", false)), "input_paused": settings_dialog.visible or leave_dialog.visible or (user_panel != null and user_panel.visible)})
+	var ready_to_play: bool = session != null and (session.host or (session.connection_state == "connected" and not session.snapshot.is_empty())) and flow.page == Page.MATCH
+	var modal_open := _top_modal() != null
+	var message := status.text if status_key not in ["CONNECTED", "LOBBY_HELP", "LEFT_ROOM", "ROOM_CREATED"] else ""
+	var state := {"enabled": true, "connected": ready_to_play, "can_reconnect": _can_reconnect(), "can_invite": ready_to_play and session.host and not session.get_join_info().is_empty(), "message": message, "reduce_motion": bool(profile.get("reduce_motion", false)), "input_paused": modal_open}
+	if game_view.get_meta("novaparty_platform_state", {}) == state: return
+	game_view.set_meta("novaparty_platform_state", state.duplicate(true))
+	game_view.set_platform_state(state)
+	if modal_open: _suspend_focus(game_view)
 
 func _layout_game() -> void:
 	immersive_game = is_instance_valid(session) and is_instance_valid(game_view) and game_view.has_method("wants_fullscreen") and game_view.wants_fullscreen()
 	if immersive_game:
-		page_title.hide()
-		status.hide()
-		roster.hide()
-		footer.hide()
 		var height := get_viewport_rect().size.y - content_margin.get_theme_constant("margin_top") - content_margin.get_theme_constant("margin_bottom")
-		game_area.custom_minimum_size.y = maxf(520, height)
+		game_area.custom_minimum_size.y = maxf(520, height - 36)
 	else:
 		game_area.custom_minimum_size.y = 0
+	_render_page()
 	_update_join_invite()
+	_send_game_status()
 
 func _restore_exit_focus() -> void:
-	if is_instance_valid(game_view) and game_view.has_method("restore_platform_focus"):
+	if is_instance_valid(leave_focus) and leave_focus.is_visible_in_tree():
+		leave_focus.grab_focus()
+	elif is_instance_valid(game_view) and game_view.has_method("restore_platform_focus"):
 		game_view.restore_platform_focus("exit")
+	else:
+		_render_page(true)
 
 
 func _build_lan_ui() -> void:
@@ -1084,7 +1272,7 @@ func _build_lan_ui() -> void:
 	join_browser = preload("res://app/ui/screens/join_browser.gd").new()
 	setup.add_child(join_browser)
 	join_browser.selected.connect(_inspect_peer)
-	join_browser.refresh_requested.connect(discovery.browse)
+	join_browser.refresh_requested.connect(_search_nearby)
 	join_browser.manual_requested.connect(_show_manual_join)
 	join_browser.scan_requested.connect(_start_scan)
 	join_browser.bluetooth_requested.connect(_request_bluetooth)
@@ -1092,7 +1280,10 @@ func _build_lan_ui() -> void:
 	qr_scanner = preload("res://sdk/net/qr_scanner.gd").new()
 	add_child(qr_scanner)
 	qr_scanner.scanned.connect(_join_scanned_code)
-	qr_scanner.failed.connect(func(code): _set_status("CAMERA_PERMISSION_DENIED" if code == "camera_permission_denied" else "CAMERA_UNAVAILABLE"))
+	qr_scanner.failed.connect(func(code):
+		_set_status("CAMERA_PERMISSION_DENIED" if code == "camera_permission_denied" else "CAMERA_UNAVAILABLE")
+		_render_page(true)
+	)
 	var invite_layer := CanvasLayer.new()
 	invite_layer.layer = 25
 	add_child(invite_layer)
@@ -1100,13 +1291,17 @@ func _build_lan_ui() -> void:
 	join_invite.theme = theme
 	invite_layer.add_child(join_invite)
 	join_invite.hide()
-	join_invite.dismissed.connect(func():
+	join_invite.confirmed.connect(func():
 		invite_dismissed = true
-		if game_view != null and game_view.has_method("focus_default"):
+		if game_view != null and game_view.has_method("restore_platform_focus"):
+			game_view.restore_platform_focus("invite")
+		elif is_instance_valid(game_view) and game_view.has_method("focus_default") and session != null and session.snapshot.get("players", []).size() > 1:
 			game_view.focus_default()
+		elif invite_button.is_visible_in_tree(): invite_button.grab_focus()
 	)
-	discovery.changed.connect(func(rooms): join_browser.populate(rooms))
-	discovery.unavailable.connect(func(_code): join_browser.message.text = "DISCOVERY_UNAVAILABLE")
+	join_invite.visibility_changed.connect(_modal_changed)
+	discovery.changed.connect(join_browser.populate)
+	discovery.unavailable.connect(func(_code): join_browser.unavailable())
 	var layer := CanvasLayer.new()
 	layer.layer = 60
 	add_child(layer)
@@ -1119,20 +1314,16 @@ func _build_lan_ui() -> void:
 			peer_transfer.confirm_download()
 	)
 	download_dialog.canceled.connect(_cancel_peer_join)
+	download_dialog.visibility_changed.connect(_modal_changed)
 
 func _show_manual_join() -> void:
-	library_help.text = "MANUAL_JOIN_HELP"
-	join_browser.hide()
-	discovery.stop_browse()
-	library.show()
-	network_row.show()
-	join_button.show()
-	address.grab_focus()
+	if session != null or peer_transfer != null: return
+	_navigate(Page.MANUAL)
+	_set_status("JOIN_HELP")
 
 func _inspect_peer(target: Dictionary) -> void:
-	if session != null:
-		return
-	_cancel_peer_join()
+	if session != null or peer_transfer != null: return
+	if not flow.is_join(): _navigate(Page.NEARBY, false)
 	peer_target = target.duplicate(true)
 	peer_error = ""
 	peer_phase = "inspecting"
@@ -1143,6 +1334,8 @@ func _inspect_peer(target: Dictionary) -> void:
 	peer_transfer.completed.connect(_peer_downloaded)
 	peer_transfer.failed.connect(_peer_failed)
 	_set_status("CONNECTING_BLUETOOTH" if str(target.address).begins_with("ble:") else "CHECKING_GAME")
+	_render_page()
+	pending_cancel.grab_focus()
 	var error: Error = peer_transfer.inspect_remote(str(target.address), int(target.port), str(target.get("session_id", "")))
 	if error != OK:
 		_peer_failed("connect_failed")
@@ -1159,6 +1352,7 @@ func _peer_catalog(metadata: Dictionary) -> void:
 			_join_peer(info, metadata)
 			return
 	peer_phase = "confirmation"
+	_render_page()
 	var display_name: String = str(metadata.name)
 	var localized = metadata.get("localized_names", {})
 	if localized is Dictionary:
@@ -1192,32 +1386,49 @@ func _join_peer(info: Dictionary, metadata: Dictionary) -> void:
 	address.text = peer_target.address
 	port.value = int(peer_target.port)
 	token = ""
+	_reset_peer_join()
 	expected_join_session = metadata.session_id
 	peer_phase = "joining"
-	download_dialog.hide()
-	if peer_transfer != null:
-		peer_transfer.cancel()
-		peer_transfer.queue_free()
-		peer_transfer = null
-	_start(false)
+	var error := _start(false)
+	if error != OK and peer_phase == "joining": _peer_failed("incompatible")
+
+func _join_error_key(code: String, resuming: bool = false) -> String:
+	match code:
+		"room_full": return "JOIN_ROOM_FULL"
+		"game_in_progress": return "JOIN_IN_PROGRESS"
+		"room_changed", "invalid_resume_token", "session_replaced": return "JOIN_ROOM_ENDED" if resuming else "JOIN_ROOM_CHANGED"
+		"incompatible", "not_a_game": return "JOIN_INCOMPATIBLE"
+		"download_storage_failed": return "JOIN_STORAGE_FAILED"
+		"package_hash_mismatch", "invalid_chunk": return "JOIN_PACKAGE_FAILED"
+		"transfer_timeout", "handshake_timeout": return "JOIN_TIMEOUT"
+		_: return "PEER_JOIN_FAILED"
 
 func _peer_failed(code: String) -> void:
-	peer_error = code
-	_cancel_peer_join()
+	_reset_peer_join()
 	peer_phase = "failed"
-	_set_status("PEER_JOIN_FAILED")
+	peer_error = code
+	_navigate(flow.join_origin)
+	_set_status(_join_error_key(code))
 
-func _cancel_peer_join() -> void:
+func _reset_peer_join() -> void:
 	if peer_transfer != null:
 		peer_transfer.cancel()
 		peer_transfer.queue_free()
 		peer_transfer = null
-	if download_dialog != null:
-		download_dialog.hide()
+	if download_dialog != null: download_dialog.hide()
 	peer_phase = "idle"
-	_set_status("JOIN_HELP")
-	if join_browser != null and join_browser.is_visible_in_tree():
-		join_browser.focus_default()
+	peer_error = ""
+	expected_join_session = ""
+
+func _cancel_peer_join() -> void:
+	if flow.page == Page.CONNECTING:
+		_clear_session()
+		joined = false
+		token = ""
+	_reset_peer_join()
+	if flow.page == Page.CONNECTING or flow.is_join():
+		_navigate(flow.join_origin)
+		_set_status("JOIN_HELP")
 
 func debug_lan_command(method: String, params: Dictionary) -> Dictionary:
 	if method == "qr.image" and session != null:
@@ -1244,7 +1455,8 @@ func debug_lan_command(method: String, params: Dictionary) -> Dictionary:
 	if method == "lan.status":
 		return {"rooms": discovery.list_rooms(), "backend": discovery.backend, "discovery_error": discovery.last_error, "phase": peer_phase, "last_error": peer_error, "confirmation": download_dialog.visible and not download_dialog.working, "received": peer_transfer.received if peer_transfer != null else 0}
 	if method == "lan.search":
-		_open_setup(false)
+		if session != null: _search_nearby() # Diagnostics only; keep the match on screen.
+		else: _open_setup(false)
 		return {"searching": true}
 	if method == "lan.inspect":
 		if params.get("address") is String and params.address.begins_with("ble:") and params.address.length() <= 68:
@@ -1270,7 +1482,7 @@ func _exit_tree() -> void:
 func _request_bluetooth() -> void:
 	var radio = Bluetooth.shared(get_tree())
 	if radio.state == "on":
-		discovery.browse()
+		_search_nearby()
 		return
 	if not radio.state_changed.is_connected(_bluetooth_state_changed):
 		radio.state_changed.connect(_bluetooth_state_changed)
@@ -1279,12 +1491,13 @@ func _request_bluetooth() -> void:
 
 func _bluetooth_state_changed(state: String) -> void:
 	if state == "on" and join_browser.is_visible_in_tree():
-		discovery.browse()
+		_search_nearby()
 	elif state in ["unauthorized", "off"] and join_browser.is_visible_in_tree():
 		_set_status("BLUETOOTH_UNAVAILABLE")
 
 func _start_scan() -> void:
 	if session == null:
+		if not flow.is_join(): _navigate(Page.NEARBY)
 		_cancel_peer_join()
 		qr_scanner.start(tr("SCAN_TO_JOIN"), tr("CANCEL"))
 
@@ -1299,19 +1512,40 @@ func _update_join_invite() -> void:
 	if join_invite == null or session == null:
 		return
 	var controlled: bool = game_view != null and game_view.has_method("controls_join_qr") and game_view.controls_join_qr()
-	var show_code: bool = session.host and session.snapshot.get("players", []).size() == 1 and not controlled and not invite_dismissed
-	if not show_code:
-		var was_visible: bool = join_invite.visible
-		join_invite.hide()
-		if was_visible and game_view != null and game_view.has_method("focus_default"):
-			game_view.focus_default()
-		return
-	var texture: Texture2D = session.get_join_qr()
-	join_invite.visible = texture != null
-	join_invite.image.texture = texture
-	var side := minf(400, minf(get_viewport_rect().size.x - 48, get_viewport_rect().size.y - 180))
-	join_invite.size = Vector2(side, side + 120)
-	join_invite.position = (get_viewport_rect().size - join_invite.size) / 2
+	var waiting: bool = session.host and session.snapshot.get("players", []).size() == 1
+	if join_invite.visible and not waiting and not invite_dismissed:
+		join_invite.close()
+	elif waiting and not controlled and not invite_dismissed and not join_invite.visible:
+		_open_invite(false)
+
+func _open_invite(manual: bool = true) -> void:
+	if not is_instance_valid(session) or not session.host or join_invite.visible: return
+	var info: Dictionary = session.get_join_info()
+	if info.is_empty(): return
+	if manual: invite_dismissed = true
+	join_invite.present(session.get_join_qr(), info)
+
+func _top_modal() -> Control:
+	for modal in [download_dialog, leave_dialog, user_panel, settings_dialog, join_invite]:
+		if is_instance_valid(modal) and modal.visible: return modal
+	return null
+
+func _modal_changed() -> void:
+	var top := _top_modal()
+	for control in modal_focus_modes:
+		if is_instance_valid(control): control.focus_mode = modal_focus_modes[control]
+	modal_focus_modes.clear()
+	if top != null:
+		for branch in [home, content_margin, join_invite, user_panel, settings_dialog, leave_dialog, download_dialog]:
+			if is_instance_valid(branch) and branch != top: _suspend_focus(branch)
+	_send_game_status()
+
+func _suspend_focus(node: Node) -> void:
+	if node is Control and node.focus_mode != Control.FOCUS_NONE:
+		modal_focus_modes[node] = node.focus_mode
+		node.focus_mode = Control.FOCUS_NONE
+	for child in node.get_children():
+		_suspend_focus(child)
 
 func _build_user_profile() -> void:
 	var layer := CanvasLayer.new()
@@ -1324,11 +1558,7 @@ func _build_user_profile() -> void:
 	user_panel.confirmed.connect(func():
 		if home.visible: home.nickname_button.grab_focus()
 	)
-	user_panel.visibility_changed.connect(func():
-		for button in [home.start_button,home.join_button,home.nickname_button,home.settings_button]:
-			button.focus_mode = Control.FOCUS_NONE if user_panel.visible else Control.FOCUS_ALL
-		_send_game_status()
-	)
+	user_panel.visibility_changed.connect(_modal_changed)
 
 func _open_user_profile() -> void:
 	user_panel.edit(profile)

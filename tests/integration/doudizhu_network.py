@@ -98,6 +98,7 @@ def run():
 
         # Cut the transport of the phone behind the proxy, then reconnect to the same seat.
         before = state(phones[2])
+        link.reject_new.set()
         link.interrupt_existing('close')
         wait_for(lambda: state(table)['view']['paused'])
         actor = by_seat[int(state(table)['view']['turn'])]
@@ -106,9 +107,11 @@ def run():
             card = state(actor)['view']['hand'][-1]
             result, _ = submit(actor, state(actor), 'paused-play', {'type': 'play', 'cards': [card]})
             assert not result['accepted'] and result['code'] == 'players_disconnected'
-        phones[2].room('room.reconnect')
+        wait_for(lambda: state(phones[2]).get('session_state') == 'reconnecting')
+        link.reject_new.clear()
         wait_for(lambda: all(not state(c)['view']['paused'] for c in clients) and state(phones[2]).get('session_state') == 'connected')
         after = state(phones[2])
+        assert after['local_session_id'] == before['local_session_id']
         assert after['seat'] == before['seat'] and after['view']['hand'] == before['view']['hand']
         print('PASS Dou Dizhu transport cut: actions paused, same-seat reconnect keeps the hand', flush=True)
 

@@ -77,15 +77,17 @@ def run():
         assert len(state(table)['players']) == 4
         print('PASS UNO regular SDK download consent, four clients, screen privacy and locked membership', flush=True)
         before = state(phones[2])
+        link.reject_new.set()
         link.interrupt_existing('close')
         wait_for(lambda: state(table)['view']['paused'])
-        wait_for(lambda: state(phones[2]).get('session_state') == 'disconnected')
+        wait_for(lambda: state(phones[2]).get('session_state') == 'reconnecting')
         result, _ = submit(phones[0], state(phones[0]), 'paused-draw', {'type': 'draw'})
         assert not result['accepted'] and result['code'] == 'players_disconnected'
-        phones[2].room('room.reconnect')
+        link.reject_new.clear()
         wait_for(lambda: all(not state(c)['view']['paused'] for c in clients) and state(phones[2]).get('session_state') == 'connected')
         after = state(phones[2])
         assert after['game_session_id'] == before['game_session_id'] and after['seat'] == before['seat']
+        assert after['local_session_id'] == before['local_session_id']
         assert after['view']['hand'] == before['view']['hand'] and after['view']['turn'] == before['view']['turn']
         print('PASS UNO real game-transport cut: paused actions rejected, authenticated same-seat reconnect preserves hand/turn', flush=True)
         caught = False

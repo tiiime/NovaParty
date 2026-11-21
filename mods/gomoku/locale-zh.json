@@ -19,6 +19,8 @@
   "SETTINGS": "设置",
   "EXIT_GAME": "退出游戏",
   "RECONNECT": "重新连接",
+  "INVITE": "邀请朋友",
+  "PLACING": "正在落子…",
   "VIEW_RESULT": "查看结果",
   "PLAY_AGAIN": "再开一局",
   "WAITING_REMATCH": "已准备，等待朋友同意…",

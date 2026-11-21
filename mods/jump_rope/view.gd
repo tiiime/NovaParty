@@ -29,6 +29,7 @@ var role := "none"
 var last_send := -10000
 var last_sent_count := -1
 var pending_role := ""
+var feedback_notice := ""
 var sensor_time := 0.0
 var suspended := false
 
@@ -121,6 +122,7 @@ func render(value: Dictionary) -> void:
 	role = own.role
 	if role == pending_role:
 		pending_role = ""
+		feedback_notice = ""
 	local_count = maxi(local_count, int(own.count))
 	_refresh()
 
@@ -137,16 +139,23 @@ func _refresh() -> void:
 		invite_panel.visible = invite_image.texture != null
 	display_button.visible = role == "none"
 	controller_button.visible = role == "none"
-	controller_button.disabled = not motion.available or not platform.get("connected", true)
-	display_button.disabled = not platform.get("connected", true)
+	var can_change: bool = pending_role.is_empty() and platform.get("connected", true) and not platform.get("input_paused", false)
+	controller_button.disabled = not motion.available or not can_change
+	display_button.disabled = not can_change
 	calibrate_button.visible = role == "controller"
+	calibrate_button.disabled = not can_change
 	role_button.visible = role != "none"
+	role_button.disabled = not can_change
 	reconnect_button.visible = platform.get("can_reconnect", false)
 	meter.visible = role == "controller"
 	for child in buttons.get_children():
 		child.text = _t(str(child.name))
 	if not platform.get("connected", true):
-		hint.text = _t("disconnected")
+		hint.text = str(platform.get("message", "")) if not str(platform.get("message", "")).is_empty() else _t("disconnected")
+	elif not pending_role.is_empty():
+		hint.text = _t("role_pending")
+	elif not feedback_notice.is_empty():
+		hint.text = _t(feedback_notice)
 	elif role == "none":
 		hint.text = _t("choose")
 	elif role == "display":
@@ -172,9 +181,11 @@ func _participants() -> Array:
 	return result
 
 func _choose_role(value: String) -> void:
-	if snapshot.is_empty() or (value == "controller" and not motion.available):
+	if snapshot.is_empty() or not pending_role.is_empty() or not platform.get("connected", true) or platform.get("input_paused", false) or (value == "controller" and not motion.available):
 		return
+	feedback_notice = ""
 	pending_role = value
+	_refresh()
 	command.emit({"type": "role", "role": value, "generation": generation})
 
 func _process(delta: float) -> void:
@@ -192,7 +203,7 @@ func _process(delta: float) -> void:
 	if jumped:
 		local_count += 1
 		stage.set_players(_participants())
-		Input.vibrate_handheld(18)
+		platform_action.emit("haptic:select")
 	var now := Time.get_ticks_msec()
 	if not snapshot.is_empty() and local_count > int(_own().count) and (now - last_send >= 400 or local_count != last_sent_count):
 		last_send = now
@@ -219,11 +230,7 @@ func _layout() -> void:
 	hint.size = Vector2(size.x - margin * 2, 66)
 	status.position = Vector2(margin, 121)
 	status.size = Vector2(size.x - margin * 2, 54)
-	var visible_count := 0
-	for child in buttons.get_children():
-		if child.visible:
-			visible_count += 1
-	var height := float(visible_count * 68 - 10)
+	var height := buttons.get_combined_minimum_size().y
 	buttons.position = Vector2(size.x - width - margin, size.y - height - margin)
 	buttons.size = Vector2(width, height)
 	stage.position = Vector2(margin, 182)
@@ -242,19 +249,24 @@ func set_platform_state(value: Dictionary) -> void:
 	if value.get("connected", true) != platform.get("connected", true) or value.get("input_paused", false) != platform.get("input_paused", false):
 		motion.reset()
 	platform = value
+	if not platform.get("connected", true): pending_role = ""
 	stage.reduced_motion = bool(value.get("reduce_motion", false))
 	_refresh()
 
 func focus_default() -> void:
-	(display_button if role == "none" else exit_button).grab_focus()
+	if reconnect_button.visible: reconnect_button.grab_focus()
+	elif role == "none" and not display_button.disabled: display_button.grab_focus()
+	else: exit_button.grab_focus()
 
 func restore_platform_focus(_action: String = "") -> void:
 	focus_default()
 
-func on_command_notice(code: String) -> void:
-	if code in ["controllers_full", "stale_generation", "invalid_action"]:
-		pending_role = ""
-		hint.text = _t(code)
+func on_command_notice(code: String) -> bool:
+	if code not in ["controllers_full", "stale_generation", "invalid_action"]: return false
+	pending_role = ""
+	feedback_notice = code
+	_refresh()
+	return true
 
 func capture_view_state() -> Dictionary:
 	return {"qr_visible": invite_panel.visible, "role": role, "count": local_count, "generation": generation, "sensor_available": motion.available, "sensor_calibrated": motion.calibrated, "sensor_baseline": motion.baseline, "sensor_strength": motion.strength, "participants": _participants().size()}

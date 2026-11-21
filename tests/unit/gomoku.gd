@@ -92,7 +92,7 @@ func run() -> void:
 	check(host.immersive_game and not host.footer.visible and not host.page_title.visible, "fullscreen Mod hides duplicate platform chrome")
 	check(view.board.get_global_rect().end.x <= view.sidebar.global_position.x, "TV board stays left of information")
 	check(view.actions.global_position.y > view.players_row.global_position.y, "TV actions are below player information")
-	check(view.settings_button.global_position.y < view.exit_button.global_position.y, "TV operations form a vertical list")
+	check(view.settings_button.global_position.y == view.exit_button.global_position.y and view.settings_button.global_position.x < view.exit_button.global_position.x, "TV operations share a two-column action row")
 	var local_name: String = UserProfile.local_public(host.profile).display_name
 	check(view.names[0].text.contains(local_name) and view.names[1].text.contains("月亮") and view.clock_available, "both real identities and clocks shown")
 	view.settings_button.pressed.emit()

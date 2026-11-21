@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1500" viewBox="0 0 1600 1500" role="img" aria-label="星星大作战 v0.4 组件规范">
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1500" viewBox="0 0 1600 1500" role="img" aria-label="星星大作战 v0.5 组件规范">
 <defs>
-<linearGradient id="gold" x2="0.2" y2="1"><stop stop-color="#FFF4B8"/><stop offset="0.5" stop-color="#FFE34B"/><stop offset="1" stop-color="#E0A612"/></linearGradient>
+<linearGradient id="gold" x2="0.2" y2="1"><stop stop-color="#FFF3BB"/><stop offset="0.5" stop-color="#FFDE46"/><stop offset="1" stop-color="#D4A524"/></linearGradient>
 <linearGradient id="sky-0" x2="0" y2="1"><stop stop-color="#2639BD"/><stop offset="1" stop-color="#4960D9"/></linearGradient><linearGradient id="sky-6" x2="0" y2="1"><stop stop-color="#234BE0"/><stop offset="1" stop-color="#3A78ED"/></linearGradient><linearGradient id="sky-12" x2="0" y2="1"><stop stop-color="#183CD4"/><stop offset="1" stop-color="#286DE9"/></linearGradient><linearGradient id="sky-18" x2="0" y2="1"><stop stop-color="#393FD2"/><stop offset="1" stop-color="#5369E6"/></linearGradient>
 <path id="star-shape" d="M49 10Q55 0 61 10L72 31 96 35Q108 37 99 47L82 64 86 88Q88 101 76 95L55 84 34 95Q22 101 24 88L28 64 11 47Q2 37 14 35L38 31Z"/>
 <g id="i-check" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L21 5"/></g>
@@ -20,312 +20,312 @@
 <g id="i-phone" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 18h4"/></g>
 <g id="i-eye" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12q10-11 20 0-10 11-20 0Z"/><circle cx="12" cy="12" r="3"/></g>
 </defs>
-<rect x="0" y="0" width="1600" height="1500" rx="0" fill="#EEF4FF" opacity="1"/>
-<rect x="0" y="0" width="1600" height="104" rx="0" fill="#2058E0" opacity="1"/>
-<circle cx="54" cy="52" r="30" fill="#FFE34B" opacity="1"/>
-<text x="54" y="60" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="800" fill="#133464" text-anchor="middle">02</text>
+<rect x="0" y="0" width="1600" height="1500" rx="0" fill="#F8F7F2" opacity="1"/>
+<rect x="0" y="0" width="1600" height="104" rx="0" fill="#304CE0" opacity="1"/>
+<circle cx="54" cy="52" r="30" fill="#FFDE46" opacity="1"/>
+<text x="54" y="60" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="800" fill="#18254D" text-anchor="middle">02</text>
 <text x="100" y="47" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="32" font-weight="800" fill="#FFFFFF" text-anchor="start">组件规范</text>
-<text x="100" y="78" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="500" fill="#E1EFFF" text-anchor="start">纯色果冻组件、厚底边、电视焦点与完整状态</text>
-<text x="1560" y="62" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#FFFFFF" text-anchor="end">星星大作战 · v0.4</text>
-<rect x="32" y="128" width="1536" height="500" rx="20" fill="#BCD2F0" opacity="1"/>
-<rect x="32" y="124" width="1536" height="500" rx="20" fill="#FFFFFF" opacity="1" stroke="#D6E4F8" stroke-width="2"/>
-<text x="56" y="162" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="800" fill="#133464" text-anchor="start">按钮：4 种 × 4 状态</text>
-<text x="56" y="190" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="500" fill="#506786" text-anchor="start">焦点使用橙色 6 单位外环，并加 focus.outline 深色细轮廓</text>
-<text x="416" y="222" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#506786" text-anchor="middle">默认</text>
-<text x="698" y="222" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#506786" text-anchor="middle">按下</text>
-<text x="980" y="222" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#506786" text-anchor="middle">电视焦点</text>
-<text x="1262" y="222" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#506786" text-anchor="middle">禁用</text>
-<text x="60" y="288" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#133464" text-anchor="start">PRIMARY / 星黄</text>
-<rect x="300" y="252" width="232" height="52" rx="16" fill="#E0A612" opacity="1"/>
-<rect x="300" y="248" width="232" height="52" rx="16" fill="#FFE34B" opacity="1"/>
-<text x="416.0" y="280.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#133464" text-anchor="middle">PRIMARY</text>
-<rect x="582" y="252" width="232" height="52" rx="16" fill="#FFE34B" opacity="1"/>
-<text x="698.0" y="284.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#133464" text-anchor="middle">PRIMARY</text>
-<rect x="856" y="240" width="248" height="68" rx="22" fill="none" opacity="1" stroke="#263461" stroke-width="2"/>
-<rect x="858" y="242" width="244" height="64" rx="22" fill="none" opacity="1" stroke="#FF8A1C" stroke-width="6"/>
-<rect x="864" y="252" width="232" height="52" rx="16" fill="#E0A612" opacity="1"/>
-<rect x="864" y="248" width="232" height="52" rx="16" fill="#FFE34B" opacity="1"/>
-<text x="980.0" y="280.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#133464" text-anchor="middle">PRIMARY</text>
-<rect x="1146" y="248" width="232" height="52" rx="16" fill="#E1EAF0" opacity="1"/>
-<text x="1262.0" y="280.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#8294A3" text-anchor="middle">PRIMARY</text>
-<text x="60" y="376" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#133464" text-anchor="start">ACCENT / 天蓝</text>
-<rect x="300" y="340" width="232" height="52" rx="16" fill="#123CA9" opacity="1"/>
-<rect x="300" y="336" width="232" height="52" rx="16" fill="#2058E0" opacity="1"/>
-<text x="416.0" y="368.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#FFFFFF" text-anchor="middle">ACCENT</text>
-<rect x="582" y="340" width="232" height="52" rx="16" fill="#2058E0" opacity="1"/>
-<text x="698.0" y="372.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#FFFFFF" text-anchor="middle">ACCENT</text>
-<rect x="856" y="328" width="248" height="68" rx="22" fill="none" opacity="1" stroke="#263461" stroke-width="2"/>
-<rect x="858" y="330" width="244" height="64" rx="22" fill="none" opacity="1" stroke="#FF8A1C" stroke-width="6"/>
-<rect x="864" y="340" width="232" height="52" rx="16" fill="#123CA9" opacity="1"/>
-<rect x="864" y="336" width="232" height="52" rx="16" fill="#2058E0" opacity="1"/>
-<text x="980.0" y="368.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#FFFFFF" text-anchor="middle">ACCENT</text>
-<rect x="1146" y="336" width="232" height="52" rx="16" fill="#E1EAF0" opacity="1"/>
-<text x="1262.0" y="368.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#8294A3" text-anchor="middle">ACCENT</text>
-<text x="60" y="464" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#133464" text-anchor="start">SECONDARY / 白底</text>
-<rect x="300" y="428" width="232" height="52" rx="16" fill="#BCD2F0" opacity="1"/>
-<rect x="300" y="424" width="232" height="52" rx="16" fill="#FFFFFF" opacity="1" stroke="#BCD2F0" stroke-width="2"/>
-<text x="416.0" y="456.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#2058E0" text-anchor="middle">SECONDARY</text>
-<rect x="582" y="428" width="232" height="52" rx="16" fill="#FFFFFF" opacity="1" stroke="#BCD2F0" stroke-width="2"/>
-<text x="698.0" y="460.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#2058E0" text-anchor="middle">SECONDARY</text>
-<rect x="856" y="416" width="248" height="68" rx="22" fill="none" opacity="1" stroke="#263461" stroke-width="2"/>
-<rect x="858" y="418" width="244" height="64" rx="22" fill="none" opacity="1" stroke="#FF8A1C" stroke-width="6"/>
-<rect x="864" y="428" width="232" height="52" rx="16" fill="#BCD2F0" opacity="1"/>
-<rect x="864" y="424" width="232" height="52" rx="16" fill="#FFFFFF" opacity="1" stroke="#BCD2F0" stroke-width="2"/>
-<text x="980.0" y="456.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#2058E0" text-anchor="middle">SECONDARY</text>
-<rect x="1146" y="424" width="232" height="52" rx="16" fill="#E1EAF0" opacity="1"/>
-<text x="1262.0" y="456.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#8294A3" text-anchor="middle">SECONDARY</text>
-<text x="60" y="552" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#133464" text-anchor="start">DANGER / 危险</text>
-<rect x="300" y="516" width="232" height="52" rx="16" fill="#F0B3C8" opacity="1"/>
-<rect x="300" y="512" width="232" height="52" rx="16" fill="#FFFFFF" opacity="1" stroke="#F0B3C8" stroke-width="2"/>
-<text x="416.0" y="544.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#AB3558" text-anchor="middle">DANGER</text>
-<rect x="582" y="516" width="232" height="52" rx="16" fill="#FFFFFF" opacity="1" stroke="#F0B3C8" stroke-width="2"/>
-<text x="698.0" y="548.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#AB3558" text-anchor="middle">DANGER</text>
-<rect x="856" y="504" width="248" height="68" rx="22" fill="none" opacity="1" stroke="#263461" stroke-width="2"/>
-<rect x="858" y="506" width="244" height="64" rx="22" fill="none" opacity="1" stroke="#FF8A1C" stroke-width="6"/>
-<rect x="864" y="516" width="232" height="52" rx="16" fill="#F0B3C8" opacity="1"/>
-<rect x="864" y="512" width="232" height="52" rx="16" fill="#FFFFFF" opacity="1" stroke="#F0B3C8" stroke-width="2"/>
-<text x="980.0" y="544.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#AB3558" text-anchor="middle">DANGER</text>
-<rect x="1146" y="512" width="232" height="52" rx="16" fill="#E1EAF0" opacity="1"/>
-<text x="1262.0" y="544.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#8294A3" text-anchor="middle">DANGER</text>
-<rect x="32" y="654" width="492" height="370" rx="20" fill="#BCD2F0" opacity="1"/>
-<rect x="32" y="650" width="492" height="370" rx="20" fill="#FFFFFF" opacity="1" stroke="#D6E4F8" stroke-width="2"/>
-<text x="56" y="688" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="800" fill="#133464" text-anchor="start">游戏封面卡片</text>
-<text x="56" y="716" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="500" fill="#506786" text-anchor="start">默认 / 选中 / 焦点</text>
-<rect x="58" y="742" width="202" height="122" rx="20" fill="#BCD2F0" opacity="1"/>
-<rect x="58" y="738" width="202" height="122" rx="20" fill="#FFFFFF" opacity="1" stroke="#D6E4F8" stroke-width="2"/>
-<rect x="72" y="752" width="54" height="54" rx="14" fill="#2058E0" opacity="1"/>
+<text x="100" y="78" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="500" fill="#E9EDFF" text-anchor="start">纯色果冻组件、厚底边、电视焦点与完整状态</text>
+<text x="1560" y="62" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#FFFFFF" text-anchor="end">星星大作战 · v0.5</text>
+<rect x="32" y="128" width="1536" height="500" rx="20" fill="#C8D0E4" opacity="1"/>
+<rect x="32" y="124" width="1536" height="500" rx="20" fill="#FFFFFF" opacity="1" stroke="#E2E6F1" stroke-width="2"/>
+<text x="56" y="162" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="800" fill="#18254D" text-anchor="start">按钮：4 种 × 4 状态</text>
+<text x="56" y="190" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="500" fill="#4D6079" text-anchor="start">焦点使用橙色 6 单位外环，并加 focus.outline 深色细轮廓</text>
+<text x="416" y="222" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#4D6079" text-anchor="middle">默认</text>
+<text x="698" y="222" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#4D6079" text-anchor="middle">按下</text>
+<text x="980" y="222" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#4D6079" text-anchor="middle">电视焦点</text>
+<text x="1262" y="222" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#4D6079" text-anchor="middle">禁用</text>
+<text x="60" y="288" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#18254D" text-anchor="start">PRIMARY / 星黄</text>
+<rect x="300" y="252" width="232" height="64" rx="16" fill="#D4A524" opacity="1"/>
+<rect x="300" y="248" width="232" height="64" rx="16" fill="#FFDE46" opacity="1"/>
+<text x="416.0" y="286.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#18254D" text-anchor="middle">PRIMARY</text>
+<rect x="582" y="252" width="232" height="64" rx="16" fill="#FFDE46" opacity="1"/>
+<text x="698.0" y="290.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#18254D" text-anchor="middle">PRIMARY</text>
+<rect x="856" y="240" width="248" height="80" rx="22" fill="none" opacity="1" stroke="#263461" stroke-width="2"/>
+<rect x="858" y="242" width="244" height="76" rx="22" fill="none" opacity="1" stroke="#FF8A1C" stroke-width="6"/>
+<rect x="864" y="252" width="232" height="64" rx="16" fill="#D4A524" opacity="1"/>
+<rect x="864" y="248" width="232" height="64" rx="16" fill="#FFDE46" opacity="1"/>
+<text x="980.0" y="286.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#18254D" text-anchor="middle">PRIMARY</text>
+<rect x="1146" y="248" width="232" height="64" rx="16" fill="#E1EAF0" opacity="1"/>
+<text x="1262.0" y="286.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#8294A3" text-anchor="middle">PRIMARY</text>
+<text x="60" y="376" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#18254D" text-anchor="start">ACCENT / 天蓝</text>
+<rect x="300" y="340" width="232" height="64" rx="16" fill="#2739A2" opacity="1"/>
+<rect x="300" y="336" width="232" height="64" rx="16" fill="#304CE0" opacity="1"/>
+<text x="416.0" y="374.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#FFFFFF" text-anchor="middle">ACCENT</text>
+<rect x="582" y="340" width="232" height="64" rx="16" fill="#304CE0" opacity="1"/>
+<text x="698.0" y="378.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#FFFFFF" text-anchor="middle">ACCENT</text>
+<rect x="856" y="328" width="248" height="80" rx="22" fill="none" opacity="1" stroke="#263461" stroke-width="2"/>
+<rect x="858" y="330" width="244" height="76" rx="22" fill="none" opacity="1" stroke="#FF8A1C" stroke-width="6"/>
+<rect x="864" y="340" width="232" height="64" rx="16" fill="#2739A2" opacity="1"/>
+<rect x="864" y="336" width="232" height="64" rx="16" fill="#304CE0" opacity="1"/>
+<text x="980.0" y="374.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#FFFFFF" text-anchor="middle">ACCENT</text>
+<rect x="1146" y="336" width="232" height="64" rx="16" fill="#E1EAF0" opacity="1"/>
+<text x="1262.0" y="374.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#8294A3" text-anchor="middle">ACCENT</text>
+<text x="60" y="464" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#18254D" text-anchor="start">SECONDARY / 白底</text>
+<rect x="300" y="428" width="232" height="64" rx="16" fill="#C8D0E4" opacity="1"/>
+<rect x="300" y="424" width="232" height="64" rx="16" fill="#FFFFFF" opacity="1" stroke="#C8D0E4" stroke-width="2"/>
+<text x="416.0" y="462.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#304CE0" text-anchor="middle">SECONDARY</text>
+<rect x="582" y="428" width="232" height="64" rx="16" fill="#FFFFFF" opacity="1" stroke="#C8D0E4" stroke-width="2"/>
+<text x="698.0" y="466.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#304CE0" text-anchor="middle">SECONDARY</text>
+<rect x="856" y="416" width="248" height="80" rx="22" fill="none" opacity="1" stroke="#263461" stroke-width="2"/>
+<rect x="858" y="418" width="244" height="76" rx="22" fill="none" opacity="1" stroke="#FF8A1C" stroke-width="6"/>
+<rect x="864" y="428" width="232" height="64" rx="16" fill="#C8D0E4" opacity="1"/>
+<rect x="864" y="424" width="232" height="64" rx="16" fill="#FFFFFF" opacity="1" stroke="#C8D0E4" stroke-width="2"/>
+<text x="980.0" y="462.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#304CE0" text-anchor="middle">SECONDARY</text>
+<rect x="1146" y="424" width="232" height="64" rx="16" fill="#E1EAF0" opacity="1"/>
+<text x="1262.0" y="462.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#8294A3" text-anchor="middle">SECONDARY</text>
+<text x="60" y="552" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#18254D" text-anchor="start">DANGER / 危险</text>
+<rect x="300" y="516" width="232" height="64" rx="16" fill="#F0B3C8" opacity="1"/>
+<rect x="300" y="512" width="232" height="64" rx="16" fill="#FFFFFF" opacity="1" stroke="#F0B3C8" stroke-width="2"/>
+<text x="416.0" y="550.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#AB3558" text-anchor="middle">DANGER</text>
+<rect x="582" y="516" width="232" height="64" rx="16" fill="#FFFFFF" opacity="1" stroke="#F0B3C8" stroke-width="2"/>
+<text x="698.0" y="554.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#AB3558" text-anchor="middle">DANGER</text>
+<rect x="856" y="504" width="248" height="80" rx="22" fill="none" opacity="1" stroke="#263461" stroke-width="2"/>
+<rect x="858" y="506" width="244" height="76" rx="22" fill="none" opacity="1" stroke="#FF8A1C" stroke-width="6"/>
+<rect x="864" y="516" width="232" height="64" rx="16" fill="#F0B3C8" opacity="1"/>
+<rect x="864" y="512" width="232" height="64" rx="16" fill="#FFFFFF" opacity="1" stroke="#F0B3C8" stroke-width="2"/>
+<text x="980.0" y="550.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#AB3558" text-anchor="middle">DANGER</text>
+<rect x="1146" y="512" width="232" height="64" rx="16" fill="#E1EAF0" opacity="1"/>
+<text x="1262.0" y="550.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#8294A3" text-anchor="middle">DANGER</text>
+<rect x="32" y="654" width="492" height="370" rx="20" fill="#C8D0E4" opacity="1"/>
+<rect x="32" y="650" width="492" height="370" rx="20" fill="#FFFFFF" opacity="1" stroke="#E2E6F1" stroke-width="2"/>
+<text x="56" y="688" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="800" fill="#18254D" text-anchor="start">游戏封面卡片</text>
+<text x="56" y="716" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="500" fill="#4D6079" text-anchor="start">默认 / 选中 / 焦点</text>
+<rect x="58" y="742" width="202" height="122" rx="20" fill="#C8D0E4" opacity="1"/>
+<rect x="58" y="738" width="202" height="122" rx="20" fill="#FFFFFF" opacity="1" stroke="#E2E6F1" stroke-width="2"/>
+<rect x="72" y="752" width="54" height="54" rx="14" fill="#304CE0" opacity="1"/>
 <g transform="translate(75 755) scale(0.45) rotate(-8 55 55)">
-<use href="#star-shape" transform="translate(0 4)" fill="#E0A612"/>
-<use href="#star-shape" fill="#FFE34B" stroke="#133464" stroke-width="2"/>
+<use href="#star-shape" transform="translate(0 4)" fill="#D4A524"/>
+<use href="#star-shape" fill="#FFDE46" stroke="#18254D" stroke-width="2"/>
 <path d="M20 39 39 36 49 17" fill="none" opacity="0.7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="41" cy="49" r="3" fill="#133464" opacity="1"/>
-<circle cx="68" cy="49" r="3" fill="#133464" opacity="1"/>
-<path d="M43 61h24Q57 82 43 61Z" fill="#FF75B9" opacity="1" stroke="#133464" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="41" cy="49" r="3" fill="#18254D" opacity="1"/>
+<circle cx="68" cy="49" r="3" fill="#18254D" opacity="1"/>
+<path d="M43 61h24Q57 82 43 61Z" fill="#FF75B9" opacity="1" stroke="#18254D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="31" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 <circle cx="79" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 </g>
-<text x="138" y="780" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="800" fill="#133464" text-anchor="start">星星棋</text>
-<text x="138" y="804" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="500" fill="#506786" text-anchor="start">2–4 人</text>
-<text x="72" y="850" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#506786" text-anchor="start">约 5 分钟</text>
-<rect x="288" y="742" width="202" height="122" rx="20" fill="#2058E0" opacity="1"/>
-<rect x="288" y="738" width="202" height="122" rx="20" fill="#E1EFFF" opacity="1" stroke="#2058E0" stroke-width="2"/>
-<rect x="302" y="752" width="54" height="54" rx="14" fill="#2058E0" opacity="1"/>
+<text x="138" y="780" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="800" fill="#18254D" text-anchor="start">星星棋</text>
+<text x="138" y="804" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="500" fill="#4D6079" text-anchor="start">2–4 人</text>
+<text x="72" y="850" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#4D6079" text-anchor="start">约 5 分钟</text>
+<rect x="288" y="742" width="202" height="122" rx="20" fill="#304CE0" opacity="1"/>
+<rect x="288" y="738" width="202" height="122" rx="20" fill="#E9EDFF" opacity="1" stroke="#304CE0" stroke-width="2"/>
+<rect x="302" y="752" width="54" height="54" rx="14" fill="#304CE0" opacity="1"/>
 <g transform="translate(305 755) scale(0.45) rotate(-8 55 55)">
-<use href="#star-shape" transform="translate(0 4)" fill="#E0A612"/>
-<use href="#star-shape" fill="#FFE34B" stroke="#133464" stroke-width="2"/>
+<use href="#star-shape" transform="translate(0 4)" fill="#D4A524"/>
+<use href="#star-shape" fill="#FFDE46" stroke="#18254D" stroke-width="2"/>
 <path d="M20 39 39 36 49 17" fill="none" opacity="0.7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="41" cy="49" r="3" fill="#133464" opacity="1"/>
-<circle cx="68" cy="49" r="3" fill="#133464" opacity="1"/>
-<path d="M43 61h24Q57 82 43 61Z" fill="#FF75B9" opacity="1" stroke="#133464" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="41" cy="49" r="3" fill="#18254D" opacity="1"/>
+<circle cx="68" cy="49" r="3" fill="#18254D" opacity="1"/>
+<path d="M43 61h24Q57 82 43 61Z" fill="#FF75B9" opacity="1" stroke="#18254D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="31" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 <circle cx="79" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 </g>
-<text x="368" y="780" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="800" fill="#133464" text-anchor="start">连连看</text>
-<text x="368" y="804" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="500" fill="#506786" text-anchor="start">2–4 人</text>
-<text x="302" y="850" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#506786" text-anchor="start">约 5 分钟</text>
+<text x="368" y="780" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="800" fill="#18254D" text-anchor="start">连连看</text>
+<text x="368" y="804" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="500" fill="#4D6079" text-anchor="start">2–4 人</text>
+<text x="302" y="850" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#4D6079" text-anchor="start">约 5 分钟</text>
 <circle cx="468" cy="760" r="14" fill="#087658" opacity="1"/>
 <use href="#i-check" transform="translate(456 748) scale(1)" color="#FFFFFF"/>
 <rect x="52" y="868" width="444" height="150" rx="26" fill="none" opacity="1" stroke="#FF8A1C" stroke-width="6"/>
 <rect x="50" y="866" width="448" height="154" rx="26" fill="none" opacity="1" stroke="#263461" stroke-width="2"/>
-<rect x="58" y="878" width="432" height="138" rx="20" fill="#BCD2F0" opacity="1"/>
-<rect x="58" y="874" width="432" height="138" rx="20" fill="#FFFFFF" opacity="1" stroke="#D6E4F8" stroke-width="2"/>
-<rect x="72" y="888" width="82" height="82" rx="14" fill="#2058E0" opacity="1"/>
+<rect x="58" y="878" width="432" height="138" rx="20" fill="#C8D0E4" opacity="1"/>
+<rect x="58" y="874" width="432" height="138" rx="20" fill="#FFFFFF" opacity="1" stroke="#E2E6F1" stroke-width="2"/>
+<rect x="72" y="888" width="82" height="82" rx="14" fill="#304CE0" opacity="1"/>
 <g transform="translate(77 892) scale(0.7) rotate(-8 55 55)">
-<use href="#star-shape" transform="translate(0 4)" fill="#E0A612"/>
-<use href="#star-shape" fill="#FFE34B" stroke="#133464" stroke-width="2"/>
+<use href="#star-shape" transform="translate(0 4)" fill="#D4A524"/>
+<use href="#star-shape" fill="#FFDE46" stroke="#18254D" stroke-width="2"/>
 <path d="M20 39 39 36 49 17" fill="none" opacity="0.7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="41" cy="49" r="3" fill="#133464" opacity="1"/>
-<circle cx="68" cy="49" r="3" fill="#133464" opacity="1"/>
-<path d="M43 61h24Q57 82 43 61Z" fill="#FF75B9" opacity="1" stroke="#133464" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="41" cy="49" r="3" fill="#18254D" opacity="1"/>
+<circle cx="68" cy="49" r="3" fill="#18254D" opacity="1"/>
+<path d="M43 61h24Q57 82 43 61Z" fill="#FF75B9" opacity="1" stroke="#18254D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="31" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 <circle cx="79" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 </g>
-<text x="170" y="924" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="800" fill="#133464" text-anchor="start">电视焦点卡</text>
-<text x="170" y="956" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="500" fill="#506786" text-anchor="start">2–4 人 · 约 5 分钟</text>
-<rect x="548" y="654" width="492" height="370" rx="20" fill="#BCD2F0" opacity="1"/>
-<rect x="548" y="650" width="492" height="370" rx="20" fill="#FFFFFF" opacity="1" stroke="#D6E4F8" stroke-width="2"/>
-<text x="572" y="688" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="800" fill="#133464" text-anchor="start">设置、输入与进度</text>
-<text x="574" y="763" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="22" font-weight="700" fill="#133464" text-anchor="start">音效</text>
-<rect x="944" y="738" width="64" height="36" rx="999" fill="#2058E0" opacity="1"/>
+<text x="170" y="924" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="800" fill="#18254D" text-anchor="start">电视焦点卡</text>
+<text x="170" y="956" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="500" fill="#4D6079" text-anchor="start">2–4 人 · 约 5 分钟</text>
+<rect x="548" y="654" width="492" height="370" rx="20" fill="#C8D0E4" opacity="1"/>
+<rect x="548" y="650" width="492" height="370" rx="20" fill="#FFFFFF" opacity="1" stroke="#E2E6F1" stroke-width="2"/>
+<text x="572" y="688" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="800" fill="#18254D" text-anchor="start">设置、输入与进度</text>
+<text x="574" y="763" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="22" font-weight="700" fill="#18254D" text-anchor="start">音效</text>
+<rect x="944" y="738" width="64" height="36" rx="999" fill="#304CE0" opacity="1"/>
 <circle cx="990.0" cy="756.0" r="14.0" fill="#FFFFFF" opacity="1"/>
-<text x="574" y="831" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="22" font-weight="700" fill="#133464" text-anchor="start">触感反馈</text>
+<text x="574" y="831" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="22" font-weight="700" fill="#18254D" text-anchor="start">触感反馈</text>
 <rect x="944" y="806" width="64" height="36" rx="999" fill="#E1EAF0" opacity="1"/>
 <circle cx="962.0" cy="824.0" r="14.0" fill="#FFFFFF" opacity="1"/>
-<text x="574" y="872" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#506786" text-anchor="start">名字输入</text>
-<rect x="574" y="888" width="204" height="64" rx="14" fill="#FFFFFF" opacity="1" stroke="#BCD2F0" stroke-width="2"/>
-<text x="592" y="927.7" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="22" font-weight="500" fill="#133464" text-anchor="start">小星</text>
-<rect x="806" y="888" width="204" height="64" rx="14" fill="#FFFFFF" opacity="1" stroke="#2058E0" stroke-width="3"/>
-<text x="824" y="927.7" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="22" font-weight="500" fill="#133464" text-anchor="start">正在编辑</text>
-<text x="574" y="982" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#506786" text-anchor="start">加载进度 68%</text>
-<rect x="806" y="990" width="204" height="20" rx="8" fill="#D6E4F8" opacity="1"/>
-<rect x="806" y="990" width="138.72" height="20" rx="8" fill="#E0A612" opacity="1"/>
-<rect x="806" y="990" width="138.72" height="16" rx="8" fill="#FFE34B" opacity="1"/>
-<rect x="1064" y="654" width="504" height="370" rx="20" fill="#BCD2F0" opacity="1"/>
-<rect x="1064" y="650" width="504" height="370" rx="20" fill="#FFFFFF" opacity="1" stroke="#D6E4F8" stroke-width="2"/>
-<text x="1088" y="688" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="800" fill="#133464" text-anchor="start">提示横幅</text>
-<text x="1088" y="716" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="500" fill="#506786" text-anchor="start">信息 / 成功 / 危险 / 等待</text>
-<rect x="1090" y="738" width="452" height="68" rx="14" fill="#E1EFFF" opacity="1" stroke="#2058E0" stroke-width="2"/>
-<use href="#i-info" transform="translate(1108 760) scale(1)" color="#2058E0"/>
-<text x="1148" y="780" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#2058E0" text-anchor="start">已找到附近的游戏</text>
+<text x="574" y="872" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#4D6079" text-anchor="start">名字输入</text>
+<rect x="574" y="888" width="204" height="72" rx="14" fill="#FFFFFF" opacity="1" stroke="#C8D0E4" stroke-width="2"/>
+<text x="592" y="931.7" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="22" font-weight="500" fill="#18254D" text-anchor="start">小星</text>
+<rect x="806" y="888" width="204" height="72" rx="14" fill="#FFFFFF" opacity="1" stroke="#304CE0" stroke-width="3"/>
+<text x="824" y="931.7" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="22" font-weight="500" fill="#18254D" text-anchor="start">正在编辑</text>
+<text x="574" y="982" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#4D6079" text-anchor="start">加载进度 68%</text>
+<rect x="806" y="990" width="204" height="20" rx="8" fill="#E2E6F1" opacity="1"/>
+<rect x="806" y="990" width="138.72" height="20" rx="8" fill="#D4A524" opacity="1"/>
+<rect x="806" y="990" width="138.72" height="16" rx="8" fill="#FFDE46" opacity="1"/>
+<rect x="1064" y="654" width="504" height="370" rx="20" fill="#C8D0E4" opacity="1"/>
+<rect x="1064" y="650" width="504" height="370" rx="20" fill="#FFFFFF" opacity="1" stroke="#E2E6F1" stroke-width="2"/>
+<text x="1088" y="688" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="800" fill="#18254D" text-anchor="start">提示横幅</text>
+<text x="1088" y="716" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="500" fill="#4D6079" text-anchor="start">信息 / 成功 / 危险 / 等待</text>
+<rect x="1090" y="738" width="452" height="68" rx="14" fill="#E9EDFF" opacity="1" stroke="#304CE0" stroke-width="2"/>
+<use href="#i-info" transform="translate(1108 760) scale(1)" color="#304CE0"/>
+<text x="1148" y="780" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#304CE0" text-anchor="start">已找到附近的游戏</text>
 <rect x="1090" y="808" width="452" height="68" rx="14" fill="#E1FFF4" opacity="1" stroke="#087658" stroke-width="2"/>
 <use href="#i-check" transform="translate(1108 830) scale(1)" color="#087658"/>
 <text x="1148" y="850" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#087658" text-anchor="start">加入成功，准备开玩！</text>
 <rect x="1090" y="878" width="452" height="68" rx="14" fill="#FFF0F6" opacity="1" stroke="#AB3558" stroke-width="2"/>
 <use href="#i-warn" transform="translate(1108 900) scale(1)" color="#AB3558"/>
 <text x="1148" y="920" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#AB3558" text-anchor="start">连接失败，请重试</text>
-<rect x="1090" y="948" width="452" height="68" rx="14" fill="#FFF4B8" opacity="1" stroke="#133464" stroke-width="2"/>
-<use href="#i-clock" transform="translate(1108 970) scale(1)" color="#133464"/>
-<text x="1148" y="990" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#133464" text-anchor="start">正在等待房主确认</text>
-<rect x="32" y="1050" width="560" height="382" rx="20" fill="#BCD2F0" opacity="1"/>
-<rect x="32" y="1046" width="560" height="382" rx="20" fill="#FFFFFF" opacity="1" stroke="#D6E4F8" stroke-width="2"/>
-<text x="56" y="1084" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="800" fill="#133464" text-anchor="start">底部弹层 sheet</text>
+<rect x="1090" y="948" width="452" height="68" rx="14" fill="#FFF3BB" opacity="1" stroke="#18254D" stroke-width="2"/>
+<use href="#i-clock" transform="translate(1108 970) scale(1)" color="#18254D"/>
+<text x="1148" y="990" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#18254D" text-anchor="start">正在等待房主确认</text>
+<rect x="32" y="1050" width="560" height="382" rx="20" fill="#C8D0E4" opacity="1"/>
+<rect x="32" y="1046" width="560" height="382" rx="20" fill="#FFFFFF" opacity="1" stroke="#E2E6F1" stroke-width="2"/>
+<text x="56" y="1084" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="800" fill="#18254D" text-anchor="start">底部弹层 sheet</text>
 <rect x="58" y="1120" width="508" height="280" rx="20" fill="#06143D" opacity="0.25"/>
-<rect x="58" y="1214" width="508" height="190" rx="24" fill="#BCD2F0" opacity="1"/>
-<rect x="58" y="1210" width="508" height="190" rx="24" fill="#FFFFFF" opacity="1" stroke="#D6E4F8" stroke-width="2"/>
-<rect x="264" y="1224" width="96" height="4" rx="999" fill="#BCD2F0" opacity="1"/>
-<text x="84" y="1270" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="800" fill="#133464" text-anchor="start">选择加入方式</text>
-<rect x="84" y="1304" width="214" height="52" rx="16" fill="#123CA9" opacity="1"/>
-<rect x="84" y="1300" width="214" height="52" rx="16" fill="#2058E0" opacity="1"/>
-<use href="#i-qr" transform="translate(104 1314.0) scale(1)" color="#FFFFFF"/>
-<text x="138" y="1332.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#FFFFFF" text-anchor="start">扫码加入</text>
-<rect x="322" y="1304" width="218" height="52" rx="16" fill="#BCD2F0" opacity="1"/>
-<rect x="322" y="1300" width="218" height="52" rx="16" fill="#FFFFFF" opacity="1" stroke="#BCD2F0" stroke-width="2"/>
-<use href="#i-keyboard" transform="translate(342 1314.0) scale(1)" color="#2058E0"/>
-<text x="376" y="1332.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#2058E0" text-anchor="start">手动输入</text>
-<rect x="616" y="1050" width="472" height="382" rx="20" fill="#BCD2F0" opacity="1"/>
-<rect x="616" y="1046" width="472" height="382" rx="20" fill="#FFFFFF" opacity="1" stroke="#D6E4F8" stroke-width="2"/>
-<text x="640" y="1084" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="800" fill="#133464" text-anchor="start">房间列表行</text>
-<rect x="642" y="1124" width="420" height="76" rx="14" fill="#BCD2F0" opacity="1"/>
-<rect x="642" y="1120" width="420" height="76" rx="14" fill="#FFFFFF" opacity="1" stroke="#D6E4F8" stroke-width="2"/>
-<circle cx="678" cy="1158" r="24" fill="#E1EFFF" opacity="1"/>
+<rect x="58" y="1214" width="508" height="190" rx="24" fill="#C8D0E4" opacity="1"/>
+<rect x="58" y="1210" width="508" height="190" rx="24" fill="#FFFFFF" opacity="1" stroke="#E2E6F1" stroke-width="2"/>
+<rect x="264" y="1224" width="96" height="4" rx="999" fill="#C8D0E4" opacity="1"/>
+<text x="84" y="1270" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="800" fill="#18254D" text-anchor="start">选择加入方式</text>
+<rect x="84" y="1304" width="214" height="64" rx="16" fill="#2739A2" opacity="1"/>
+<rect x="84" y="1300" width="214" height="64" rx="16" fill="#304CE0" opacity="1"/>
+<use href="#i-qr" transform="translate(104 1320.0) scale(1)" color="#FFFFFF"/>
+<text x="138" y="1338.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#FFFFFF" text-anchor="start">扫码加入</text>
+<rect x="322" y="1304" width="218" height="64" rx="16" fill="#C8D0E4" opacity="1"/>
+<rect x="322" y="1300" width="218" height="64" rx="16" fill="#FFFFFF" opacity="1" stroke="#C8D0E4" stroke-width="2"/>
+<use href="#i-keyboard" transform="translate(342 1320.0) scale(1)" color="#304CE0"/>
+<text x="376" y="1338.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#304CE0" text-anchor="start">手动输入</text>
+<rect x="616" y="1050" width="472" height="382" rx="20" fill="#C8D0E4" opacity="1"/>
+<rect x="616" y="1046" width="472" height="382" rx="20" fill="#FFFFFF" opacity="1" stroke="#E2E6F1" stroke-width="2"/>
+<text x="640" y="1084" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="800" fill="#18254D" text-anchor="start">房间列表行</text>
+<rect x="642" y="1124" width="420" height="76" rx="14" fill="#C8D0E4" opacity="1"/>
+<rect x="642" y="1120" width="420" height="76" rx="14" fill="#FFFFFF" opacity="1" stroke="#E2E6F1" stroke-width="2"/>
+<circle cx="678" cy="1158" r="24" fill="#E9EDFF" opacity="1"/>
 <g transform="translate(660 1140) scale(0.34) rotate(-5 55 55)">
-<use href="#star-shape" transform="translate(0 4)" fill="#E0A612"/>
-<use href="#star-shape" fill="#FFE34B" stroke="#133464" stroke-width="2"/>
+<use href="#star-shape" transform="translate(0 4)" fill="#D4A524"/>
+<use href="#star-shape" fill="#FFDE46" stroke="#18254D" stroke-width="2"/>
 <path d="M20 39 39 36 49 17" fill="none" opacity="0.7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="41" cy="49" r="3" fill="#133464" opacity="1"/>
-<circle cx="68" cy="49" r="3" fill="#133464" opacity="1"/>
-<path d="M43 61h24Q57 82 43 61Z" fill="#FF75B9" opacity="1" stroke="#133464" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="41" cy="49" r="3" fill="#18254D" opacity="1"/>
+<circle cx="68" cy="49" r="3" fill="#18254D" opacity="1"/>
+<path d="M43 61h24Q57 82 43 61Z" fill="#FF75B9" opacity="1" stroke="#18254D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="31" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 <circle cx="79" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 </g>
-<text x="714" y="1151" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#133464" text-anchor="start">小星的房间</text>
-<text x="714" y="1177" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="500" fill="#506786" text-anchor="start">星星棋 · 1 / 2 人</text>
+<text x="714" y="1151" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#18254D" text-anchor="start">小星的房间</text>
+<text x="714" y="1177" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="500" fill="#4D6079" text-anchor="start">星星棋 · 1 / 2 人</text>
 <text x="1040" y="1164" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#087658" text-anchor="end">可加入</text>
-<rect x="642" y="1216" width="420" height="76" rx="14" fill="#BCD2F0" opacity="1"/>
-<rect x="642" y="1212" width="420" height="76" rx="14" fill="#FFFFFF" opacity="1" stroke="#D6E4F8" stroke-width="2"/>
-<circle cx="678" cy="1250" r="24" fill="#E1EFFF" opacity="1"/>
+<rect x="642" y="1216" width="420" height="76" rx="14" fill="#C8D0E4" opacity="1"/>
+<rect x="642" y="1212" width="420" height="76" rx="14" fill="#FFFFFF" opacity="1" stroke="#E2E6F1" stroke-width="2"/>
+<circle cx="678" cy="1250" r="24" fill="#E9EDFF" opacity="1"/>
 <g transform="translate(660 1232) scale(0.34) rotate(-5 55 55)">
-<use href="#star-shape" transform="translate(0 4)" fill="#E0A612"/>
-<use href="#star-shape" fill="#FFE34B" stroke="#133464" stroke-width="2"/>
+<use href="#star-shape" transform="translate(0 4)" fill="#D4A524"/>
+<use href="#star-shape" fill="#FFDE46" stroke="#18254D" stroke-width="2"/>
 <path d="M20 39 39 36 49 17" fill="none" opacity="0.7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="41" cy="49" r="3" fill="#133464" opacity="1"/>
-<circle cx="68" cy="49" r="3" fill="#133464" opacity="1"/>
-<path d="M43 61h24Q57 82 43 61Z" fill="#FF75B9" opacity="1" stroke="#133464" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="41" cy="49" r="3" fill="#18254D" opacity="1"/>
+<circle cx="68" cy="49" r="3" fill="#18254D" opacity="1"/>
+<path d="M43 61h24Q57 82 43 61Z" fill="#FF75B9" opacity="1" stroke="#18254D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="31" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 <circle cx="79" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 </g>
-<text x="714" y="1243" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#133464" text-anchor="start">月月的房间</text>
-<text x="714" y="1269" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="500" fill="#506786" text-anchor="start">连连看 · 2 / 2 人</text>
+<text x="714" y="1243" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#18254D" text-anchor="start">月月的房间</text>
+<text x="714" y="1269" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="500" fill="#4D6079" text-anchor="start">连连看 · 2 / 2 人</text>
 <text x="1040" y="1256" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#8294A3" text-anchor="end">已满</text>
-<rect x="642" y="1308" width="420" height="76" rx="14" fill="#BCD2F0" opacity="1"/>
-<rect x="642" y="1304" width="420" height="76" rx="14" fill="#FFFFFF" opacity="1" stroke="#D6E4F8" stroke-width="2"/>
-<circle cx="678" cy="1342" r="24" fill="#E1EFFF" opacity="1"/>
+<rect x="642" y="1308" width="420" height="76" rx="14" fill="#C8D0E4" opacity="1"/>
+<rect x="642" y="1304" width="420" height="76" rx="14" fill="#FFFFFF" opacity="1" stroke="#E2E6F1" stroke-width="2"/>
+<circle cx="678" cy="1342" r="24" fill="#E9EDFF" opacity="1"/>
 <g transform="translate(660 1324) scale(0.34) rotate(-5 55 55)">
-<use href="#star-shape" transform="translate(0 4)" fill="#E0A612"/>
-<use href="#star-shape" fill="#FFE34B" stroke="#133464" stroke-width="2"/>
+<use href="#star-shape" transform="translate(0 4)" fill="#D4A524"/>
+<use href="#star-shape" fill="#FFDE46" stroke="#18254D" stroke-width="2"/>
 <path d="M20 39 39 36 49 17" fill="none" opacity="0.7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="41" cy="49" r="3" fill="#133464" opacity="1"/>
-<circle cx="68" cy="49" r="3" fill="#133464" opacity="1"/>
-<path d="M43 61h24Q57 82 43 61Z" fill="#FF75B9" opacity="1" stroke="#133464" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="41" cy="49" r="3" fill="#18254D" opacity="1"/>
+<circle cx="68" cy="49" r="3" fill="#18254D" opacity="1"/>
+<path d="M43 61h24Q57 82 43 61Z" fill="#FF75B9" opacity="1" stroke="#18254D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="31" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 <circle cx="79" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 </g>
-<text x="714" y="1335" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#133464" text-anchor="start">云朵的房间</text>
-<text x="714" y="1361" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="500" fill="#506786" text-anchor="start">你画我猜 · 3 / 4 人</text>
+<text x="714" y="1335" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#18254D" text-anchor="start">云朵的房间</text>
+<text x="714" y="1361" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="500" fill="#4D6079" text-anchor="start">你画我猜 · 3 / 4 人</text>
 <text x="1040" y="1348" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#087658" text-anchor="end">可加入</text>
-<rect x="1112" y="1050" width="456" height="382" rx="20" fill="#BCD2F0" opacity="1"/>
-<rect x="1112" y="1046" width="456" height="382" rx="20" fill="#FFFFFF" opacity="1" stroke="#D6E4F8" stroke-width="2"/>
-<text x="1136" y="1084" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="800" fill="#133464" text-anchor="start">头像角色格</text>
-<text x="1136" y="1112" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="500" fill="#506786" text-anchor="start">选中项带对勾；运行时使用动物头像</text>
-<rect x="1140" y="1140" width="78" height="78" rx="20" fill="#BCD2F0" opacity="1"/>
-<rect x="1140" y="1136" width="78" height="78" rx="20" fill="#E1EFFF" opacity="1" stroke="#BCD2F0" stroke-width="2"/>
+<rect x="1112" y="1050" width="456" height="382" rx="20" fill="#C8D0E4" opacity="1"/>
+<rect x="1112" y="1046" width="456" height="382" rx="20" fill="#FFFFFF" opacity="1" stroke="#E2E6F1" stroke-width="2"/>
+<text x="1136" y="1084" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="800" fill="#18254D" text-anchor="start">头像角色格</text>
+<text x="1136" y="1112" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="500" fill="#4D6079" text-anchor="start">选中项带对勾；运行时使用动物头像</text>
+<rect x="1140" y="1140" width="78" height="78" rx="20" fill="#C8D0E4" opacity="1"/>
+<rect x="1140" y="1136" width="78" height="78" rx="20" fill="#E9EDFF" opacity="1" stroke="#C8D0E4" stroke-width="2"/>
 <g transform="translate(1155.6 1150.82) scale(0.4588235294117647) rotate(-5 55 55)">
-<use href="#star-shape" transform="translate(0 4)" fill="#E0A612"/>
-<use href="#star-shape" fill="#FFE34B" stroke="#133464" stroke-width="2"/>
+<use href="#star-shape" transform="translate(0 4)" fill="#D4A524"/>
+<use href="#star-shape" fill="#FFDE46" stroke="#18254D" stroke-width="2"/>
 <path d="M20 39 39 36 49 17" fill="none" opacity="0.7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="41" cy="49" r="3" fill="#133464" opacity="1"/>
-<circle cx="68" cy="49" r="3" fill="#133464" opacity="1"/>
-<path d="M43 61h24Q57 82 43 61Z" fill="#FF75B9" opacity="1" stroke="#133464" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="41" cy="49" r="3" fill="#18254D" opacity="1"/>
+<circle cx="68" cy="49" r="3" fill="#18254D" opacity="1"/>
+<path d="M43 61h24Q57 82 43 61Z" fill="#FF75B9" opacity="1" stroke="#18254D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="31" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 <circle cx="79" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 </g>
-<text x="1179" y="1236" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#133464" text-anchor="middle">小熊</text>
-<rect x="1272" y="1140" width="78" height="78" rx="20" fill="#2058E0" opacity="1"/>
-<rect x="1272" y="1136" width="78" height="78" rx="20" fill="#E1EFFF" opacity="1" stroke="#2058E0" stroke-width="2"/>
+<text x="1179" y="1236" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#18254D" text-anchor="middle">小熊</text>
+<rect x="1272" y="1140" width="78" height="78" rx="20" fill="#304CE0" opacity="1"/>
+<rect x="1272" y="1136" width="78" height="78" rx="20" fill="#E9EDFF" opacity="1" stroke="#304CE0" stroke-width="2"/>
 <g transform="translate(1287.6 1150.82) scale(0.4588235294117647) rotate(-5 55 55)">
-<use href="#star-shape" transform="translate(0 4)" fill="#E0A612"/>
-<use href="#star-shape" fill="#FFE34B" stroke="#133464" stroke-width="2"/>
+<use href="#star-shape" transform="translate(0 4)" fill="#D4A524"/>
+<use href="#star-shape" fill="#FFDE46" stroke="#18254D" stroke-width="2"/>
 <path d="M20 39 39 36 49 17" fill="none" opacity="0.7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="42" cy="49" r="3" fill="#133464" opacity="1"/>
-<circle cx="69" cy="49" r="3" fill="#133464" opacity="1"/>
-<path d="M48 65q8 4 15 0" fill="none" opacity="1" stroke="#133464" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="42" cy="49" r="3" fill="#18254D" opacity="1"/>
+<circle cx="69" cy="49" r="3" fill="#18254D" opacity="1"/>
+<path d="M48 65q8 4 15 0" fill="none" opacity="1" stroke="#18254D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="31" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 <circle cx="79" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 </g>
 <circle cx="1342" cy="1144" r="14" fill="#087658" opacity="1"/>
 <use href="#i-check" transform="translate(1330 1132) scale(1)" color="#FFFFFF"/>
-<text x="1311" y="1236" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#133464" text-anchor="middle">狐狸</text>
-<rect x="1404" y="1140" width="78" height="78" rx="20" fill="#BCD2F0" opacity="1"/>
-<rect x="1404" y="1136" width="78" height="78" rx="20" fill="#E1FFF4" opacity="1" stroke="#BCD2F0" stroke-width="2"/>
+<text x="1311" y="1236" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#18254D" text-anchor="middle">狐狸</text>
+<rect x="1404" y="1140" width="78" height="78" rx="20" fill="#C8D0E4" opacity="1"/>
+<rect x="1404" y="1136" width="78" height="78" rx="20" fill="#E1FFF4" opacity="1" stroke="#C8D0E4" stroke-width="2"/>
 <g transform="translate(1419.6 1150.82) scale(0.4588235294117647) rotate(-5 55 55)">
-<use href="#star-shape" transform="translate(0 4)" fill="#E0A612"/>
-<use href="#star-shape" fill="#FFE34B" stroke="#133464" stroke-width="2"/>
+<use href="#star-shape" transform="translate(0 4)" fill="#D4A524"/>
+<use href="#star-shape" fill="#FFDE46" stroke="#18254D" stroke-width="2"/>
 <path d="M20 39 39 36 49 17" fill="none" opacity="0.7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="m35 44 7 5-7 5m39-10-7 5 7 5" fill="none" opacity="1" stroke="#133464" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M43 61h24Q57 82 43 61Z" fill="#FF75B9" opacity="1" stroke="#133464" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="m35 44 7 5-7 5m39-10-7 5 7 5" fill="none" opacity="1" stroke="#18254D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M43 61h24Q57 82 43 61Z" fill="#FF75B9" opacity="1" stroke="#18254D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="31" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 <circle cx="79" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 </g>
-<text x="1443" y="1236" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#133464" text-anchor="middle">兔子</text>
-<rect x="1140" y="1252" width="78" height="78" rx="20" fill="#BCD2F0" opacity="1"/>
-<rect x="1140" y="1248" width="78" height="78" rx="20" fill="#FFF0F6" opacity="1" stroke="#BCD2F0" stroke-width="2"/>
+<text x="1443" y="1236" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#18254D" text-anchor="middle">兔子</text>
+<rect x="1140" y="1252" width="78" height="78" rx="20" fill="#C8D0E4" opacity="1"/>
+<rect x="1140" y="1248" width="78" height="78" rx="20" fill="#FFF0F6" opacity="1" stroke="#C8D0E4" stroke-width="2"/>
 <g transform="translate(1155.6 1262.82) scale(0.4588235294117647) rotate(-5 55 55)">
-<use href="#star-shape" transform="translate(0 4)" fill="#E0A612"/>
-<use href="#star-shape" fill="#FFE34B" stroke="#133464" stroke-width="2"/>
+<use href="#star-shape" transform="translate(0 4)" fill="#D4A524"/>
+<use href="#star-shape" fill="#FFDE46" stroke="#18254D" stroke-width="2"/>
 <path d="M20 39 39 36 49 17" fill="none" opacity="0.7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="41" cy="49" r="3" fill="#133464" opacity="1"/>
-<circle cx="68" cy="49" r="3" fill="#133464" opacity="1"/>
-<path d="M43 61h24Q57 82 43 61Z" fill="#FF75B9" opacity="1" stroke="#133464" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="41" cy="49" r="3" fill="#18254D" opacity="1"/>
+<circle cx="68" cy="49" r="3" fill="#18254D" opacity="1"/>
+<path d="M43 61h24Q57 82 43 61Z" fill="#FF75B9" opacity="1" stroke="#18254D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="31" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 <circle cx="79" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 </g>
-<text x="1179" y="1348" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#133464" text-anchor="middle">小猫</text>
-<rect x="1272" y="1252" width="78" height="78" rx="20" fill="#BCD2F0" opacity="1"/>
-<rect x="1272" y="1248" width="78" height="78" rx="20" fill="#B99AFF" opacity="1" stroke="#BCD2F0" stroke-width="2"/>
+<text x="1179" y="1348" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#18254D" text-anchor="middle">小猫</text>
+<rect x="1272" y="1252" width="78" height="78" rx="20" fill="#C8D0E4" opacity="1"/>
+<rect x="1272" y="1248" width="78" height="78" rx="20" fill="#B99AFF" opacity="1" stroke="#C8D0E4" stroke-width="2"/>
 <g transform="translate(1287.6 1262.82) scale(0.4588235294117647) rotate(-5 55 55)">
-<use href="#star-shape" transform="translate(0 4)" fill="#E0A612"/>
-<use href="#star-shape" fill="#FFE34B" stroke="#133464" stroke-width="2"/>
+<use href="#star-shape" transform="translate(0 4)" fill="#D4A524"/>
+<use href="#star-shape" fill="#FFDE46" stroke="#18254D" stroke-width="2"/>
 <path d="M20 39 39 36 49 17" fill="none" opacity="0.7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="42" cy="49" r="3" fill="#133464" opacity="1"/>
-<circle cx="69" cy="49" r="3" fill="#133464" opacity="1"/>
-<path d="M48 65q8 4 15 0" fill="none" opacity="1" stroke="#133464" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="42" cy="49" r="3" fill="#18254D" opacity="1"/>
+<circle cx="69" cy="49" r="3" fill="#18254D" opacity="1"/>
+<path d="M48 65q8 4 15 0" fill="none" opacity="1" stroke="#18254D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="31" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 <circle cx="79" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 </g>
-<text x="1311" y="1348" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#133464" text-anchor="middle">小狗</text>
-<rect x="1404" y="1252" width="78" height="78" rx="20" fill="#BCD2F0" opacity="1"/>
-<rect x="1404" y="1248" width="78" height="78" rx="20" fill="#49DFCB" opacity="1" stroke="#BCD2F0" stroke-width="2"/>
+<text x="1311" y="1348" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#18254D" text-anchor="middle">小狗</text>
+<rect x="1404" y="1252" width="78" height="78" rx="20" fill="#C8D0E4" opacity="1"/>
+<rect x="1404" y="1248" width="78" height="78" rx="20" fill="#49DFCB" opacity="1" stroke="#C8D0E4" stroke-width="2"/>
 <g transform="translate(1419.6 1262.82) scale(0.4588235294117647) rotate(-5 55 55)">
-<use href="#star-shape" transform="translate(0 4)" fill="#E0A612"/>
-<use href="#star-shape" fill="#FFE34B" stroke="#133464" stroke-width="2"/>
+<use href="#star-shape" transform="translate(0 4)" fill="#D4A524"/>
+<use href="#star-shape" fill="#FFDE46" stroke="#18254D" stroke-width="2"/>
 <path d="M20 39 39 36 49 17" fill="none" opacity="0.7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="m35 44 7 5-7 5m39-10-7 5 7 5" fill="none" opacity="1" stroke="#133464" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M43 61h24Q57 82 43 61Z" fill="#FF75B9" opacity="1" stroke="#133464" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="m35 44 7 5-7 5m39-10-7 5 7 5" fill="none" opacity="1" stroke="#18254D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M43 61h24Q57 82 43 61Z" fill="#FF75B9" opacity="1" stroke="#18254D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="31" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 <circle cx="79" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 </g>
-<text x="1443" y="1348" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#133464" text-anchor="middle">熊猫</text>
-<text x="1140" y="1404" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" font-weight="500" fill="#506786" text-anchor="start">头像来源：assets/ui/characters.json</text>
-<text x="40" y="1480" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="500" fill="#506786" text-anchor="start">星星大作战 · 果冻星星 / juicy flat: 纯色块、2 单位描边、4 单位厚底边，按下整体下沉</text>
-<text x="1560" y="1480" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#506786" text-anchor="end">COMPONENTS</text>
+<text x="1443" y="1348" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#18254D" text-anchor="middle">熊猫</text>
+<text x="1140" y="1404" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" font-weight="500" fill="#4D6079" text-anchor="start">头像来源：assets/ui/characters.json</text>
+<text x="40" y="1480" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="500" fill="#4D6079" text-anchor="start">星星大作战 · 派对街机 / Party Arcade: 暖白画布、清亮蓝展台、星黄主操作；纯色块、2 单位描边、4 单位厚底边</text>
+<text x="1560" y="1480" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#4D6079" text-anchor="end">COMPONENTS</text>
 </svg>

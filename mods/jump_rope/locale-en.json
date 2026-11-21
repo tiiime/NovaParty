@@ -5,6 +5,7 @@
   "calibrate": "Calibrate again",
   "change_role": "Stop skipping / Change role",
   "reconnect": "Reconnect",
+  "role_pending": "Confirming your role…",
   "settings": "Settings",
   "exit": "Exit game",
   "choose": "Choose a role for this device",

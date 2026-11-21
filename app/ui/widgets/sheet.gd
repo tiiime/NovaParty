@@ -70,7 +70,14 @@ func _feedback():
 func _layout() -> void:
 	if not panel:
 		return
-	var available := size - Vector2(48, 100)
+	var inset := Vector2(24, 24)
+	var host := get_parent().get_parent()
+	if host is Control:
+		var margins = host.get("content_margin")
+		if margins is MarginContainer:
+			inset.x = maxf(margins.get_theme_constant("margin_left"), margins.get_theme_constant("margin_right"))
+			inset.y = maxf(margins.get_theme_constant("margin_top"), margins.get_theme_constant("margin_bottom"))
+	var available := (size - inset * 2).max(Vector2(260, 220))
 	if tween != null and tween.is_running():
 		tween.kill()
 		panel.modulate.a = 1.0
@@ -83,5 +90,7 @@ func close() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if visible and event.is_action_pressed("ui_cancel"):
+		var host := get_parent().get_parent()
+		if host.has_method("_top_modal") and host._top_modal() != self: return
 		close()
 		get_viewport().set_input_as_handled()

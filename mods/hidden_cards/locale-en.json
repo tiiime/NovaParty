@@ -3,5 +3,15 @@
   "YES": "yes",
   "NO": "no",
   "REVEAL": "Revealed: %s / %s",
-  "GAME_OVER": "Game over"
+  "GAME_OVER": "Game over",
+  "MATCH_STATUS": "Hidden Cards · Round %d of 3\nYou %d · Friend %d\n%s",
+  "CHOOSE_CARD": "Choose one card. Both cards reveal together.",
+  "WAIT_FRIEND": "Waiting for your friend to join or reconnect.",
+  "LOCKED": "You chose %s. Waiting for your friend.",
+  "SENDING": "Sending your choice…",
+  "PAUSED": "Connection lost. The round is paused.",
+  "RETRY": "Your choice wasn’t accepted. Choose again.",
+  "DRAW": "A draw!",
+  "WIN": "You won!",
+  "LOSS": "Your friend won this game."
 }

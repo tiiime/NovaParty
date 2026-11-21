@@ -14,8 +14,11 @@ var names: Array[Label] = []
 var details: Array[Label] = []
 var times: Array[Label] = []
 var sidebar: Control
-var actions: VBoxContainer
+var actions: GridContainer
 var result_button: Button
+var invite_button: Button
+var pending_move := false
+var move_revision := -1
 var settings_button: Button
 var reconnect_button: Button
 var exit_button: Button
@@ -50,11 +53,7 @@ func _ready() -> void:
 		var config = JSON.parse_string(FileAccess.get_file_as_string(theme_path))
 		if config is Dictionary and config.get("board_color") is String:
 			board.board_color = Color.from_string(config.board_color, board.board_color)
-	board.place.connect(func(x, y):
-		# Unknown platform actions are ignored by older hosts, so this stays compatible.
-		platform_action.emit("haptic:select")
-		command.emit({"type": "place", "x": x, "y": y})
-	)
+	board.place.connect(_place)
 	board.focus_actions.connect(_focus_actions)
 	add_child(board)
 	sidebar = Control.new()
@@ -63,7 +62,7 @@ func _ready() -> void:
 	label = _label(sidebar, 30)
 	label.name = "GameTitle"
 	turn_label = _label(sidebar, 24)
-	turn_label.add_theme_stylebox_override("normal", UI.box(Color("e0edff"), 16))
+	turn_label.add_theme_stylebox_override("normal", UI.box(Color("e9edff"), 16))
 	players_row = BoxContainer.new()
 	players_row.add_theme_constant_override("separation", 12)
 	sidebar.add_child(players_row)
@@ -89,10 +88,14 @@ func _ready() -> void:
 	clock_hint.add_theme_color_override("font_color", Color("5c708d"))
 	notice_label = _label(sidebar, 18)
 	notice_label.add_theme_color_override("font_color", Color("8b4d24"))
-	actions = VBoxContainer.new()
-	actions.add_theme_constant_override("separation", 10)
+	actions = GridContainer.new()
+	actions.columns = 2
+	actions.add_theme_constant_override("h_separation", 12)
+	actions.add_theme_constant_override("v_separation", 10)
 	sidebar.add_child(actions)
-	result_button = _button(actions, func(): _show_result())
+	result_button = _button(actions, func(): _show_result(), true)
+	invite_button = _button(actions, func(): platform_action.emit("invite"), true)
+	invite_button.name = "Invite"
 	reconnect_button = _button(actions, func(): platform_action.emit("reconnect"))
 	settings_button = _button(actions, func(): platform_action.emit("settings"))
 	exit_button = _button(actions, func(): platform_action.emit("exit"))
@@ -119,6 +122,8 @@ func _button(parent: Node, callback: Callable, primary: bool = false) -> Button:
 	var item := Button.new()
 	item.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	UI.button(item, primary)
+	item.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	item.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	parent.add_child(item)
 	item.pressed.connect(callback)
 	return item
@@ -136,6 +141,8 @@ func restore_platform_focus(action: String) -> void:
 		settings_button.grab_focus()
 	elif action == "exit" and exit_button.visible:
 		exit_button.grab_focus()
+	elif action == "invite" and invite_button.visible:
+		invite_button.grab_focus()
 	else:
 		board.grab_focus()
 
@@ -143,19 +150,21 @@ func set_platform_state(value: Dictionary) -> void:
 	var was_connected: bool = platform.connected
 	var elapsed := [_elapsed(0), _elapsed(1)]
 	platform.merge(value, true)
+	if not platform.connected: pending_move = false
 	if was_connected and not platform.connected:
 		clock_elapsed = elapsed
 		clock_anchor = Time.get_ticks_msec()
 		clock_running = -1
 	if is_node_ready():
 		if not snapshot.is_empty():
-			board.active = not snapshot.view.finished and int(snapshot.view.turn) == int(snapshot.seat) and _both_online() and platform.connected
+			board.active = _can_place()
 		_refresh_text()
 		_layout()
 
 func render(data: Dictionary) -> void:
 	var previous_round: int = int(snapshot.get("view", {}).get("round", 0))
 	snapshot = data.duplicate(true)
+	if int(data.get("revision", -1)) != move_revision: pending_move = false
 	if previous_round > 0 and int(snapshot.view.get("round", 1)) != previous_round:
 		board.cursor = Vector2i(7, 7)
 		rematch_intent = -1
@@ -166,7 +175,7 @@ func render(data: Dictionary) -> void:
 	board.cells = state.board
 	board.last_move = int(state.get("last_move", -1))
 	board.winning_line = state.get("winning_line", [])
-	board.active = not state.finished and int(state.turn) == int(snapshot.seat) and _both_online() and platform.connected
+	board.active = _can_place()
 	board.queue_redraw()
 	clock_available = snapshot.get("clock") is Dictionary and snapshot.clock.get("elapsed_ms") is Array and snapshot.clock.elapsed_ms.size() == 2
 	if clock_available:
@@ -184,6 +193,18 @@ func render(data: Dictionary) -> void:
 			_hide_result()
 	_layout()
 
+func _can_place() -> bool:
+	return not snapshot.is_empty() and not snapshot.view.finished and int(snapshot.view.turn) == int(snapshot.seat) and _both_online() and platform.connected and not platform.get("input_paused", false) and not pending_move
+
+func _place(x: int, y: int) -> void:
+	if not _can_place(): return
+	pending_move = true
+	move_revision = int(snapshot.get("revision", -1))
+	board.active = false
+	_refresh_text()
+	platform_action.emit("haptic:select")
+	command.emit({"type": "place", "x": x, "y": y})
+
 func _both_online() -> bool:
 	return snapshot.get("players", []).size() == 2 and snapshot.players[0].get("connected", true) and snapshot.players[1].get("connected", true)
 
@@ -199,6 +220,8 @@ func _refresh_text() -> void:
 	exit_button.text = _t("EXIT_GAME")
 	reconnect_button.text = _t("RECONNECT")
 	result_button.text = _t("VIEW_RESULT")
+	invite_button.text = _t("INVITE")
+	invite_button.visible = platform.get("can_invite", false) and snapshot.get("players", []).size() == 1
 	settings_button.visible = bool(platform.enabled)
 	exit_button.visible = bool(platform.enabled)
 	reconnect_button.visible = bool(platform.enabled) and bool(platform.can_reconnect)
@@ -215,13 +238,15 @@ func _refresh_text() -> void:
 		turn_label.text = _t("MATCH_FINISHED")
 	elif not platform.connected or not _both_online():
 		turn_label.text = _t("WAITING_PLAYER") if snapshot.players.size() < 2 else _t("PAUSED_DISCONNECTED")
+	elif pending_move:
+		turn_label.text = _t("PLACING")
 	else:
 		turn_label.text = (_t("YOUR_TURN") if int(state.turn) == local else _t("THEIR_TURN")) + " · " + _t("BLACK" if int(state.turn) == 0 else "WHITE")
 	for seat in range(2):
 		var present: bool = snapshot.players.size() > seat
 		var online: bool = present and snapshot.players[seat].get("connected", true)
 		var active: bool = not finished and int(state.turn) == seat and _both_online() and platform.connected
-		player_panels[seat].add_theme_stylebox_override("panel", UI.box(Color("e2efff") if active else Color.WHITE, 20, UI.BLUE if active else Color("d4e1f1"), 3 if active else 1))
+		player_panels[seat].add_theme_stylebox_override("panel", UI.box(Color("fff3bb") if active else Color.WHITE, 20, Color("d4a524") if active else Color("c8d0e4"), 2))
 		names[seat].text = ("● " if seat == 0 else "○ ") + _name(seat)
 		names[seat].tooltip_text = _name(seat)
 		var code := str(snapshot.players[seat].get("code", "%02d" % [seat + 1])) if present else "—"
@@ -280,11 +305,12 @@ func _update_focus() -> void:
 			buttons.append(item)
 	for index in range(buttons.size()):
 		var item: Button = buttons[index]
-		item.focus_neighbor_left = item.get_path_to(board)
-		item.focus_neighbor_top = item.get_path_to(board if index == 0 else buttons[index - 1])
-		item.focus_neighbor_bottom = item.get_path_to(buttons[(index + 1) % buttons.size()])
-		item.focus_next = item.focus_neighbor_bottom
-		item.focus_previous = item.focus_neighbor_top
+		item.focus_neighbor_left = item.get_path_to(buttons[index - 1] if index % 2 == 1 else board)
+		item.focus_neighbor_right = item.get_path_to(buttons[index + 1] if index % 2 == 0 and index + 1 < buttons.size() else item)
+		item.focus_neighbor_top = item.get_path_to(board if index < 2 else buttons[index - 2])
+		item.focus_neighbor_bottom = item.get_path_to(buttons[index + 2] if index + 2 < buttons.size() else item)
+		item.focus_next = item.get_path_to(buttons[(index + 1) % buttons.size()])
+		item.focus_previous = item.get_path_to(buttons[index - 1] if index > 0 else board)
 	if not buttons.is_empty():
 		board.focus_next = board.get_path_to(buttons[0])
 
@@ -302,7 +328,7 @@ func _layout() -> void:
 		label.size = Vector2(width, 38)
 		turn_label.position = Vector2(0, 44)
 		turn_label.size = Vector2(width, 46)
-		var extent := maxf(240, minf(width, height - 440))
+		var extent := maxf(180, minf(width, height - 390 - actions.get_combined_minimum_size().y * 0.45))
 		board.position = Vector2((width - extent) / 2, 106)
 		board.size = Vector2.ONE * extent
 		players_row.position = Vector2(0, 124 + extent)
@@ -407,7 +433,7 @@ func _show_result() -> void:
 	result_seen_round = int(snapshot.view.get("round", 1))
 	overlay.show()
 	_layout_dialog()
-	for item in [board, result_button, settings_button, reconnect_button, exit_button]:
+	for item in [board, result_button, invite_button, settings_button, reconnect_button, exit_button]:
 		item.focus_mode = Control.FOCUS_NONE
 	var buttons := [rematch_button, dialog_exit, review_button]
 	for i in range(buttons.size()):
@@ -424,7 +450,7 @@ func _show_result() -> void:
 
 func _hide_result() -> void:
 	overlay.hide()
-	for item in [board, result_button, settings_button, reconnect_button, exit_button]:
+	for item in [board, result_button, invite_button, settings_button, reconnect_button, exit_button]:
 		item.focus_mode = Control.FOCUS_ALL
 	if result_button.visible:
 		result_button.grab_focus()
@@ -432,7 +458,7 @@ func _hide_result() -> void:
 		board.grab_focus()
 
 func _ask_rematch() -> void:
-	if rematch_button.disabled or request_pending:
+	if rematch_button.disabled or request_pending or platform.get("input_paused", false):
 		return
 	request_pending = true
 	rematch_intent = int(snapshot.view.get("round", 1))
@@ -442,6 +468,9 @@ func _ask_rematch() -> void:
 # Concurrent consent can arrive against the same revision. Retry only this explicit
 # user intent after the authoritative snapshot catches up, never from render().
 func on_command_notice(code: String) -> bool:
+	pending_move = false
+	board.active = _can_place()
+	_refresh_text()
 	if code == "stale_revision" and rematch_intent == int(snapshot.view.get("round", 1)) and snapshot.view.finished:
 		_retry_rematch.call_deferred()
 		return true
@@ -461,7 +490,7 @@ func handle_platform_back() -> bool:
 	return false
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel") and handle_platform_back():
+	if not platform.get("input_paused", false) and event.is_action_pressed("ui_cancel") and handle_platform_back():
 		get_viewport().set_input_as_handled()
 
 func capture_view_state() -> Dictionary:

@@ -79,7 +79,8 @@ static func button(target: Button, kind = "primary", height: int = T.BUTTON_HEIG
 	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
 		target.add_theme_color_override(state, token(spec.text))
 	target.add_theme_color_override("font_disabled_color", T.DISABLED_TEXT)
-	target.custom_minimum_size.y = height
+	target.custom_minimum_size.y = maxi(height, T.HIT_MIN)
+	target.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	target.set_meta("focus_radius", T.RADIUS_BUTTON)
 	feedback(target)
 
@@ -96,6 +97,7 @@ static func card(target: Button, selected: bool = false, radius: int = T.RADIUS_
 	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
 		target.add_theme_color_override(state, T.SKY if selected else T.INK)
 	target.set_meta("focus_radius", radius)
+	target.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	feedback(target, true)
 
 static func sheet(radius: int = T.RADIUS_SHEET) -> StyleBoxFlat:
@@ -125,13 +127,13 @@ static func progress(bar: ProgressBar) -> void:
 	bar.add_theme_stylebox_override("background", track)
 	bar.add_theme_stylebox_override("fill", fill)
 
-static func scroll_container(scroll: ScrollContainer) -> void:
+static func scroll_container(scroll: ScrollContainer, inset: int = 14) -> void:
 	# Keep card focus rings and the scroll thumb clear of the content edges.
 	var padding := StyleBoxEmpty.new()
-	padding.content_margin_left = 14
-	padding.content_margin_right = 20
-	padding.content_margin_top = 14
-	padding.content_margin_bottom = 14
+	padding.content_margin_left = inset
+	padding.content_margin_right = inset
+	padding.content_margin_top = inset
+	padding.content_margin_bottom = inset
 	scroll.add_theme_stylebox_override("panel", padding)
 	var bar := scroll.get_v_scroll_bar()
 	bar.focus_mode = Control.FOCUS_NONE

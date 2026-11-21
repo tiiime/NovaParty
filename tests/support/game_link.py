@@ -14,6 +14,7 @@ class GameLink:
         self.listener.settimeout(.1)
         self.port = self.listener.getsockname()[1]
         self.stopped = threading.Event()
+        self.reject_new = threading.Event()
         self.lock = threading.Lock()
         self.links = []
         self.workers = []
@@ -55,6 +56,9 @@ class GameLink:
                 continue
             except OSError:
                 break
+            if self.reject_new.is_set():
+                client.close()
+                continue
             link = {'client': client, 'mode': 'pass', 'closed': False}
             with self.lock:
                 self.links.append(link)

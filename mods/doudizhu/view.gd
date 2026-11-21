@@ -6,18 +6,18 @@ signal command(action: Dictionary)
 signal platform_action(action: String)
 const Cards = preload("cards.gd")
 const Rules = preload("rules.gd")
-# Mod-local copy of the platform's juicy flat palette (design v0.4); Mods do not import app code.
-const INK = Color("133464")
-const MUTED = Color("506786")
-const SKY = Color("2058e0")
-const SKY_LIP = Color("123ca9")
-const SKY_SOFT = Color("e1efff")
-const STAR = Color("ffe34b")
-const STAR_LIP = Color("e0a612")
-const STAR_SOFT = Color("fff4b8")
-const PAGE = Color("eef4ff")
-const LINE = Color("d6e4f8")
-const LINE_LIP = Color("bcd2f0")
+# Mod-local tactile palette; this Mod also runs without platform UI resources.
+const INK = Color("18254d")
+const MUTED = Color("4d6079")
+const SKY = Color("304ce0")
+const SKY_LIP = Color("2739a2")
+const SKY_SOFT = Color("e9edff")
+const STAR = Color("ffde46")
+const STAR_LIP = Color("d4a524")
+const STAR_SOFT = Color("fff3bb")
+const PAGE = Color("f8f7f2")
+const LINE = Color("e2e6f1")
+const LINE_LIP = Color("c8d0e4")
 const DANGER = Color("ab3558")
 const DANGER_LINE = Color("f0b3c8")
 const RED = Color("d23c3c")
@@ -77,7 +77,9 @@ var rules_body: Label
 var rules_close: Button
 var menu_rules: Button
 var menu_settings: Button
+var menu_reconnect: Button
 var menu_exit: Button
+var pending_action := false
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(280, 360)
@@ -136,6 +138,7 @@ func _ready() -> void:
 	self_label = _label(stage, 20, MUTED)
 	menu_button = _button(stage, "Menu", func(): _toggle_menu(not menu_panel.visible), "secondary")
 	menu_button.text = "☰"
+	menu_button.accessibility_name = _t("MENU")
 	_build_menu()
 	_build_lobby()
 	_build_result()
@@ -184,7 +187,8 @@ func _button(parent: Node, node_name: String, callback: Callable, kind: String =
 	button.focus_mode = Control.FOCUS_ALL
 	_style(button, kind)
 	button.add_theme_font_size_override("font_size", 22)
-	button.custom_minimum_size = Vector2(96, 60)
+	button.custom_minimum_size = Vector2(96, 64)
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	button.pressed.connect(callback)
 	parent.add_child(button)
 	return button
@@ -220,6 +224,8 @@ func _build_menu() -> void:
 	var list := VBoxContainer.new()
 	list.add_theme_constant_override("separation", 10)
 	menu_panel.add_child(list)
+	menu_reconnect = _button(list, "Reconnect", func(): _toggle_menu(false); platform_action.emit("reconnect"))
+	menu_reconnect.hide()
 	menu_rules = _button(list, "Rules", func(): _toggle_menu(false); _show_rules(), "secondary")
 	menu_settings = _button(list, "Settings", func(): _toggle_menu(false); platform_action.emit("settings"), "secondary")
 	menu_exit = _button(list, "Exit", func(): _toggle_menu(false); platform_action.emit("exit"), "danger")
@@ -374,7 +380,7 @@ func _is_player() -> bool:
 	return not snapshot.is_empty() and Cards.contains_number(snapshot.view.participants, int(snapshot.seat))
 
 func _allowed(kind: String) -> bool:
-	if not platform.get("connected", true) or platform.get("input_paused", false): return false
+	if pending_action or not platform.get("connected", true) or platform.get("input_paused", false): return false
 	for action in legal:
 		if action.type == kind: return true
 	return false
@@ -387,6 +393,7 @@ func _selection_combo() -> Dictionary:
 	return Cards.classify(selected)
 
 func _can_play_selection() -> bool:
+	if pending_action: return false
 	# Any legal combination may be played; the hint list is only a subset.
 	var view: Dictionary = snapshot.view
 	if not _my_turn() or view.phase != "playing" or view.paused or not platform.get("connected", true) or platform.get("input_paused", false):
@@ -420,7 +427,9 @@ func render(data: Dictionary) -> void:
 	if changed and lead_key != hint_lead:
 		hint_index = -1
 		hint_lead = lead_key
-	if changed: notice.hide()
+	if changed:
+		pending_action = false
+		notice.hide()
 	legal = Rules.new().describe_actions(view, int(snapshot.seat)).legal_actions
 	public_layout = int(snapshot.seat) == int(view.display_seat)
 	_texts()
@@ -433,6 +442,10 @@ func _texts() -> void:
 	header.text = _t("TITLE") + ("  ·  " + _t("ROUND") % [int(view.round)] if int(view.round) > 0 else "")
 	chips.text = _t("STAKES") % [maxi(1, int(view.bid)), int(view.multiplier)]
 	chips.visible = view.phase in ["playing", "finished"] or int(view.bid) > 0
+	menu_button.accessibility_name = _t("MENU")
+	menu_button.tooltip_text = _t("MENU")
+	menu_reconnect.text = _t("RECONNECT")
+	menu_reconnect.visible = platform.get("can_reconnect", false)
 	menu_rules.text = _t("RULES")
 	menu_settings.text = _t("SETTINGS")
 	menu_exit.text = _t("EXIT")
@@ -451,7 +464,8 @@ func _texts() -> void:
 	if view.phase == "lobby":
 		var count: int = view.connected.count(true) - (1 if int(view.display_seat) == 0 and view.connected[0] else 0)
 		status.text = _t("WAITING") % [count]
-	elif paused: status.text = _t("PAUSED")
+	elif paused: status.text = str(platform.get("message", "")) if not str(platform.get("message", "")).is_empty() else _t("PAUSED")
+	elif pending_action: status.text = _t("SENDING")
 	elif view.phase == "finished": status.text = _t("FINISHED")
 	elif view.phase == "bidding": status.text = _t("YOUR_BID") if _my_turn() else _t("BIDDING") % [_name(int(view.turn))]
 	elif _my_turn(): status.text = _t("YOUR_LEAD") if _free_lead() else _t("YOUR_TURN") % [_combo_name(view.lead)]
@@ -471,7 +485,7 @@ func _texts() -> void:
 			qr_source = source
 			qr.texture = ImageTexture.create_from_image(source.get_image()) if source != null else null
 		qr.visible = qr.texture != null
-	lobby_address.text = _t("LOBBY_HINT_HOST") if host else _t("LOBBY_HINT_GUEST")
+	lobby_address.text = _t("SENDING") if pending_action else _t("LOBBY_HINT_HOST") if host else _t("LOBBY_HINT_GUEST")
 	if host and services != null and services.has_method("get_join_info"):
 		var invite: Dictionary = services.get_join_info()
 		if not invite.is_empty(): lobby_address.text += "\n" + _t("ADDRESS") % [invite.address]
@@ -481,7 +495,7 @@ func _texts() -> void:
 	table_toggle.set_pressed_no_signal(int(view.display_seat) == 0)
 	table_toggle.disabled = not _allowed("table_mode")
 	# Actions.
-	var my_turn: bool = _my_turn() and not paused and not platform.get("input_paused", false)
+	var my_turn: bool = _my_turn() and not paused and not pending_action and not platform.get("input_paused", false)
 	for amount in range(4):
 		bid_buttons[amount].visible = view.phase == "bidding" and _is_player()
 		bid_buttons[amount].disabled = not my_turn or (amount != 0 and amount <= int(view.bid))
@@ -554,7 +568,7 @@ func _layout() -> void:
 	_place(header, 48 if big else 20, 28 if big else 16, 900 if big else 380, 50)
 	header.add_theme_font_size_override("font_size", 36 if big else 26)
 	_place(menu_button, logical_size.x - (128 if big else 84), 24 if big else 12, 80 if big else 64, 60)
-	_place(menu_panel, logical_size.x - (380 if big else 300), 96 if big else 80, 330 if big else 280, 250)
+	_place(menu_panel, logical_size.x - (380 if big else 300), 96 if big else 80, 330 if big else 280, 338 if menu_reconnect.visible else 260)
 	_place(chips, 48 if big else 20, 84 if big else 60, 300 if big else 200, 40)
 	_place(felt, 24 if big else 8, 150 if big else 140, logical_size.x - (48 if big else 16), (610 if big else 600))
 	_place(status, (logical_size.x - (720 if big else 480)) * 0.5, 430 if big else 470, 720 if big else 480, 60)
@@ -699,7 +713,7 @@ func _layout_hand(view: Dictionary, big: bool) -> void:
 	var step := minf(card_size.x * 0.62, (area.size.x - card_size.x) / maxf(1, cards.size() - 1))
 	var width := step * (cards.size() - 1) + card_size.x
 	var left := (area.size.x - width) * 0.5
-	var can_act: bool = platform.get("connected", true) and not platform.get("input_paused", false)
+	var can_act: bool = not pending_action and platform.get("connected", true) and not platform.get("input_paused", false)
 	for i in range(cards.size()):
 		var card := int(cards[i])
 		var button := _card(hand_row, card, card_size, true)
@@ -763,19 +777,27 @@ func _play() -> void:
 	_submit({"type": "play", "cards": Cards.sort_hand(selected)})
 
 func _submit(action: Dictionary) -> void:
+	if snapshot.is_empty() or pending_action or not platform.get("connected", true) or platform.get("input_paused", false): return
 	notice.hide()
 	if action.type == "rematch":
 		if rematch_intent == int(snapshot.view.round): return
 		rematch_intent = int(snapshot.view.round)
+	pending_action = true
 	_haptic("confirm" if action.type in ["play", "start", "rematch"] else "select")
 	call_deferred("_emit", action)
 
 func _emit(action: Dictionary) -> void:
+	if not is_inside_tree(): return
+	if not platform.get("connected", true) or platform.get("input_paused", false):
+		pending_action = false
+		return
+	_texts()
+	for button in hand_buttons: button.disabled = true
 	command.emit(action)
 
 func _toggle_menu(open: bool) -> void:
 	menu_panel.visible = open
-	if open: menu_rules.grab_focus()
+	if open: (menu_reconnect if menu_reconnect.visible else menu_rules).grab_focus()
 	else: menu_button.grab_focus()
 
 func _show_rules() -> void:
@@ -789,14 +811,18 @@ func set_session_services(value) -> void: services = value
 
 func set_platform_state(value: Dictionary) -> void:
 	platform = value.duplicate(true)
-	if not platform.get("connected", true): rematch_intent = -1
+	if not platform.get("connected", true):
+		rematch_intent = -1
+		pending_action = false
 	if is_node_ready() and not snapshot.is_empty(): render(snapshot)
 
 func on_command_notice(code: String) -> bool:
+	pending_action = false
 	if code == "stale_revision" and not snapshot.is_empty() and snapshot.view.phase == "finished" and rematch_intent == int(snapshot.view.round):
 		_retry_rematch.call_deferred()
 		return true
 	rematch_intent = -1
+	if not snapshot.is_empty(): render(snapshot)
 	var key := "ERROR_" + code
 	notice.text = _t(key) if _t(key) != key else _t("ERROR")
 	notice.show()

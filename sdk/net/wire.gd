@@ -55,6 +55,14 @@ func send(peer: int, data: Dictionary) -> void:
 		return
 	peers[peer].output.append_array(bytes)
 
+# Best-effort immediate write of queued bytes, used before a deliberate close.
+func flush(peer: int) -> void:
+	if not peers.has(peer) or peers[peer].output.is_empty():
+		return
+	var sent: Array = peers[peer].stream.put_partial_data(peers[peer].output)
+	if sent[0] == OK:
+		peers[peer].output = peers[peer].output.slice(sent[1])
+
 func drop(peer: int) -> void:
 	if peers.has(peer):
 		peers[peer].stream.disconnect_from_host()

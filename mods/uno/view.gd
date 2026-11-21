@@ -26,7 +26,9 @@ var draw_button: Button
 var start_button: Button
 var table_toggle: CheckButton
 var settings_button: Button
+var reconnect_button: Button
 var exit_button: Button
+var pending_action := false
 var result_exit: Button
 var result_rematch: Button
 var uno_toggle: CheckButton
@@ -136,9 +138,11 @@ func _ready() -> void:
 		else: help_dialog.popup_centered(Vector2i(mini(680, int(get_viewport_rect().size.x) - 32), 420))
 	)
 	rules_button.text = _t("RULES_TITLE")
-	settings_button = _button(footer, "Settings", func(): platform_action.emit("settings"))
+	settings_button = _button(footer, "Settings", func(): _toggle_menu(false); platform_action.emit("settings"))
 	settings_button.text = _t("SETTINGS")
-	exit_button = _button(footer, "Exit", func(): platform_action.emit("exit"))
+	reconnect_button = _button(footer, "Reconnect", func(): _toggle_menu(false); platform_action.emit("reconnect"))
+	reconnect_button.hide()
+	exit_button = _button(footer, "Exit", func(): _toggle_menu(false); platform_action.emit("exit"))
 	exit_button.text = _t("EXIT")
 	_build_dialogs()
 	stage = Control.new()
@@ -158,18 +162,15 @@ func _ready() -> void:
 	root_box.hide()
 	margin.hide()
 	background.hide()
-	menu_button = _button(stage, "Menu", func():
-		menu_panel.visible = not menu_panel.visible
-		if menu_panel.visible: rules_button.grab_focus()
-		else: menu_button.grab_focus()
-	)
+	menu_button = _button(stage, "Menu", func(): _toggle_menu(not menu_panel.visible))
 	menu_button.text = "☰"
+	menu_button.accessibility_name = _t("MENU")
 	menu_panel = PanelContainer.new()
 	menu_panel.add_theme_stylebox_override("panel", _box(Color("fff3d8"), 24))
 	stage.add_child(menu_panel)
 	var menu_list := VBoxContainer.new()
 	menu_panel.add_child(menu_list)
-	for button in [rules_button, settings_button, exit_button]: button.reparent(menu_list)
+	for button in [reconnect_button, rules_button, settings_button, exit_button]: button.reparent(menu_list)
 	menu_panel.hide()
 	resized.connect(_layout)
 	_layout()
@@ -187,15 +188,22 @@ func _box(fill: Color, radius: int = 16, border: Color = Color.TRANSPARENT, widt
 	return style
 
 func _style_button(button: BaseButton) -> void:
-	button.custom_minimum_size.y = 54
+	button.custom_minimum_size.y = 64
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.add_theme_font_size_override("font_size", 20)
 	button.add_theme_color_override("font_color", INK)
 	button.add_theme_color_override("font_focus_color", INK)
-	button.add_theme_stylebox_override("normal", _box(Color("fff3d8"), 18, Color("88583e"), 2))
+	var base := _box(Color("fff3d8"), 18, Color("88583e"), 2)
+	base.border_width_bottom = 6
+	base.content_margin_bottom += 4
+	button.add_theme_stylebox_override("normal", base)
 	button.add_theme_stylebox_override("focus", _box(Color.TRANSPARENT, 16, Color("ff8a1c"), 5))
 	button.add_theme_stylebox_override("hover", _box(Color("fff0b3")))
-	button.add_theme_stylebox_override("pressed", _box(Color("ffd961")))
+	var pressed := _box(Color("ffd961"), 18, Color("88583e"), 2)
+	pressed.expand_margin_top = -4
+	pressed.content_margin_top += 4
+	button.add_theme_stylebox_override("pressed", pressed)
 	button.add_theme_stylebox_override("disabled", _box(Color("624c40"), 18))
 	button.add_theme_color_override("font_disabled_color", Color("c0ab91"))
 
@@ -300,7 +308,7 @@ func _layout() -> void:
 	_place(header, 96 if wide_layout else 24, 45 if wide_layout else 20, 1300 if wide_layout else 420, 52)
 	header.add_theme_font_size_override("font_size", 36 if wide_layout else 26)
 	_place(menu_button, 1760 if wide_layout else 452, 50 if wide_layout else 20, 64, 60)
-	_place(menu_panel, 1450 if wide_layout else 210, 120 if wide_layout else 90, 370 if wide_layout else 306, 210)
+	_place(menu_panel, 1450 if wide_layout else 210, 120 if wide_layout else 90, 370 if wide_layout else 306, 304)
 	menu_panel.z_index = 30
 	_place(roster, 0, 0, logical_size.x, logical_size.y)
 	roster.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -412,7 +420,7 @@ func _name(seat: int) -> String:
 	return str(player.nickname)
 
 func _allowed(kind: String) -> bool:
-	if not platform.get("connected", true) or platform.get("input_paused", false): return false
+	if pending_action or not platform.get("connected", true) or platform.get("input_paused", false): return false
 	for action in legal:
 		if action.type == kind: return true
 	return false
@@ -429,10 +437,15 @@ func render(data: Dictionary) -> void:
 		armed = false
 		old_focus.armed = false
 	if changed:
+		pending_action = false
 		notice.hide()
 		selected_card = -1
 	legal = Rules.new().describe_actions(state, int(snapshot.seat)).legal_actions
 	settings_button.text = _t("SETTINGS")
+	reconnect_button.text = _t("RECONNECT")
+	reconnect_button.visible = platform.get("can_reconnect", false)
+	menu_button.accessibility_name = _t("MENU")
+	menu_button.tooltip_text = _t("MENU")
 	exit_button.text = _t("EXIT")
 	table_toggle.text = _t("TABLE_MODE")
 	color_dialog.title = _t("CHOOSE_COLOR")
@@ -447,6 +460,10 @@ func render(data: Dictionary) -> void:
 	wide_layout = size.x > size.y
 	_build_roster(state)
 	status.text = _t("WAITING") % [snapshot.players.size() - (1 if state.display_seat == 0 else 0)] if state.phase == "lobby" else _t("FINISHED") if state.phase == "finished" else _t("PAUSED") if state.paused or not platform.get("connected", true) else _t("YOUR_TURN") if state.turn == snapshot.seat else _t("TURN") % [_name(int(state.turn))]
+	if not platform.get("connected", true) and not str(platform.get("message", "")).is_empty():
+		status.text = str(platform.message)
+	elif pending_action:
+		status.text = _t("SENDING")
 	qr.visible = state.phase == "lobby" and int(snapshot.seat) == 0 and services != null
 	if qr.visible:
 		var source: Texture2D = services.get_join_qr()
@@ -494,7 +511,7 @@ func render(data: Dictionary) -> void:
 		var playable := false
 		for action in legal:
 			if action.type == "play" and int(action.card) == int(card): playable = true
-		button.disabled = not playable or not platform.get("connected", true) or platform.get("input_paused", false)
+		button.disabled = pending_action or not playable or not platform.get("connected", true) or platform.get("input_paused", false)
 		_paint_card(button, int(card), false)
 		hand_buttons.append(button)
 	if state.phase == "finished": result_dialog.dialog_text = _t("WINNER") % [_name(int(state.winner)), int(state.score)]
@@ -521,6 +538,7 @@ func _paint_card(button: Button, card: int, face_up: bool) -> void:
 	button.add_theme_stylebox_override("focus", _box(Color.TRANSPARENT, 16, Color("ffd575"), 5))
 	if not face_up:
 		button.modulate = Color.WHITE if not button.disabled else Color(.64,.60,.56)
+		button.accessibility_name = _t(color_key) + " · " + button.tooltip_text
 		var corner := Label.new()
 		corner.text = button.text
 		corner.position = Vector2(12,10)
@@ -545,13 +563,21 @@ func _choose(card: int) -> void:
 		armed = false
 
 func _submit(action: Dictionary) -> void:
+	if snapshot.is_empty() or pending_action or not platform.get("connected", true) or platform.get("input_paused", false): return
 	notice.hide()
 	if action.type == "rematch":
 		if rematch_intent == int(snapshot.view.round): return
 		rematch_intent = int(snapshot.view.round)
+	pending_action = true
 	call_deferred("_emit_action", action)
 
 func _emit_action(action: Dictionary) -> void:
+	if not is_inside_tree(): return
+	if not platform.get("connected", true) or platform.get("input_paused", false):
+		pending_action = false
+		return
+	status.text = _t("SENDING")
+	for button in hand_buttons + [start_button, draw_button, table_toggle, catch_button, result_rematch]: button.disabled = true
 	# Touch pulse via the platform; hosts without haptics ignore the unknown action.
 	platform_action.emit("haptic:select")
 	command.emit(action)
@@ -568,14 +594,18 @@ func controls_join_qr() -> bool: return true
 func set_session_services(value) -> void: services = value
 func set_platform_state(value: Dictionary) -> void:
 	platform = value.duplicate(true)
-	if not platform.get("connected", true): rematch_intent = -1
+	if not platform.get("connected", true):
+		rematch_intent = -1
+		pending_action = false
 	if not platform.get("connected", true) or platform.get("input_paused", false): color_dialog.hide()
 	if is_node_ready() and not snapshot.is_empty(): render(snapshot)
 func on_command_notice(code: String) -> bool:
+	pending_action = false
 	if code == "stale_revision" and not snapshot.is_empty() and snapshot.view.phase == "finished" and rematch_intent == int(snapshot.view.round):
 		_retry_rematch.call_deferred()
 		return true
 	rematch_intent = -1
+	if not snapshot.is_empty(): render(snapshot)
 	notice.show()
 	notice.text = _t("ERROR_" + code) if messages.en.has("ERROR_" + code) else _t("ERROR")
 	return true
@@ -608,8 +638,20 @@ func restore_view_state(value: Dictionary) -> void:
 			return
 	focus_default()
 
-func _input(event: InputEvent) -> void:
-	if menu_panel != null and menu_panel.visible and event.is_action_pressed("ui_cancel"):
-		menu_panel.hide()
-		menu_button.grab_focus()
+func _toggle_menu(open: bool) -> void:
+	menu_panel.visible = open
+	if open: (reconnect_button if reconnect_button.visible else rules_button).grab_focus()
+	else: menu_button.grab_focus()
+
+func restore_platform_focus(_action: String = "") -> void:
+	if not platform.get("connected", true): menu_button.grab_focus()
+	else: focus_default()
+
+func handle_platform_back() -> bool:
+	if menu_panel == null or not menu_panel.visible: return false
+	_toggle_menu(false)
+	return true
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not platform.get("input_paused", false) and event.is_action_pressed("ui_cancel") and handle_platform_back():
 		get_viewport().set_input_as_handled()

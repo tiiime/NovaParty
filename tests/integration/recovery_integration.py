@@ -26,11 +26,11 @@ def same_game(before, after):
 
 def resumed(client, before):
     state = client.call('game.snapshot')
-    if state.get('in_room') and state.get('session_state') == 'connected' and state.get('local_session_id') != before['local_session_id']:
-        same_game(before, state)
-        assert all(p['connected'] for p in state['players'])
-        return state
-    return None
+    if not state.get('in_room') or state.get('session_state') != 'connected':
+        return None
+    same_game(before, state)
+    assert all(p['connected'] for p in state['players'])
+    return state
 
 
 def recover(host, guest, guest_config, directory, port):
@@ -59,16 +59,20 @@ def recover(host, guest, guest_config, directory, port):
             print('PASS healthy idle heartbeat: same session after 9 seconds', flush=True)
             for mode in ['close', 'both', 'downstream', 'upstream']:
                 before = guest.call('game.snapshot')
-                cursor = guest.call('events.subscribe')['seq']
                 started = time.monotonic()
+                link.reject_new.set()
                 link.interrupt_existing(mode)
+                def interrupted():
+                    state = guest.call('game.snapshot')
+                    return state if state.get('session_state') == 'reconnecting' else None
+                lost = wait_for(interrupted, timeout=15)
+                link.reject_new.clear()
                 after = wait_for(lambda: resumed(guest, before), timeout=20)
                 elapsed = round(time.monotonic() - started, 2)
                 authority = ready(host, 2)
                 assert authority['game_session_id'] == before['game_session_id']
                 assert authority['view'] == before['view']
-                guest.call('events.subscribe', {'after_seq': cursor})
-                errors = [m['params']['data'].get('connection_error') for m in guest.notifications if m.get('params', {}).get('kind') == 'connection' and m['params'].get('seq', -1) > cursor]
+                errors = [lost.get('connection_error')]
                 if mode == 'close':
                     assert 'transport_lost' in errors, errors
                 else:
@@ -76,7 +80,8 @@ def recover(host, guest, guest_config, directory, port):
                     # the host closes first, guest correctly reports transport_lost.
                     assert any(e in ['heartbeat_timeout', 'transport_lost'] for e in errors), errors
                     assert elapsed < 15, elapsed
-                assert after['room_generation'] > before['room_generation']
+                assert after['room_generation'] == before['room_generation']
+                assert after['local_session_id'] == before['local_session_id']
                 assert read_json(state_path)['moves_accepted'] == 0
                 diagnostics.append({'fault': mode, 'recovered_seconds': elapsed, 'revision': after['revision'], 'same_game': True, 'same_seat': True})
                 print('PASS game link', mode, 'recovered in', elapsed, 'seconds; same match, seat, board and revision', flush=True)
@@ -89,9 +94,10 @@ def recover(host, guest, guest_config, directory, port):
             assert receipt['accepted']
             wait_for(lambda: host.call('game.snapshot')['revision'] == 4)
             started = time.monotonic()
-            wait_for(lambda: guest.call('game.snapshot').get('local_session_id') != prior_session and guest.call('game.snapshot').get('session_state') == 'connected', timeout=20)
+            wait_for(lambda: len(link.commands) >= 2, timeout=20)
             wait_for(lambda: read_json(state_path)['moves_accepted'] == 1, timeout=10)
             final = ready(guest, 4)
+            assert final['local_session_id'] == prior_session
             assert final['view'] == host.call('game.snapshot')['view']
             assert read_json(state_path)['pending'] is None
             assert read_json(state_path)['desired'] == 'running'
@@ -191,14 +197,16 @@ def protocol_edges(host, guest, port):
     worker.start()
     try:
         guest.room('room.join', {'game_id': 'gomoku', 'address': '127.0.0.1', 'port': listener.getsockname()[1]})
-        result = wait_for(lambda: (s if (s := guest.call('game.snapshot')).get('connection_error') == 'handshake_timeout' else None), timeout=14)
-        assert not result['in_room'] and result['session_state'] == 'disconnected'
+        wait_for(lambda: guest.call('ui.status')['status'] == 'JOIN_TIMEOUT', timeout=14)
+        assert not guest.call('game.snapshot')['in_room']
+        assert guest.call('ui.status')['route'] == 'nearby'
         print('PASS silent welcome handshake ends with structured timeout', flush=True)
     finally:
         stopped.set()
         worker.join(timeout=2)
         listener.close()
-        guest.room('room.leave')
+        if guest.call('room.status')['local_session_id']:
+            guest.room('room.leave')
 
 
 def test_ios(device):

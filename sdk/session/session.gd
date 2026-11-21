@@ -21,6 +21,19 @@ var expected_remote_session := ""
 const HEARTBEAT_INTERVAL_MS = 2000
 const HEARTBEAT_TIMEOUT_MS = 8000
 const HANDSHAKE_TIMEOUT_MS = 10000
+# Guest auto-recovery: retry the same host with the same seat credentials, backing off.
+const RECONNECT_DELAYS_MS = [500, 1000, 2000, 4000, 8000]
+const RECONNECT_WINDOW_MS = 120000
+# Host-side codes after which retrying cannot succeed.
+const FINAL_CODES = ["invalid_resume_token", "room_changed", "session_replaced", "incompatible", "game_in_progress", "room_full", "invalid_identity"]
+var auto_reconnect := true
+var reconnect_window_ms := RECONNECT_WINDOW_MS
+var reconnect_attempts := 0
+var reconnect_at := -1
+var reconnect_deadline := -1
+var closing := false
+# Guest commands sent but not yet acknowledged, by request ID, replayed after a reconnect.
+var pending_requests := {}
 var wire
 var local_session_id := Crypto.new().generate_random_bytes(16).hex_encode()
 var room
@@ -89,15 +102,20 @@ func submit_request(request: Dictionary) -> Dictionary:
 		return {"code": "invalid_request"}
 	if seat < 0 or snapshot.is_empty():
 		return {"code": "not_ready"}
-	if not host and not wire.peers.has(0):
-		notice.emit("disconnected")
-		return {"code": "disconnected"}
 	var data := request.duplicate(true)
 	data.type = "command"
 	if host:
 		_execute(0, data)
-	else:
-		wire.send(0, data)
+		return {"queued": true, "request_id": data.request_id}
+	if not wire.peers.has(0) or connection_state != "connected":
+		if reconnect_deadline < 0:
+			notice.emit("disconnected")
+			return {"code": "disconnected"}
+		# Kept and replayed after recovery; the host deduplicates by request ID.
+		pending_requests[data.request_id] = data
+		return {"queued": true, "request_id": data.request_id, "pending": true}
+	pending_requests[data.request_id] = data
+	wire.send(0, data)
 	return {"queued": true, "request_id": data.request_id}
 
 func _opened(peer: int) -> void:
@@ -110,12 +128,15 @@ func _opened(peer: int) -> void:
 
 func _process(_delta: float) -> void:
 	var now := Time.get_ticks_msec()
+	if not host and connection_state == "reconnecting" and reconnect_at >= 0 and now >= reconnect_at and not wire.peers.has(0):
+		_attempt_reconnect()
 	if host and room != null and room.clock_enabled() and room.clock_turn in [0, 1] and now - last_clock_publish >= 1000:
 		_publish()
 	for peer in pending_since.keys():
 		if now - int(pending_since[peer]) >= HANDSHAKE_TIMEOUT_MS:
 			wire.drop(peer)
-	if not host and seat < 0 and handshake_since >= 0 and now - handshake_since >= HANDSHAKE_TIMEOUT_MS:
+	# Applies to first joins and to reconnect handshakes alike.
+	if not host and handshake_since >= 0 and now - handshake_since >= HANDSHAKE_TIMEOUT_MS:
 		handshake_since = -1
 		disconnect_reasons[0] = "handshake_timeout"
 		wire.drop(0)
@@ -160,6 +181,16 @@ func _message(peer: int, data: Dictionary) -> void:
 				wire.drop(peer)
 				return
 			var response: Dictionary = room.hello(data)
+			if response.get("code") == "already_connected" and response.has("seat"):
+				# Valid credentials on a new connection (e.g. after a network switch the old
+				# link is half-open): the newest connection wins; the old client is told why.
+				for old in bindings.keys():
+					if int(bindings[old]) == int(response.seat):
+						wire.send(old, {"type": "error", "code": "session_replaced"})
+						wire.flush(old)
+						disconnect_reasons[old] = "session_replaced"
+						wire.drop(old)
+				response = room.hello(data)
 			if response.type == "welcome":
 				bindings[peer] = response.seat
 				pending_since.erase(peer)
@@ -188,15 +219,23 @@ func _message(peer: int, data: Dictionary) -> void:
 				profile_supported = capabilities is Array and capabilities.has("user_profile_v1")
 				if data.get("protocol") == 2 and capabilities is Array and capabilities.has("heartbeat_v1"):
 					_enable_heartbeat(peer)
+				reconnect_attempts = 0
+				reconnect_at = -1
+				reconnect_deadline = -1
 				_set_connection("connected")
+				for request in pending_requests.values():
+					wire.send(peer, request)
 			"snapshot":
 				snapshot = data
 				updated.emit(data)
 			"error":
+				pending_requests.clear()
+				reconnect_at = -1
 				_set_connection("rejected", str(data.get("code", "rejected")))
 				notice.emit(str(data.get("code")))
 				wire.drop(0)
 			"receipt":
+				pending_requests.erase(str(data.get("request_id", "")))
 				action_result.emit(data)
 				if not data.accepted:
 					notice.emit(str(data.code))
@@ -243,8 +282,13 @@ func _lost(peer: int) -> void:
 		_publish()
 	elif not host:
 		handshake_since = -1
-		if connection_state != "rejected":
-			_set_connection("disconnected", reason)
+		if connection_state == "rejected" or closing:
+			return
+		var recoverable: bool = auto_reconnect and seat >= 0 and not resume_token.is_empty()
+		if recoverable and (reconnect_deadline < 0 or Time.get_ticks_msec() < reconnect_deadline):
+			_schedule_reconnect(reason)
+			return
+		_set_connection("disconnected" if reconnect_deadline < 0 else "failed", reason if reconnect_deadline < 0 else "reconnect_timeout")
 		notice.emit("connection_lost")
 
 func _set_connection(state: String, code: String = "") -> void:
@@ -252,6 +296,42 @@ func _set_connection(state: String, code: String = "") -> void:
 		connection_state = state
 		connection_error = code
 		status_changed.emit(state, code)
+
+func _schedule_reconnect(reason: String) -> void:
+	var now := Time.get_ticks_msec()
+	if reconnect_deadline < 0:
+		reconnect_deadline = now + reconnect_window_ms
+	var delay: int = RECONNECT_DELAYS_MS[mini(reconnect_attempts, RECONNECT_DELAYS_MS.size() - 1)]
+	reconnect_at = now + delay
+	_set_connection("reconnecting", reason)
+
+func _attempt_reconnect() -> void:
+	reconnect_attempts += 1
+	reconnect_at = -1
+	# Only the same match may answer: a new room on the same address is refused.
+	expected_remote_session = str(snapshot.get("game_session_id", expected_remote_session))
+	if wire.connect_to(join_address, host_port) != OK:
+		_lost(0)
+
+# Platform hook: skip the backoff (app returned to the foreground, user tapped reconnect).
+func reconnect_now() -> bool:
+	if host or seat < 0 or resume_token.is_empty() or connection_state in ["connected", "handshaking", "connecting", "rejected"] or closing:
+		return false
+	if wire.peers.has(0):
+		return false
+	reconnect_attempts = 0
+	reconnect_deadline = Time.get_ticks_msec() + reconnect_window_ms
+	reconnect_at = Time.get_ticks_msec()
+	_set_connection("reconnecting", "requested")
+	return true
+
+# Intentional leave: never auto-reconnect.
+func close() -> void:
+	closing = true
+	reconnect_at = -1
+	pending_requests.clear()
+	if wire != null and wire.peers.has(0):
+		wire.drop(0)
 
 func update_presentation(presentation: Dictionary) -> void:
 	if presentation.get("rules_fingerprint") != info.get("rules_fingerprint"):
