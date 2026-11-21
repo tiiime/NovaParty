@@ -42,6 +42,9 @@ func run() -> void:
 	host.wire.bluetooth = host_radio
 	check(host.create(info, loader.rules(info), {"id": "host-player", "nickname": "Host"}, 29931) == OK, "host starts TCP and Bluetooth together")
 	check(host.bluetooth_hosting and host_radio.advertising, "joinable host advertises over Bluetooth")
+	check(host_radio.host_status == "starting", "hosting is not reported ready before native confirmation")
+	host_radio._event({"type": "ble_advertising"})
+	check(host_radio.host_status == "ready", "native advertising confirmation marks the invite ready")
 	var sid: String = host.room.game_session_id
 
 	var discovery = Discovery.new()
@@ -52,6 +55,9 @@ func run() -> void:
 	check(await wait_until(func(): return discovery.list_rooms().any(func(room): return room.get("transport") == "ble")), "scan lists the Bluetooth host")
 	var rows: Array = discovery.list_rooms().filter(func(room): return room.get("transport") == "ble")
 	check(rows.size() == 1 and rows[0].address == "ble:AA:00" and rows[0].code == sid.left(6), "row carries ble: address and session code")
+	guest_radio._event({"type": "ble_found", "key": "apple-without-name", "name": "NP", "rssi": -60})
+	check(discovery.list_rooms().any(func(entry): return entry.address == "ble:apple-without-name" and entry.code.is_empty()), "UUID-only CoreBluetooth advert is discoverable")
+	guest_radio.devices.erase("apple-without-name")
 
 	# Catalog + package download through the ordinary Mod sharing endpoint, in 20-byte chunks.
 	var transfer = PeerMods.new()
@@ -99,17 +105,22 @@ func run() -> void:
 	check(await wait_until(func(): return states.has("reconnecting")), "guest starts recovering after the radio link drops")
 	check(await wait_until(func(): return guest.connection_state == "connected" and host.snapshot.players[1].connected, 900), "automatic Bluetooth reconnect")
 	check(guest.seat == 1 and int(guest.snapshot.revision) == int(host.snapshot.revision), "same seat and state after recovery")
-	# A second connection with the same credentials takes the seat over; the old one stops.
+	# A radio can't open two streams to the same peripheral; the old stream stays usable.
+	check(guest_radio.connect_peer("AA:00") == null and guest.connection_state == "connected", "duplicate dial does not replace a live BLE stream")
+	# A different radio (or TCP link) with the same credentials can take over the seat.
+	var new_radio := radio(air, "BB:22")
 	var resumed = Session.new()
 	root.add_child(resumed)
-	resumed.wire.bluetooth = guest_radio
-	check(resumed.join(info, {"id": "guest-player", "nickname": "Guest"}, rows[0].address, 0, token) == OK, "reconnect uses the remembered device key")
+	resumed.wire.bluetooth = new_radio
+	check(resumed.join(info, {"id": "guest-player", "nickname": "Guest"}, rows[0].address, 0, token) == OK, "another radio can resume with the same credentials")
 	check(await wait_until(func(): return resumed.seat == 1 and int(resumed.snapshot.get("revision", -1)) == int(host.snapshot.revision)), "takeover restores seat and state")
 	check(await wait_until(func(): return guest.connection_state == "rejected" and guest.connection_error == "session_replaced"), "replaced connection is told and does not retry")
+	check(resumed.connection_state == "connected" and host.snapshot.players[1].connected, "retiring the old link keeps the seat online")
 	guest.queue_free()
 
-	check(resumed.wire.connect_to("ble:ZZ:99", 0) == OK, "unknown device starts as a pending link")
-	check(await wait_until(func(): return not resumed.wire.peers.has(0)), "failed Bluetooth connect is reported as lost")
+	var unknown = new_radio.connect_peer("ZZ:99")
+	check(unknown != null, "unknown device starts as a pending link")
+	check(await wait_until(func(): return unknown.get_status() == StreamPeerTCP.STATUS_ERROR), "failed Bluetooth connect is reported as lost")
 	var off_air := {}
 	var refused := radio(off_air, "CC:22")
 	refused.backend.powered = false
@@ -124,7 +135,7 @@ func run() -> void:
 	var silent: Node = Bluetooth.new()
 	root.add_child(silent)
 	check(not silent.available() and silent.connect_peer("AA:00") == null and not silent.host("abcdef"), "no bridge means Bluetooth is cleanly unavailable")
-	for node in [resumed, host, discovery, silent, host_radio, guest_radio]:
+	for node in [resumed, host, discovery, silent, host_radio, guest_radio, new_radio]:
 		node.queue_free()
 	await process_frame
 	print("BLUETOOTH: %d checks, %d failures" % [checks, failures])

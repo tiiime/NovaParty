@@ -38,8 +38,11 @@ def run(device):
             subprocess.run(['xcrun', 'simctl', 'io', device, 'screenshot', str(output / name)], check=True, capture_output=True)
         try:
             before = reboot('zh_CN')
+            ble = wait_for(lambda: state if (state := client.call('ble.status'))['state'] == 'unsupported' else None)
+            assert not ble['hosting'] and not ble['scanning']
+            assert not before['bluetooth_join_visible']
             assert before['screen'] == 'home' and before['locale'].startswith('zh')
-            assert before['title'] == '星星大作战' and before['start_label'] == '开始游戏'
+            assert before['title'] == '星星大作战' and before['start_label'] == '选择游戏'
             assert not before['reduced_motion'] and before['animation_processing']
             time.sleep(1.2)
             after = client.call('ui.status')
@@ -55,13 +58,14 @@ def run(device):
             assert video.stat().st_size > 10000
             print('PASS iOS Chinese boot and live orbit animation; 6-second recording', flush=True)
             english = reboot('en')
-            assert english['locale'] == 'en' and english['title'] == 'NovaParty' and english['start_label'] == 'Start game'
+            assert english['locale'] == 'en' and english['title'] == 'NovaParty' and english['start_label'] == 'Choose a game'
             screenshot('iphone-home-en.png')
             client.room('room.create', {'game_id': 'gomoku', 'port': free_port()})
             state = client.call('game.snapshot')
             assert state['in_room'] and state['revision'] == 0
             ui = client.call('ui.status')
             assert ui['screen'] == 'game' and not ui['animation_processing']
+            assert not ui['bluetooth_host_visible'] and not client.call('ble.status')['advertising']
             time.sleep(.2)
             frozen = client.call('ui.status')['motion_time']
             time.sleep(.5)

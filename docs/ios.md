@@ -52,3 +52,11 @@ python3 tests/devices/ios_simulator.py --device <UDID>
 ## 0.1.5 联机恢复补测
 
 已安装模拟器新构建，使用 `tests/integration/recovery_integration.py --ios-device <UDID>` 验证游戏 TCP 明确断开以及静默、单向丢包时的心跳与自动凭据重连。具体结果和边界见 [联机恢复](recovery.md)；不推断真实设备后台或网络切换能力。
+
+## 0.1.16 / 派对街机补测
+
+- iPhone 16 / iOS 18.5 模拟器验证中英文首页、开局和返回；蓝牙不可用时隐藏按钮，局域网不受影响。
+- 与桌面完成 225 手五子棋；从桌面二维码邀请进入暗牌 Mod（缺包时通过普通联机流程确认下载），完成 6 次提交，双方只收到自己的私有手牌。二维码使用图片解码，不是物理摄像头。
+- 与真实 TCL 电视通过 Bonjour 发现房间，从二维码图片解码邀请加入，9 手结束，棋盘与胜负一致。操作由 Debug RPC 驱动。电视先开一个空的五子棋房间，然后运行 `python3 tests/devices/iphone_tv_lan.py --device <UDID>`。证据位于 `build/validation/party-arcade/`。
+- 模拟器丢包恢复、丢回执重发去重、局中 UI 热更/回滚与重启恢复已通过；不等同于系统后台或实际网络切换的回归。
+- iPhone 真机使用前台 [CoreBluetooth BLE](bluetooth.md)；模拟器不模拟蓝牙。本轮 Apple 原生扩展及未签名 arm64 调试构建成功；尚无本项目的有效设备 provisioning profile，未安装到实体 iPhone 或完成蓝牙实链路验收。

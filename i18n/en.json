@@ -191,6 +191,11 @@
   "BLUETOOTH_ROW": "Nearby device · code %s",
   "CONNECTING_BLUETOOTH": "Connecting over Bluetooth…",
   "BLUETOOTH_SEARCH": "Bluetooth",
-  "BLUETOOTH_PERMISSION": "Allow Bluetooth to find nearby devices (Android may call it location access)",
-  "BLUETOOTH_UNAVAILABLE": "Bluetooth is off or not allowed; you can still join over Wi-Fi or by scanning"
+  "BLUETOOTH_PERMISSION": "Allow Bluetooth access to play with nearby devices. Older Android versions may ask for location access.",
+  "BLUETOOTH_UNAVAILABLE": "Bluetooth is unavailable. Check Bluetooth and app permissions, or join over Wi-Fi.",
+  "BLUETOOTH_HOST": "Allow Bluetooth joining",
+  "BLUETOOTH_HOST_READY": "Ask friends to choose Bluetooth under Join a game. Keep this app open.",
+  "BLUETOOTH_HOST_STARTING": "Starting Bluetooth…",
+  "BLUETOOTH_HOST_FAILED": "Bluetooth joining couldn't start. Check Bluetooth or invite over Wi-Fi.",
+  "BLUETOOTH_NO_CODE": "Nearby device · check with the host"
 }

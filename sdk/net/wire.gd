@@ -11,6 +11,7 @@ const MAX_FRAME = 65536
 const MAX_QUEUE = 262144
 var server := TCPServer.new()
 var peers := {}
+var retiring := {} # peer -> deadline for delivery of a final control frame
 var next_peer := 1
 
 func listen(port: int, bind_address: String = "*") -> Error:
@@ -55,15 +56,16 @@ func send(peer: int, data: Dictionary) -> void:
 		return
 	peers[peer].output.append_array(bytes)
 
-# Best-effort immediate write of queued bytes, used before a deliberate close.
-func flush(peer: int) -> void:
-	if not peers.has(peer) or peers[peer].output.is_empty():
+# Stop accepting frames immediately, but give the other end time to read the
+# final notice and close its own link. On BLE, enqueueing is not delivery.
+func retire(peer: int, notice: Dictionary) -> void:
+	if not peers.has(peer):
 		return
-	var sent: Array = peers[peer].stream.put_partial_data(peers[peer].output)
-	if sent[0] == OK:
-		peers[peer].output = peers[peer].output.slice(sent[1])
+	retiring[peer] = Time.get_ticks_msec() + 3000
+	send(peer, notice)
 
 func drop(peer: int) -> void:
+	retiring.erase(peer)
 	if peers.has(peer):
 		peers[peer].stream.disconnect_from_host()
 		peers.erase(peer)
@@ -79,6 +81,9 @@ func _process(_delta: float) -> void:
 		next_peer += 1
 	for id in peers.keys():
 		if not peers.has(id):
+			continue
+		if retiring.has(id) and Time.get_ticks_msec() >= int(retiring[id]):
+			drop(id)
 			continue
 		var p: Dictionary = peers[id]
 		p.stream.poll()
@@ -111,9 +116,10 @@ func _process(_delta: float) -> void:
 			if read[0] != OK:
 				drop(id)
 				continue
-			p.input.append_array(read[1])
+			if not retiring.has(id):
+				p.input.append_array(read[1])
 		var frames := 0
-		while peers.has(id) and frames < 64:
+		while peers.has(id) and not retiring.has(id) and frames < 64:
 			var end: int = p.input.find(10)
 			if end == -1:
 				break

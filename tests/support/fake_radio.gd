@@ -63,6 +63,7 @@ func _handle(command: Dictionary) -> void:
 		"ble_close": _close(str(command.link), true)
 		"ble_shutdown":
 			for link in links.keys(): _close(link, true)
+			air.erase(id)
 
 func _close(link: String, notify_remote: bool) -> void:
 	if not links.has(link):

@@ -7,6 +7,7 @@ extends Node
 signal devices_changed(devices: Array)
 signal incoming(stream)
 signal state_changed(state: String)
+signal host_status_changed(status: String)
 const SERVICE_UUID = "6E6F7661-7061-7274-7900-000000000001"
 const RX_UUID = "6E6F7661-7061-7274-7900-000000000002" # central -> host, write with response
 const TX_UUID = "6E6F7661-7061-7274-7900-000000000003" # host -> central, notify
@@ -54,11 +55,13 @@ var state := "unknown"
 var last_error := ""
 var hosting := false
 var advertising := false
+var host_status := ""
 var scanning := false
 var devices := {}
 var streams := {}
 var pending := {} # device key -> Stream waiting for ble_open
 var scan_users := 0
+var next_idle_poll := 0
 
 static var _shared: Node
 
@@ -98,22 +101,25 @@ func request_access() -> void:
 	_command({"op": "ble_permissions"})
 
 func host(session_id: String) -> bool:
-	if backend == null:
+	if backend == null or state == "unsupported" or (OS.get_name() == "iOS" and state != "on"):
 		return false
 	hosting = true
 	advertising = true
+	host_status = "starting"
 	_command({"op": "ble_host", "name": NAME_PREFIX + session_id.left(6)})
 	return true
 
 func set_advertising(enabled: bool) -> void:
 	if hosting and advertising != enabled:
 		advertising = enabled
+		host_status = "starting" if enabled else ""
 		_command({"op": "ble_advertise", "enabled": enabled})
 
 func stop_host() -> void:
 	if hosting:
 		hosting = false
 		advertising = false
+		host_status = ""
 		_command({"op": "ble_host_stop"})
 
 func scan() -> void:
@@ -136,10 +142,10 @@ func list_devices() -> Array:
 	return list
 
 func connect_peer(key: String) -> Stream:
-	if backend == null or key.is_empty() or key.length() > 64:
+	# The native radio identifies a central link by peripheral key, not by Session.
+	# A concurrent dial to the same target cannot safely replace a live stream.
+	if backend == null or state == "unsupported" or key.is_empty() or key.length() > 64 or pending.has(key) or streams.has("c:" + key):
 		return null
-	if pending.has(key):
-		pending[key].disconnect_from_host()
 	var stream := Stream.new()
 	stream.owner_ref = weakref(self)
 	stream.key = key
@@ -149,8 +155,9 @@ func connect_peer(key: String) -> Stream:
 
 func _close(stream: Stream) -> void:
 	if not stream.link.is_empty():
-		streams.erase(stream.link)
-		_command({"op": "ble_close", "link": stream.link})
+		if streams.get(stream.link) == stream:
+			streams.erase(stream.link)
+			_command({"op": "ble_close", "link": stream.link})
 	elif pending.get(stream.key) == stream:
 		pending.erase(stream.key)
 		_command({"op": "ble_close", "link": "c:" + stream.key})
@@ -165,8 +172,12 @@ func _command(command: Dictionary) -> void:
 				_event(event)
 
 func _process(_delta: float) -> void:
-	if backend == null or not (hosting or scanning or not streams.is_empty() or not pending.is_empty()):
+	if backend == null or state == "unsupported":
 		return
+	if not (hosting or scanning or not streams.is_empty() or not pending.is_empty()):
+		var now := Time.get_ticks_msec()
+		if now < next_idle_poll: return
+		next_idle_poll = now + 250
 	_command({})
 	if scanning:
 		var now := Time.get_ticks_msec()
@@ -186,8 +197,15 @@ func _event(event: Dictionary) -> void:
 			if value != state:
 				state = value
 				state_changed.emit(state)
+		"ble_advertising":
+			if hosting and advertising:
+				host_status = "ready"
+				host_status_changed.emit(host_status)
 		"ble_error":
 			last_error = str(event.get("code", "bluetooth_failed"))
+			if hosting and (last_error.begins_with("advertise_failed") or last_error == "gatt_server_unavailable"):
+				host_status = "failed"
+				host_status_changed.emit(host_status)
 			# The radio refused (off / no permission): nothing is advertising or scanning.
 			if last_error.begins_with("bluetooth_"):
 				hosting = false
@@ -198,9 +216,12 @@ func _event(event: Dictionary) -> void:
 			var label := str(event.get("name", ""))
 			if not scanning or key.is_empty() or key.length() > 64 or not label.begins_with(NAME_PREFIX) or devices.size() >= 32 and not devices.has(key):
 				return
-			var fresh := not devices.has(key)
-			devices[key] = {"key": key, "code": label.substr(NAME_PREFIX.length(), 6).to_lower(), "rssi": int(event.get("rssi", -100)), "seen": Time.get_ticks_msec()}
-			if fresh:
+			var code := label.substr(NAME_PREFIX.length(), 6).to_lower()
+			if code.length() != 6 or not code.is_valid_hex_number(false): code = ""
+			var changed: bool = not devices.has(key) or (not code.is_empty() and devices[key].code != code)
+			if code.is_empty() and devices.has(key): code = devices[key].code
+			devices[key] = {"key": key, "code": code, "rssi": int(event.get("rssi", -100)), "seen": Time.get_ticks_msec()}
+			if changed:
 				devices_changed.emit(list_devices())
 		"ble_open":
 			if link.begins_with("c:") and pending.has(link.substr(2)):
@@ -234,7 +255,7 @@ func _event(event: Dictionary) -> void:
 				pending.erase(link.substr(2))
 
 func diagnostic() -> Dictionary:
-	return {"backend": backend_name, "state": state, "hosting": hosting, "advertising": advertising, "scanning": scanning, "devices": list_devices(), "links": streams.keys(), "last_error": last_error}
+	return {"backend": backend_name, "state": state, "hosting": hosting, "advertising": advertising, "host_status": host_status, "scanning": scanning, "devices": list_devices(), "links": streams.keys(), "last_error": last_error}
 
 func _exit_tree() -> void:
 	if backend != null:

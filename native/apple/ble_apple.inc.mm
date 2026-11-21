@@ -1,4 +1,4 @@
-// NovaParty Link over Bluetooth LE for iOS and macOS (CoreBluetooth). Included by bonjour.mm.
+// NovaParty Link over Bluetooth LE for iOS and macOS (CoreBluetooth). Included by bridge.mm.
 // The host is a GATT peripheral, guests are centrals; both directions carry an opaque byte
 // stream. Commands arrive from Godot's thread and hop onto one serial queue that also receives
 // every CoreBluetooth callback, so link state needs no locks. See docs/bluetooth.md.
@@ -32,6 +32,7 @@
  NSMutableDictionary<NSString *, NSDate *> *seen;
  NSMutableDictionary<NSString *, NVLane *> *remotes;   // key -> host we joined
  NSMutableDictionary<NSString *, NVLane *> *guests;    // key -> subscribed central
+ NSMutableSet<NSString *> *disconnecting, *redial;
  NSString *hostName, *lastState;
  BOOL wantScan, wantHost, wantAdvertise, serviceReady;
 }
@@ -42,6 +43,7 @@
   rxID=[CBUUID UUIDWithString:@"6E6F7661-7061-7274-7900-000000000002"];
   txID=[CBUUID UUIDWithString:@"6E6F7661-7061-7274-7900-000000000003"];
   known=[NSMutableDictionary new]; seen=[NSMutableDictionary new]; remotes=[NSMutableDictionary new]; guests=[NSMutableDictionary new];
+  disconnecting=[NSMutableSet new]; redial=[NSMutableSet new];
  }
  return self;
 }
@@ -50,7 +52,13 @@
 
 // Without the usage description the OS terminates the process on first Bluetooth access
 // (editor and headless test runs), so the bridge reports "unsupported" instead.
-+ (BOOL)permitted { return [NSBundle.mainBundle objectForInfoDictionaryKey:@"NSBluetoothAlwaysUsageDescription"] != nil; }
++ (BOOL)permitted {
+#if TARGET_OS_SIMULATOR
+ return NO;
+#else
+ return [NSBundle.mainBundle objectForInfoDictionaryKey:@"NSBluetoothAlwaysUsageDescription"] != nil;
+#endif
+}
 - (void)ensureManagers {
  if(centralManager || ![NVBle permitted]) return;
  NSDictionary *quiet=@{CBCentralManagerOptionShowPowerAlertKey:@NO};
@@ -87,7 +95,7 @@
  NSString *op=request[@"op"];
  if([op isEqual:@"ble_state"]) { [self reportState:YES]; return; }
  if(![NVBle permitted]) { if([op isEqual:@"ble_connect"]) [self emit:@{@"type":@"ble_closed", @"link":[@"c:" stringByAppendingString:[request[@"key"] description] ?: @""], @"code":@"bluetooth_unsupported"}]; return; }
- if([op isEqual:@"ble_permissions"]) { [self ensureManagers]; [self reportState:NO]; }
+ if([op isEqual:@"ble_permissions"]) { [self ensureManagers]; [self reportState:YES]; }
  else if([op isEqual:@"ble_host"]) { [self ensureManagers]; [self stopHost]; hostName=[request[@"name"] isKindOfClass:NSString.class] ? request[@"name"] : @"NP"; wantHost=YES; wantAdvertise=YES; [self applyHost]; }
  else if([op isEqual:@"ble_advertise"]) { wantAdvertise=[request[@"enabled"] boolValue]; [self applyAdvertising]; }
  else if([op isEqual:@"ble_host_stop"]) [self stopHost];
@@ -133,7 +141,11 @@
  if(error) { txCharacteristic=nil; [self error:@"gatt_server_unavailable"]; return; }
  serviceReady=YES; [self applyAdvertising];
 }
-- (void)peripheralManagerDidStartAdvertising:(CBPeripheralManager *)peripheral error:(NSError *)error { if(error) [self error:@"advertise_failed"]; }
+- (void)peripheralManagerDidStartAdvertising:(CBPeripheralManager *)peripheral error:(NSError *)error {
+ if(!wantHost || !wantAdvertise) return;
+ if(error) [self error:@"advertise_failed"];
+ else [self emit:@{@"type":@"ble_advertising"}];
+}
 - (void)peripheralManager:(CBPeripheralManager *)peripheral central:(CBCentral *)central didSubscribeToCharacteristic:(CBCharacteristic *)characteristic {
  NSString *key=central.identifier.UUIDString;
  if(!wantHost || guests[key] || guests.count>=16) return;
@@ -158,7 +170,8 @@
 - (void)pumpGuest:(NSString *)key {
  NVLane *lane=guests[key];
  while(lane && txCharacteristic && lane.pending.length) {
-  NSUInteger size=MIN(lane.pending.length, MAX((NSUInteger)20, lane.central.maximumUpdateValueLength));
+  NSUInteger size=MIN(lane.pending.length, MIN((NSUInteger)512, lane.central.maximumUpdateValueLength));
+  if(!size) return;
   NSData *chunk=[lane.pending subdataWithRange:NSMakeRange(0, size)];
   if(![peripheralManager updateValue:chunk forCharacteristic:txCharacteristic onSubscribedCentrals:@[lane.central]]) return; // resumes in IsReadyToUpdate
   [lane.pending replaceBytesInRange:NSMakeRange(0, size) withBytes:NULL length:0];
@@ -176,8 +189,8 @@
 - (void)centralManagerDidUpdateState:(CBCentralManager *)central {
  [self reportState:NO];
  if(central.state!=CBManagerStatePoweredOn) {
-  for(NSString *key in remotes.allKeys) [self emit:@{@"type":@"ble_closed", @"link":[@"c:" stringByAppendingString:key], @"code":@"radio_off"}];
-  [remotes removeAllObjects];
+  for(NSString *key in [redial setByAddingObjectsFromArray:remotes.allKeys]) [self emit:@{@"type":@"ble_closed", @"link":[@"c:" stringByAppendingString:key], @"code":@"radio_off"}];
+  [remotes removeAllObjects]; [disconnecting removeAllObjects]; [redial removeAllObjects];
  }
  [self applyScan];
 }
@@ -185,7 +198,9 @@
  NSString *name=data[CBAdvertisementDataLocalNameKey];
  NSData *payload=((NSDictionary *)data[CBAdvertisementDataServiceDataKey])[serviceID]; // Android hosts
  if(payload.length>=2 && payload.length<=20) name=[[NSString alloc] initWithData:payload encoding:NSASCIIStringEncoding];
- if(!wantScan || ![name hasPrefix:@"NP"]) return;
+ // CoreBluetooth may omit the local name when it doesn't fit in the advertisement.
+ if(!wantScan) return;
+ if(![name hasPrefix:@"NP"]) name=@"NP"; // scan is already filtered by our service UUID
  NSString *key=peripheral.identifier.UUIDString;
  NSDate *last=seen[key];
  if(last && -last.timeIntervalSinceNow<1.0) return;
@@ -194,10 +209,13 @@
  [self emit:@{@"type":@"ble_found", @"key":key, @"name":name, @"rssi":RSSI ?: @(-100)}];
 }
 - (void)connect:(NSString *)key {
+ // The catalog and join use separate links. Wait for the old disconnect callback
+ // so it cannot close a fresh connection with the same peripheral UUID.
+ if([disconnecting containsObject:key]) { [redial addObject:key]; return; }
+ if(remotes[key]) return;
  NSUUID *identifier=[[NSUUID alloc] initWithUUIDString:key ?: @""];
  CBPeripheral *peripheral=known[key] ?: (identifier ? [centralManager retrievePeripheralsWithIdentifiers:@[identifier]].firstObject : nil);
  if(!peripheral || centralManager.state!=CBManagerStatePoweredOn) { [self emit:@{@"type":@"ble_closed", @"link":[@"c:" stringByAppendingString:key ?: @""], @"code":@"connect_failed"}]; return; }
- [self closeLink:[@"c:" stringByAppendingString:key]];
  NVLane *lane=[NVLane new]; lane.peripheral=peripheral; remotes[key]=lane; known[key]=peripheral;
  peripheral.delegate=self;
  [centralManager connectPeripheral:peripheral options:nil];
@@ -205,13 +223,24 @@
 - (void)failRemote:(CBPeripheral *)peripheral code:(NSString *)code {
  NSString *key=peripheral.identifier.UUIDString;
  if(remotes[key].peripheral!=peripheral) return;
- [remotes removeObjectForKey:key];
- [centralManager cancelPeripheralConnection:peripheral];
+ [self closeLink:[@"c:" stringByAppendingString:key]];
  [self emit:@{@"type":@"ble_closed", @"link":[@"c:" stringByAppendingString:key], @"code":code}];
 }
-- (void)centralManager:(CBCentralManager *)central didConnectPeripheral:(CBPeripheral *)peripheral { [peripheral discoverServices:@[serviceID]]; }
-- (void)centralManager:(CBCentralManager *)central didFailToConnectPeripheral:(CBPeripheral *)peripheral error:(NSError *)error { [self failRemote:peripheral code:@"connect_failed"]; }
-- (void)centralManager:(CBCentralManager *)central didDisconnectPeripheral:(CBPeripheral *)peripheral error:(NSError *)error { [self failRemote:peripheral code:@"link_lost"]; }
+- (void)centralManager:(CBCentralManager *)central didConnectPeripheral:(CBPeripheral *)peripheral {
+ if(remotes[peripheral.identifier.UUIDString].peripheral==peripheral) [peripheral discoverServices:@[serviceID]];
+}
+- (void)finishedRemote:(CBPeripheral *)peripheral code:(NSString *)code {
+ NSString *key=peripheral.identifier.UUIDString;
+ if([disconnecting containsObject:key]) {
+  [disconnecting removeObject:key];
+  if([redial containsObject:key]) { [redial removeObject:key]; [self connect:key]; }
+ } else if(remotes[key].peripheral==peripheral) {
+  [remotes removeObjectForKey:key];
+  [self emit:@{@"type":@"ble_closed", @"link":[@"c:" stringByAppendingString:key], @"code":code}];
+ }
+}
+- (void)centralManager:(CBCentralManager *)central didFailToConnectPeripheral:(CBPeripheral *)peripheral error:(NSError *)error { [self finishedRemote:peripheral code:@"connect_failed"]; }
+- (void)centralManager:(CBCentralManager *)central didDisconnectPeripheral:(CBPeripheral *)peripheral error:(NSError *)error { [self finishedRemote:peripheral code:@"link_lost"]; }
 - (void)peripheral:(CBPeripheral *)peripheral didDiscoverServices:(NSError *)error {
  for(CBService *service in peripheral.services) if([service.UUID isEqual:serviceID]) { [peripheral discoverCharacteristics:@[rxID, txID] forService:service]; return; }
  [self failRemote:peripheral code:@"service_missing"];
@@ -271,8 +300,15 @@
  NSString *key=[link substringFromIndex:2];
  if([link hasPrefix:@"p:"]) [guests removeObjectForKey:key]; // CoreBluetooth cannot disconnect a central
  else if([link hasPrefix:@"c:"]) {
+  [redial removeObject:key];
   NVLane *lane=remotes[key];
-  if(lane) { [remotes removeObjectForKey:key]; [centralManager cancelPeripheralConnection:lane.peripheral]; }
+  if(lane) {
+   [remotes removeObjectForKey:key];
+   if(lane.peripheral.state!=CBPeripheralStateDisconnected) {
+    [disconnecting addObject:key];
+    [centralManager cancelPeripheralConnection:lane.peripheral];
+   }
+  }
  }
 }
 @end

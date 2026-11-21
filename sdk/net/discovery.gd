@@ -41,7 +41,8 @@ func _browse_bluetooth() -> void:
 	if bluetooth == null:
 		bluetooth = Bluetooth.shared(get_tree())
 		bluetooth.devices_changed.connect(func(_devices): if browsing: changed.emit(list_rooms()))
-	if bluetooth.backend != null and not bluetooth_scanning:
+	# A normal Wi-Fi search must not instantiate CoreBluetooth and request permission.
+	if bluetooth.state == "on" and not bluetooth_scanning:
 		bluetooth_scanning = true
 		bluetooth.scan()
 
@@ -113,8 +114,9 @@ func list_rooms() -> Array:
 		for device in bluetooth.list_devices():
 			# A host already listed through the local network is not repeated as a Bluetooth row.
 			var listed := false
-			for room in list:
-				if str(room.session_id).begins_with(device.code): listed = true
+			if not str(device.code).is_empty():
+				for room in list:
+					if str(room.session_id).begins_with(device.code): listed = true
 			if not listed:
 				list.append({"key": "ble:" + device.key, "transport": "ble", "session_id": "", "code": device.code, "game_id": "", "name": "", "version": "", "source_name": "", "address": "ble:" + device.key, "port": 0, "rssi": device.rssi})
 	return list

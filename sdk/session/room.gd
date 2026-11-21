@@ -22,7 +22,7 @@ func _init(mod_info: Dictionary, logic, host_id: String, nickname: String, seed_
 	if fixed_seats():
 		_presence(0, true)
 
-func hello(data: Dictionary) -> Dictionary:
+func hello(data: Dictionary, replacing_seat: int = -1) -> Dictionary:
 	advance_clock()
 	if data.get("expected_session_id", "") not in ["", game_session_id]:
 		return {"type": "error", "code": "room_changed"}
@@ -43,11 +43,12 @@ func hello(data: Dictionary) -> Dictionary:
 				return welcome(seat, int(protocol))
 			if data.get("resume_token", "") != players[seat].token:
 				return {"type": "error", "code": "invalid_resume_token"}
-			if players[seat].connected:
-				# Credentials are valid: the session layer may replace the stale connection.
+			if players[seat].connected and (seat == 0 or seat != replacing_seat):
+				# Credentials are valid: the session layer may replace a stale guest connection.
 				return {"type": "error", "code": "already_connected", "seat": seat}
 			_update_profile(seat, data.get("profile", {}), data.nickname)
-			set_connected(seat, true)
+			if not players[seat].connected:
+				set_connected(seat, true)
 			return welcome(seat, int(protocol))
 	if fixed_seats() and rules.has_method("can_join") and not rules.can_join(state.duplicate(true)):
 		return {"type": "error", "code": "game_in_progress"}

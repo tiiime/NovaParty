@@ -2,7 +2,7 @@
 
 ## 目的
 
-Bluetooth LE 用于双方没有共同 Wi-Fi 时联机，并与局域网发现和 TCP 连接并存。主机同时监听 TCP 与蓝牙；上层 Session、Room 和 Mod 协议不区分传输方式。
+Bluetooth LE 用于双方没有共同 Wi-Fi 时联机，并与局域网发现和 TCP 连接并存。Android 开房后在蓝牙可用时自动广播；iPhone 房主从「邀请好友」选择「允许蓝牙加入」。加入者选择「加入游戏 → 蓝牙搜索」。上层 Session、Room 和 Mod 协议不区分传输方式。
 
 ## GATT 方案
 
@@ -23,7 +23,7 @@ Bluetooth LE 用于双方没有共同 Wi-Fi 时联机，并与局域网发现和
 | iOS / macOS | 广播的本地名（Local Name） | CoreBluetooth 外设只能广播本地名与 Service UUID，且空间有限 |
 | Android | 扫描响应里的 Service Data（键为 Service UUID） | Android 不能为单次广播指定本地名，修改系统蓝牙名称会影响用户设备 |
 
-扫描端只列出短码以 `NP` 开头的设备；设备 8 秒未再次出现即从列表移除。如果同一会话已经通过局域网发现，则不重复显示蓝牙行。蓝牙行在连接前不显示游戏名。
+扫描端按 NovaParty Service UUID / Service Data 识别。iOS 广播可能因空间限制省略名称；此时显示无短码的蓝牙设备，连接后再读取房间目录。设备 8 秒未再次出现即从列表移除。有有效短码且对应会话已通过局域网发现时，不重复显示蓝牙行。
 
 ## 建立连接
 
@@ -82,6 +82,7 @@ exchange(JSON 字符串) -> JSON 事件数组
 | --- | --- |
 | `ble_state` | `{state}`；`on` / `off` / `unauthorized` / `unsupported` / `unknown` |
 | `ble_found` | `{key, name, rssi}` |
+| `ble_advertising` | Apple 原生回调确认广播已启动 |
 | `ble_open` | `{link}` |
 | `ble_data` | `{link, data}`；`data` 是 base64 字节 |
 | `ble_sent` | `{link, bytes}`；归还发送窗口 |
@@ -104,7 +105,7 @@ Android 11 及以下使用 `BLUETOOTH`、`BLUETOOTH_ADMIN`。由于导出模板�
 
 ### iOS 与 macOS
 
-CoreBluetooth 实现在 `native/apple`。需要 Info.plist 的 `NSBluetoothAlwaysUsageDescription`；缺少该键时，原生层报告 `unsupported`，不创建蓝牙对象。iOS 模拟器没有蓝牙。
+CoreBluetooth 实现在 `native/apple`。需要 Info.plist 的 `NSBluetoothAlwaysUsageDescription`；缺少该键时，原生层报告 `unsupported`，不创建蓝牙对象。iOS 首次蓝牙权限只在主动开启蓝牙加入或搜索时请求；普通局域网开房/搜索不请求蓝牙权限。iOS 模拟器没有蓝牙，隐藏相关入口，局域网和二维码照常可用。当前仅针对前台对局，锁屏或进入后台不保证继续广播或维持游戏。
 
 ### Windows
 
@@ -131,7 +132,7 @@ Debug RPC：
 Godot --headless --path . --script tests/unit/bluetooth.gd
 ```
 
-测试使用进程内假电台 `tests/support/fake_radio.gd`，以 20 字节切片验证发现、目录与下载、握手、对局、发送窗口、断线重连及不可用回退，共 25 项，不需要真实蓝牙硬件。
+测试使用进程内假电台 `tests/support/fake_radio.gd`，以 20 字节切片验证发现、目录与下载、握手、对局、发送窗口、断线重连及不可用回退。同一电台不能对同一外设重复拨号；另一电台持有效恢复凭据可替换旧链路，座位、局面与规则版本保持，旧客户端收到 `session_replaced` 后停止重试。这些测试不需要真实蓝牙硬件。
 
 ## 真机验证记录
 
@@ -150,4 +151,4 @@ python3 tests/devices/bluetooth_devices.py --host <宿主 adb 序列号> --guest
 1. 模拟器（以及部分电视芯片）下发硬件扫描过滤器失败（`LE_ADV_FILTER status 0x02`）后会丢弃全部结果。现改为不下发过滤器，在软件里按 Service UUID / Service Data 过滤。
 2. MTU 协商到 517 后切片为 514 字节，超过 ATT 属性值上限 512，`notifyCharacteristicChanged` 抛异常且该片已出队。现切片上限为 `min(512, MTU-3)`，发送异常时切片回队重试。
 
-尚未验证：两台实体安卓手机、iPhone / Mac 的 CoreBluetooth 实机互联（同一台 Mac 无法自连；iOS 模拟器无蓝牙），以及安卓 ↔ 苹果跨平台互联。苹果桥已随 `tools/build/build_apple_bridge.py` 为 macOS、iOS、模拟器三目标编译通过。
+尚未验证：实体 Android ↔ iPhone、iPhone ↔ iPhone 和长时间后台运行。苹果桥已随 `tools/build/build_apple_bridge.py` 为 macOS、iOS、模拟器三目标编译通过。真机验收需要签名安装后在没有共同 Wi‑Fi 的条件下分别由两端开房，验证发现、入座、完整对局、断线恢复；不能用 iOS 模拟器的局域网结果替代。

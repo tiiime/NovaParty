@@ -116,7 +116,8 @@ func populate(rooms: Array) -> void:
 			list.add_child(button)
 		button.set_meta("room", room)
 		if room.get("transport") == "ble":
-			button.text = tr("BLUETOOTH_GAME") + "\n" + tr("BLUETOOTH_ROW") % str(room.get("code", "")).to_upper()
+			var code := str(room.get("code", "")).to_upper()
+			button.text = tr("BLUETOOTH_GAME") + "\n" + (tr("BLUETOOTH_NO_CODE") if code.is_empty() else tr("BLUETOOTH_ROW") % code)
 		else:
 			button.text = str(room.name) + "\n" + tr("LAN_ROOM_ROW") % [str(room.source_name), str(room.version)]
 		retained[key] = button

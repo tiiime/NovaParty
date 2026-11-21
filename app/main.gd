@@ -1093,7 +1093,7 @@ func debug_ui_status() -> Dictionary:
 	var card_index: int = library.cards.find(focused) if focused is Button else -1
 	if card_index >= 0:
 		focus_control = "game:" + str(library.entries[card_index].id) if card_index < library.entries.size() else "add_game"
-	return {"route": Page.keys()[flow.page].to_lower(), "status": status_key, "feedback": ui_feedback.diagnostic(), "focus_scale": [focused.scale.x, focused.scale.y] if focused != null else [], "focus_control": focus_control, "library_columns": library.columns, "game_ids": game_ids, "screen": "user" if user_panel != null and user_panel.visible else "settings" if settings_dialog.visible else "home" if home.visible else "game" if session != null else "setup", "locale": TranslationServer.get_locale(), "reduced_motion": home.reduced_motion, "motion_time": home.motion_time, "animation_processing": home.is_processing(), "orbits": points, "user_profile": UserProfile.local_public(profile), "title": tr("APP_NAME"), "start_label": tr("START_GAME"), "size": [size.x, size.y]}
+	return {"route": Page.keys()[flow.page].to_lower(), "status": status_key, "bluetooth_join_visible": join_browser.bluetooth.visible, "bluetooth_host_visible": join_invite.visible and join_invite.bluetooth_button.visible, "feedback": ui_feedback.diagnostic(), "focus_scale": [focused.scale.x, focused.scale.y] if focused != null else [], "focus_control": focus_control, "library_columns": library.columns, "game_ids": game_ids, "screen": "user" if user_panel != null and user_panel.visible else "settings" if settings_dialog.visible else "home" if home.visible else "game" if session != null else "setup", "locale": TranslationServer.get_locale(), "reduced_motion": home.reduced_motion, "motion_time": home.motion_time, "animation_processing": home.is_processing(), "orbits": points, "user_profile": UserProfile.local_public(profile), "title": tr("APP_NAME"), "start_label": tr("START_GAME"), "size": [size.x, size.y]}
 
 # UI ABI 2: session, rules and the existing Mod view survive the UI shell swap.
 func ui_apply_catalogs() -> void:
@@ -1240,7 +1240,7 @@ func _send_game_status() -> void:
 	var ready_to_play: bool = session != null and (session.host or (session.connection_state == "connected" and not session.snapshot.is_empty())) and flow.page == Page.MATCH
 	var modal_open := _top_modal() != null
 	var message := status.text if status_key not in ["CONNECTED", "LOBBY_HELP", "LEFT_ROOM", "ROOM_CREATED"] else ""
-	var state := {"enabled": true, "connected": ready_to_play, "can_reconnect": _can_reconnect(), "can_invite": ready_to_play and session.host and not session.get_join_info().is_empty(), "message": message, "reduce_motion": bool(profile.get("reduce_motion", false)), "input_paused": modal_open}
+	var state := {"enabled": true, "connected": ready_to_play, "can_reconnect": _can_reconnect(), "can_invite": ready_to_play and session.host and (not session.get_join_info().is_empty() or _has_bluetooth_invite()), "message": message, "reduce_motion": bool(profile.get("reduce_motion", false)), "input_paused": modal_open}
 	if game_view.get_meta("novaparty_platform_state", {}) == state: return
 	game_view.set_meta("novaparty_platform_state", state.duplicate(true))
 	game_view.set_platform_state(state)
@@ -1276,7 +1276,10 @@ func _build_lan_ui() -> void:
 	join_browser.manual_requested.connect(_show_manual_join)
 	join_browser.scan_requested.connect(_start_scan)
 	join_browser.bluetooth_requested.connect(_request_bluetooth)
-	join_browser.set_bluetooth_available(Bluetooth.shared(get_tree()).backend != null)
+	var radio = Bluetooth.shared(get_tree())
+	join_browser.set_bluetooth_available(radio.backend != null and radio.state != "unsupported")
+	radio.state_changed.connect(_bluetooth_state_changed)
+	radio.host_status_changed.connect(_bluetooth_host_status)
 	qr_scanner = preload("res://sdk/net/qr_scanner.gd").new()
 	add_child(qr_scanner)
 	qr_scanner.scanned.connect(_join_scanned_code)
@@ -1291,6 +1294,7 @@ func _build_lan_ui() -> void:
 	join_invite.theme = theme
 	invite_layer.add_child(join_invite)
 	join_invite.hide()
+	join_invite.bluetooth_requested.connect(_request_bluetooth_host)
 	join_invite.confirmed.connect(func():
 		invite_dismissed = true
 		if game_view != null and game_view.has_method("restore_platform_focus"):
@@ -1450,7 +1454,9 @@ func debug_lan_command(method: String, params: Dictionary) -> Dictionary:
 	if method == "ble.status":
 		return Bluetooth.shared(get_tree()).diagnostic()
 	if method == "ble.request_access":
-		Bluetooth.shared(get_tree()).request_access()
+		var radio = Bluetooth.shared(get_tree())
+		if radio.backend == null or radio.state == "unsupported": return {"requested": false}
+		radio.request_access()
 		return {"requested": true}
 	if method == "lan.status":
 		return {"rooms": discovery.list_rooms(), "backend": discovery.backend, "discovery_error": discovery.last_error, "phase": peer_phase, "last_error": peer_error, "confirmation": download_dialog.visible and not download_dialog.working, "received": peer_transfer.received if peer_transfer != null else 0}
@@ -1478,22 +1484,47 @@ func _exit_tree() -> void:
 	if peer_transfer != null:
 		peer_transfer.cancel()
 
-# The Android system prompt pauses the app, so it is only shown after an explicit tap.
+# Both iOS and Android should prompt for Bluetooth only after an explicit tap.
 func _request_bluetooth() -> void:
 	var radio = Bluetooth.shared(get_tree())
-	if radio.state == "on":
-		_search_nearby()
-		return
-	if not radio.state_changed.is_connected(_bluetooth_state_changed):
-		radio.state_changed.connect(_bluetooth_state_changed)
-	_set_status("BLUETOOTH_PERMISSION")
-	radio.request_access()
+	match radio.state:
+		"on": _set_status("JOIN_HELP"); _search_nearby()
+		"off", "unsupported": _set_status("BLUETOOTH_UNAVAILABLE")
+		"unauthorized" when OS.get_name() == "iOS": _set_status("BLUETOOTH_UNAVAILABLE")
+		_: _set_status("BLUETOOTH_PERMISSION"); radio.request_access()
 
 func _bluetooth_state_changed(state: String) -> void:
+	join_browser.set_bluetooth_available(Bluetooth.shared(get_tree()).backend != null and state != "unsupported")
+	if join_invite != null and join_invite.visible and OS.get_name() == "iOS":
+		if state == "on" and join_invite.bluetooth_status.text == "BLUETOOTH_PERMISSION": _request_bluetooth_host()
+		elif state in ["unauthorized", "off", "unsupported"]: join_invite.set_bluetooth(_has_bluetooth_invite(), "BLUETOOTH_UNAVAILABLE")
+		elif state == "on" and join_invite.bluetooth_status.text == "BLUETOOTH_UNAVAILABLE": join_invite.set_bluetooth(true)
 	if state == "on" and join_browser.is_visible_in_tree():
+		_set_status("JOIN_HELP")
 		_search_nearby()
-	elif state in ["unauthorized", "off"] and join_browser.is_visible_in_tree():
+	elif state in ["unauthorized", "off", "unsupported"] and join_browser.is_visible_in_tree() and status_key == "BLUETOOTH_PERMISSION":
 		_set_status("BLUETOOTH_UNAVAILABLE")
+
+func _has_bluetooth_invite() -> bool:
+	var radio = Bluetooth.shared(get_tree())
+	return OS.get_name() == "iOS" and radio.backend != null and radio.state != "unsupported"
+
+func _request_bluetooth_host() -> void:
+	if not is_instance_valid(session) or not session.host or not join_invite.visible: return
+	var radio = Bluetooth.shared(get_tree())
+	match radio.state:
+		"on":
+			var enabled: bool = session.has_method("enable_bluetooth_hosting") and session.enable_bluetooth_hosting()
+			_bluetooth_host_status(radio.host_status if enabled else "failed")
+		"unknown":
+			join_invite.set_bluetooth(true, "BLUETOOTH_PERMISSION", false)
+			radio.request_access()
+		_: join_invite.set_bluetooth(_has_bluetooth_invite(), "BLUETOOTH_UNAVAILABLE")
+
+func _bluetooth_host_status(value: String) -> void:
+	if join_invite == null or not join_invite.visible or not _has_bluetooth_invite(): return
+	var keys := {"starting": "BLUETOOTH_HOST_STARTING", "ready": "BLUETOOTH_HOST_READY", "failed": "BLUETOOTH_HOST_FAILED"}
+	join_invite.set_bluetooth(true, keys.get(value, ""), value not in ["starting", "ready"])
 
 func _start_scan() -> void:
 	if session == null:
@@ -1521,9 +1552,13 @@ func _update_join_invite() -> void:
 func _open_invite(manual: bool = true) -> void:
 	if not is_instance_valid(session) or not session.host or join_invite.visible: return
 	var info: Dictionary = session.get_join_info()
-	if info.is_empty(): return
+	var has_bluetooth := _has_bluetooth_invite()
+	if info.is_empty() and not has_bluetooth: return
 	if manual: invite_dismissed = true
-	join_invite.present(session.get_join_qr(), info)
+	join_invite.set_bluetooth(has_bluetooth)
+	join_invite.present(session.get_join_qr() if not info.is_empty() else null, info)
+	if has_bluetooth and session.bluetooth_hosting:
+		_bluetooth_host_status(Bluetooth.shared(get_tree()).host_status)
 
 func _top_modal() -> Control:
 	for modal in [download_dialog, leave_dialog, user_panel, settings_dialog, join_invite]:

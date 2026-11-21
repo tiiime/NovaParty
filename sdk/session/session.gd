@@ -73,11 +73,22 @@ func create(mod_info: Dictionary, logic, profile: Dictionary, port: int) -> Erro
 	room = Room.new(info, logic, profile.id, profile.nickname, int(Crypto.new().generate_random_bytes(4).decode_u32(0)), UserProfile.local_public(identity))
 	_set_connection("hosting")
 	_publish()
-	bluetooth_hosting = wire.listen_bluetooth(room.game_session_id)
+	# Avoid showing an iOS Bluetooth prompt when the player only wants LAN.
+	if OS.get_name() != "iOS": enable_bluetooth_hosting()
 	advertisement = preload("res://sdk/net/discovery.gd").new()
 	add_child(advertisement)
 	_refresh_advertisement()
 	return OK
+
+func accepts_new_players() -> bool:
+	return host and room != null and (not room.fixed_seats() or not room.rules.has_method("can_join") or room.rules.can_join(room.state.duplicate(true)))
+
+func enable_bluetooth_hosting() -> bool:
+	if not accepts_new_players():
+		return false
+	if not bluetooth_hosting or not wire.bluetooth.hosting or wire.bluetooth.host_status == "failed":
+		bluetooth_hosting = wire.listen_bluetooth(room.game_session_id)
+	return bluetooth_hosting
 
 func join(mod_info: Dictionary, profile: Dictionary, address: String, port: int, token: String = "") -> Error:
 	info = mod_info
@@ -181,16 +192,18 @@ func _message(peer: int, data: Dictionary) -> void:
 				wire.drop(peer)
 				return
 			var response: Dictionary = room.hello(data)
-			if response.get("code") == "already_connected" and response.has("seat"):
-				# Valid credentials on a new connection (e.g. after a network switch the old
-				# link is half-open): the newest connection wins; the old client is told why.
+			if response.get("code") == "already_connected" and int(response.get("seat", 0)) > 0:
+				# Rotate the binding without a false presence event or a rules revision change.
+				var replacement_seat := int(response.seat)
 				for old in bindings.keys():
-					if int(bindings[old]) == int(response.seat):
-						wire.send(old, {"type": "error", "code": "session_replaced"})
-						wire.flush(old)
-						disconnect_reasons[old] = "session_replaced"
-						wire.drop(old)
-				response = room.hello(data)
+					if int(bindings[old]) != replacement_seat:
+						continue
+					response = room.hello(data, replacement_seat)
+					if response.type == "welcome":
+						bindings.erase(old)
+						heartbeats.erase(old)
+						wire.retire(old, {"type": "error", "code": "session_replaced"})
+					break
 			if response.type == "welcome":
 				bindings[peer] = response.seat
 				pending_since.erase(peer)
@@ -261,7 +274,7 @@ func _publish() -> void:
 func _refresh_advertisement() -> void:
 	if advertisement == null or room == null:
 		return
-	var joinable: bool = not room.fixed_seats() or not room.rules.has_method("can_join") or room.rules.can_join(room.state.duplicate(true))
+	var joinable := accepts_new_players()
 	if joinable and not advertised:
 		advertisement.advertise(host_port, room.game_session_id, info, identity.nickname)
 		advertised = true

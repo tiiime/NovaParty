@@ -16,7 +16,7 @@ from debug_integration import ready, submit
 from integration import ROOT, free_port
 from dev_config import setting
 from player_integration import start, stop_if_running, finished, wait_for, read_json, is_running
-from nvctl import Client, push
+from nvctl import Client, RPCError, push
 
 BUNDLE = 'org.novaparty.prototype'
 
@@ -24,7 +24,18 @@ BUNDLE = 'org.novaparty.prototype'
 def credentials(device, destination):
     container = Path(subprocess.check_output(['xcrun', 'simctl', 'get_app_container', device, BUNDLE, 'data'], text=True).strip())
     source = container / 'Documents/debug/connection.json'
-    value = wait_for(lambda: json.loads(source.read_text()) if source.exists() else None)
+    def live_credentials():
+        try:
+            value = json.loads(source.read_text())
+            probe = Client(value, timeout=1)
+            try:
+                return value if probe.auth['app_instance_id'] == value['app_instance_id'] else None
+            finally:
+                probe.close()
+        except (OSError, ValueError, RPCError):
+            return None  # The old process's config may remain while launch is in progress.
+
+    value = wait_for(live_credentials)
     destination.write_text(json.dumps(value))
     destination.chmod(0o600)
     return value
@@ -97,8 +108,22 @@ def run(device):
             print('PASS iOS force-stop/relaunch restores active Mod; rollback to bundled version', flush=True)
             # iPhone as guest: validates both peer roles and private hands.
             desktop.room('room.create', {'game_id': 'hidden_cards', 'port': port})
-            ios.room('room.join', {'game_id': 'hidden_cards', 'address': '127.0.0.1', 'port': port})
+            invite = desktop.call('qr.status')['invite']
+            image = desktop.call('qr.image')['data']
+            decoded = ios.call('qr.decode_image', {'data': image})['value']
+            assert decoded == invite['uri']
+            assert not ios.call('game.snapshot')['in_room']
+            # The APK/iOS base only bundles Gomoku. An external Mod joins through the
+            # ordinary catalog/consent/download flow, not the Debug room.join shortcut.
+            ios.call('qr.join', {'value': decoded})
+            wait_for(lambda: ios.call('lan.status')['confirmation'] or ios.call('game.snapshot')['in_room'])
+            if ios.call('lan.status')['confirmation']:
+                assert ios.call('lan.status')['received'] == 0
+                assert len(desktop.call('game.snapshot')['players']) == 1
+                ios.call('lan.confirm_download')
+            wait_for(lambda: ios.call('game.snapshot')['in_room'])
             host, guest = ready(desktop), ready(ios)
+            assert guest['game_session_id'] == invite['session_id']
             assert set(host['view']['hand']).isdisjoint(guest['view']['hand'])
             assert all(key not in guest['view'] for key in ['hands', 'deck'])
             states = [directory / 'ios-cards.json', directory / 'desktop-cards.json']
@@ -109,7 +134,7 @@ def run(device):
                 for state in states:
                     wait_for(lambda: not is_running(state))
                 assert cards['revision'] == 6 and cards['view'] == ready(desktop)['view']
-                print('PASS iOS guest private-hand game: 6 moves, filtered information only', flush=True)
+                print('PASS iOS QR invite, external Mod join, private-hand game: 6 moves, filtered information only', flush=True)
             finally:
                 for state in states:
                     stop_if_running(state)

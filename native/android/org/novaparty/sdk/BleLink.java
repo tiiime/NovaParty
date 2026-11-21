@@ -256,7 +256,8 @@ public final class BleLink {
   if(data==null&&(uuids==null||!uuids.contains(new ParcelUuid(SERVICE))))return;
   String name=record.getDeviceName();
   if(data!=null&&data.length>=2&&data.length<=20)name=new String(data,StandardCharsets.US_ASCII);
-  if(name==null||!name.startsWith("NP"))return;
+  // iOS may advertise our service UUID without the local name on space-limited packets.
+  if(name==null||!name.startsWith("NP"))name="NP";
   String key=result.getDevice().getAddress();long now=System.currentTimeMillis();Long last=seen.get(key);
   if(last!=null&&now-last<1000)return;
   if(seen.size()>256)seen.clear();

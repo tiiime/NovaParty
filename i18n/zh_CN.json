@@ -191,6 +191,11 @@
   "BLUETOOTH_ROW": "附近设备 · 代码 %s",
   "CONNECTING_BLUETOOTH": "正在通过蓝牙连接…",
   "BLUETOOTH_SEARCH": "蓝牙搜索",
-  "BLUETOOTH_PERMISSION": "请允许蓝牙权限以搜索附近设备（安卓系统会显示为位置权限）",
-  "BLUETOOTH_UNAVAILABLE": "蓝牙未开启或未授权，仍可通过局域网或扫码加入"
+  "BLUETOOTH_PERMISSION": "请允许蓝牙权限，与附近设备联机。较旧的安卓系统可能要求位置权限。",
+  "BLUETOOTH_UNAVAILABLE": "蓝牙不可用。请检查蓝牙开关和应用权限，或使用局域网加入。",
+  "BLUETOOTH_HOST": "允许蓝牙加入",
+  "BLUETOOTH_HOST_READY": "请好友在「加入游戏」中选择「蓝牙搜索」，并保持本应用在前台。",
+  "BLUETOOTH_HOST_STARTING": "正在开启蓝牙…",
+  "BLUETOOTH_HOST_FAILED": "无法开启蓝牙加入。请检查蓝牙，或通过局域网邀请。",
+  "BLUETOOTH_NO_CODE": "附近设备 · 请向房主确认"
 }
