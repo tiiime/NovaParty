@@ -16,7 +16,7 @@ python3 tools/build/build_ios_simulator.py --device <UDID> --install --launch
 
 本机官方 Godot 4.6.1 iOS 模板的 simulator xcframework 目录标为 arm64+x86_64，但 `lipo -info` 显示实际静态库只有 x86_64。脚本检查真实架构，在本机使用 Rosetta 运行；未验证原生 arm64 模拟器。相关 [Godot 问题记录](https://github.com/godotengine/godot/issues/118161)。
 
-本机安装的 iOS 18.5 runtime 与 SDK 26.2 不匹配，常规 scheme 构建的资源编译工具会要求 iOS 26 runtime。脚本仅在生成的模拟器 Xcode 工程里移除启动 storyboard 和图标资源编译项，使用空 `UILaunchScreen`，直接构建 simulator target。没有修改系统 Xcode；没有正式图标/启动画面的验证。后续真机与发布构建应恢复常规资源编译、设置真实签名并单独验证。
+本机安装的 iOS 18.5 runtime 与 SDK 26.2 不匹配，常规 scheme 构建的资源编译工具会要求 iOS 26 runtime。脚本在生成的模拟器 Xcode 工程里移除启动 storyboard 和资源编译项，使用空 `UILaunchScreen`，直接构建 simulator target；随后单独编译图标目录并把图标及其 Info.plist 字段放入 `.app`。没有修改系统 Xcode。真机与发布构建应保留常规资源编译并配置有效签名。
 
 ## 网络调试
 

@@ -40,9 +40,18 @@ func run() -> void:
 	main.join_invite.set_bluetooth(true, "BLUETOOTH_HOST_FAILED")
 	check(not main.join_invite.bluetooth_room_code.visible, "stale code is hidden after advertisement failure")
 	main.join_invite.set_bluetooth(false)
-	var orbit_a: Array = main.home.orbit_positions(0)
-	var orbit_b: Array = main.home.orbit_positions(1)
-	check(orbit_a[0].distance_to(orbit_b[0]) > 1, "stars orbit over time")
+	var home: Control = main.home
+	var speed: float = home.ORBIT_SPEED
+	var near_time := PI * 0.5 / speed
+	var far_time := PI * 1.5 / speed
+	var near: Vector2 = home.orbit_positions(near_time)[0] - home._mascot_center(near_time)
+	var far: Vector2 = home.orbit_positions(far_time)[0] - home._mascot_center(far_time)
+	check(is_zero_approx(near.x) and is_zero_approx(far.x) and near.y > 0 and far.y < 0, "mint star crosses both halves of the orbit around the bobbing mascot")
+	check(home.orbit_depth(near_time) > 0 and home.orbit_depth(far_time) < 0, "near and far halves use opposite draw layers")
+	var start: Vector2 = home.orbit_positions(0.0)[0] - home._mascot_center(0.0)
+	var lap_time := TAU / speed
+	var lap: Vector2 = home.orbit_positions(lap_time)[0] - home._mascot_center(lap_time)
+	check(start.is_equal_approx(lap), "mint star completes a full orbit rather than oscillating behind the mascot")
 	main.home.set_reduced_motion(true)
 	var frozen: float = main.home.motion_time
 	main.home._process(1.5)

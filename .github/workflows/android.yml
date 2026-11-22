@@ -68,6 +68,7 @@ jobs:
           python3 tests/unit/android_build_config.py
           python3 tests/unit/i18n.py
           python3 tools/design/build_design_tokens.py --check
+          python3 tools/design/build_app_icons.py --check
           set -o pipefail
           for suite in run uno uno_ui doudizhu doudizhu_ui user_profile profile_network ui bluetooth; do
             "$GODOT" --headless --path . --script "tests/unit/$suite.gd" 2>&1 | tee "$RUNNER_TEMP/$suite.log"

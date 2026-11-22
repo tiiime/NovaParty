@@ -37,6 +37,15 @@ python3 tools/design/build_design_sheet.py
 swift tools/design/render_design_sheet.swift docs/design/0*.svg
 ```
 
+## 应用图标
+
+采用 A「蓝色展台」：首页的笑脸星星、星黄与品牌蓝。唯一源文件是 [`assets/icon.svg`](../../assets/icon.svg)。iOS 使用满幅不透明图标，由系统裁圆；Android 手机和电视共用 APK，包含传统、分层自适应及系统单色图标；macOS 和 Windows 使用有留白的圆角版本。此处不改动首页星星插画，也不新增 Android TV 的 Leanback 横幅。
+
+```sh
+python3 tools/design/build_app_icons.py         # 从源图生成平台变体
+python3 tools/design/build_app_icons.py --check # 检查已提交的变体是否同步
+```
+
 ## 大厅与导航
 
 | 入口 | 流程 | 始终明确的信息 |

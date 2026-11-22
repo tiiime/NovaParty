@@ -11,7 +11,7 @@ import plistlib
 import re
 import shutil
 import subprocess
-
+import tempfile
 
 
 def run(command, log):
@@ -21,6 +21,26 @@ def run(command, log):
     if result.returncode:
         print(log.read_text()[-12000:], file=sys.stderr)
         raise SystemExit(result.returncode)
+
+
+def install_simulator_icons(app, catalog, directory):
+    # Compile the exported icons independently from the storyboard. The standalone
+    # asset compiler doesn't need a matching simulator runtime for this catalog.
+    with tempfile.TemporaryDirectory(prefix='nv-ios-assets-') as work:
+        output = Path(work) / 'resources'
+        output.mkdir()
+        partial = Path(work) / 'icons.plist'
+        run(['xcrun', 'actool', str(catalog), '--compile', str(output), '--platform', 'iphonesimulator',
+             '--minimum-deployment-target', '16.0', '--target-device', 'iphone', '--target-device', 'ipad',
+             '--app-icon', 'AppIcon', '--output-partial-info-plist', str(partial)], directory / 'app-icon.log')
+        icon_info = plistlib.loads(partial.read_bytes())
+        assert icon_info['CFBundleIcons']['CFBundlePrimaryIcon']['CFBundleIconName'] == 'AppIcon'
+        for resource in output.iterdir():
+            shutil.copy2(resource, app / resource.name)
+        plist = app / 'Info.plist'
+        info = plistlib.loads(plist.read_bytes())
+        info.update(icon_info)
+        plist.write_bytes(plistlib.dumps(info))
 
 
 def main():
@@ -53,7 +73,8 @@ def main():
         subprocess.run(['/usr/bin/arch', '-x86_64', '/usr/bin/true'], check=True)
     run(['xcodebuild', '-project', str(directory / 'NovaParty.xcodeproj'), '-target', 'NovaParty', '-configuration', 'Debug', '-sdk', 'iphonesimulator', f'ARCHS={architecture}', 'ONLY_ACTIVE_ARCH=YES', 'CODE_SIGNING_ALLOWED=NO', f'CONFIGURATION_BUILD_DIR={directory / "SimulatorBuild"}', 'build'], directory / 'xcodebuild.log')
     app = directory / 'SimulatorBuild/NovaParty.app'
-    print(f'App: {app}\nArchitecture: {architecture}\nSimulator-only launch branding omitted; no distribution signing.')
+    install_simulator_icons(app, directory / 'NovaParty/Images.xcassets', directory)
+    print(f'App: {app}\nArchitecture: {architecture}\nApp icon included; custom launch storyboard and distribution signing omitted.')
     if args.install or args.launch:
         subprocess.run(['xcrun', 'simctl', 'install', args.device, str(app)], check=True)
     if args.launch:

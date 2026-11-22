@@ -8,6 +8,7 @@ const Style = preload("res://app/ui/theme/party_theme.gd")
 const Icons = preload("res://app/ui/theme/party_icons.gd")
 const T = Style.T
 const STAR = preload("res://assets/ui/star.svg")
+const ORBIT_SPEED := 0.65
 var start_button: Button
 var join_button: Button
 var settings_button: Button
@@ -179,27 +180,43 @@ func _process(delta: float) -> void:
 		_frame_elapsed = 0.0
 		artwork.queue_redraw()
 
+func _art_center() -> Vector2:
+	return artwork.size * Vector2(0.54, 0.52)
+
+func _art_extent() -> float:
+	return minf(artwork.size.y, artwork.size.x * 0.52)
+
+func _mascot_center(at_time: float) -> Vector2:
+	return _art_center() + Vector2(0, sin(at_time * 1.5) * 5.0)
+
+func orbit_depth(at_time: float) -> float:
+	return sin(at_time * ORBIT_SPEED)
+
 func orbit_positions(at_time: float) -> Array:
-	var center := artwork.size * Vector2(0.54, 0.52)
-	var extent := minf(artwork.size.y, artwork.size.x * 0.52)
-	return [center + Vector2(cos(at_time * 0.65) * extent * 0.76, sin(at_time * 0.65) * extent * 0.20), center + Vector2(-extent * 0.78, cos(at_time * 0.78) * 10), center + Vector2(extent * 0.52, -extent * 0.31)]
+	var center := _art_center()
+	var extent := _art_extent()
+	var orbit := Vector2(cos(at_time * ORBIT_SPEED) * 0.76, orbit_depth(at_time) * 0.24) * extent
+	return [_mascot_center(at_time) + orbit, center + Vector2(-extent * 0.78, cos(at_time * 0.78) * 10), center + Vector2(extent * 0.52, -extent * 0.31)]
+
+func _draw_spark(at: Vector2, radius: float, color: Color) -> void:
+	artwork.draw_line(at - Vector2(radius, 0), at + Vector2(radius, 0), color, 4, true)
+	artwork.draw_line(at - Vector2(0, radius), at + Vector2(0, radius), color, 4, true)
 
 func _draw_art() -> void:
-	var center := artwork.size * Vector2(0.54, 0.52)
-	var extent := minf(artwork.size.y, artwork.size.x * 0.52)
+	var extent := _art_extent()
 	if extent <= 0: return
-	artwork.draw_set_transform(center + Vector2(0, extent * 0.34), 0.0, Vector2(1, 0.24))
+	artwork.draw_set_transform(_art_center() + Vector2(0, extent * 0.34), 0.0, Vector2(1, 0.24))
 	artwork.draw_circle(Vector2.ZERO, extent * 0.68, T.SKY_LIP, true, -1.0, true)
 	artwork.draw_set_transform(Vector2.ZERO)
 	var sparks := orbit_positions(motion_time)
-	for i in range(sparks.size()):
-		var at: Vector2 = sparks[i]
-		var radius := 8.0 + i * 2.0
-		var color: Color = [T.MINT, T.PINK, T.STAR_SOFT][i]
-		artwork.draw_line(at - Vector2(radius, 0), at + Vector2(radius, 0), color, 4, true)
-		artwork.draw_line(at - Vector2(0, radius), at + Vector2(0, radius), color, 4, true)
-	center.y += sin(motion_time * 1.5) * 5.0
+	var depth := orbit_depth(motion_time)
+	var orbit_radius := 8.0 + depth * 1.75
+	_draw_spark(sparks[1], 10.0, T.PINK)
+	_draw_spark(sparks[2], 12.0, T.STAR_SOFT)
+	# On the far half the mascot hides the spark; on the near half it passes in front.
+	if depth < 0.0: _draw_spark(sparks[0], orbit_radius, T.MINT)
 	var side := extent * 1.06
-	artwork.draw_set_transform(center, -0.14)
+	artwork.draw_set_transform(_mascot_center(motion_time), -0.14)
 	artwork.draw_texture_rect(STAR, Rect2(Vector2.ONE * -side * 0.5, Vector2.ONE * side), false)
 	artwork.draw_set_transform(Vector2.ZERO)
+	if depth >= 0.0: _draw_spark(sparks[0], orbit_radius, T.MINT)
