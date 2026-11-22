@@ -1,8 +1,10 @@
 extends "res://app/ui/widgets/sheet.gd"
 signal bluetooth_requested
+const Icons = preload("res://app/ui/theme/party_icons.gd")
 var scan_caption: Label
 var bluetooth_button: Button
 var bluetooth_status: Label
+var bluetooth_room_code: Label
 var image: TextureRect
 var endpoint: Label
 var copy_button: Button
@@ -14,6 +16,20 @@ func _ready() -> void:
 	stack.add_theme_constant_override("separation", 12)
 	add_content(stack)
 	_caption(stack, "OPEN_INVITE", T.FONT_SIZE_TITLE, T.FONT_WEIGHT_TITLE, T.INK)
+	bluetooth_button = Button.new()
+	bluetooth_button.text = "BLUETOOTH_HOST"
+	bluetooth_button.icon = Icons.get_icon("bluetooth", T.SKY)
+	Style.button(bluetooth_button, "secondary", T.BUTTON_HEIGHT_SMALL)
+	bluetooth_button.pressed.connect(func(): bluetooth_requested.emit())
+	# Keep the Bluetooth identity above the QR so it is visible on short screens.
+	stack.add_child(bluetooth_button)
+	bluetooth_button.hide()
+	bluetooth_room_code = _caption(stack, "", T.FONT_SIZE_BODY, T.FONT_WEIGHT_LABEL, T.INK)
+	bluetooth_room_code.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	bluetooth_room_code.add_theme_stylebox_override("normal", Style.banner("info"))
+	bluetooth_room_code.hide()
+	bluetooth_status = _caption(stack, "", T.FONT_SIZE_META, T.FONT_WEIGHT_BODY, T.MUTED)
+	bluetooth_status.hide()
 	scan_caption = _caption(stack, "INVITE_SCAN", T.FONT_SIZE_META, T.FONT_WEIGHT_BODY, T.MUTED)
 	image = TextureRect.new()
 	image.custom_minimum_size = Vector2(0, 248)
@@ -32,14 +48,6 @@ func _ready() -> void:
 		copy_button.text = "INVITE_COPIED"
 	)
 	stack.add_child(copy_button)
-	bluetooth_button = Button.new()
-	bluetooth_button.text = "BLUETOOTH_HOST"
-	Style.button(bluetooth_button, "secondary", T.BUTTON_HEIGHT_SMALL)
-	bluetooth_button.pressed.connect(func(): bluetooth_requested.emit())
-	stack.add_child(bluetooth_button)
-	bluetooth_button.hide()
-	bluetooth_status = _caption(stack, "", T.FONT_SIZE_META, T.FONT_WEIGHT_BODY, T.MUTED)
-	bluetooth_status.hide()
 	done.text = "HIDE_JOIN_QR"
 	Style.button(done, "primary", T.BUTTON_HEIGHT_SMALL)
 
@@ -61,11 +69,14 @@ func present(texture: Texture2D, info: Dictionary) -> void:
 	endpoint.visible = not address_text.is_empty()
 	copy_button.text = "INVITE_COPY"
 	copy_button.visible = endpoint.visible
-	popup_centered(Vector2i(500, 624 if image.visible else 300))
+	popup_centered(Vector2i(500, 680 if image.visible and bluetooth_button.visible else 624 if image.visible else 300))
+	scroll.scroll_vertical = 0
 	done.grab_focus()
 
-func set_bluetooth(value: bool, key: String = "", enabled: bool = true) -> void:
+func set_bluetooth(value: bool, key: String = "", enabled: bool = true, room_code: String = "") -> void:
 	bluetooth_button.visible = value
 	bluetooth_button.disabled = not enabled
 	bluetooth_status.text = key
 	bluetooth_status.visible = value and not key.is_empty()
+	bluetooth_room_code.visible = value and not room_code.is_empty()
+	bluetooth_room_code.text = tr("BLUETOOTH_HOST_CODE") % room_code.to_upper() if bluetooth_room_code.visible else ""

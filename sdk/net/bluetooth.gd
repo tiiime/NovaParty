@@ -7,6 +7,7 @@ extends Node
 signal devices_changed(devices: Array)
 signal incoming(stream)
 signal state_changed(state: String)
+signal host_state_changed(state: String)
 signal host_status_changed(status: String)
 const SERVICE_UUID = "6E6F7661-7061-7274-7900-000000000001"
 const RX_UUID = "6E6F7661-7061-7274-7900-000000000002" # central -> host, write with response
@@ -52,6 +53,7 @@ class Stream extends RefCounted:
 var backend # Object with exchange(String) -> String; null when the platform has no bridge
 var backend_name := "unavailable"
 var state := "unknown"
+var android_host_state := ""
 var last_error := ""
 var hosting := false
 var advertising := false
@@ -97,11 +99,14 @@ func use_backend(value, label: String = "custom") -> void:
 func available() -> bool:
 	return backend != null and state not in ["unsupported", "unauthorized"]
 
-func request_access() -> void:
-	_command({"op": "ble_permissions"})
+func host_state() -> String:
+	return android_host_state if not android_host_state.is_empty() else state
+
+func request_access(for_host: bool = false) -> void:
+	_command({"op": "ble_permissions", "host": for_host})
 
 func host(session_id: String) -> bool:
-	if backend == null or state == "unsupported" or (OS.get_name() == "iOS" and state != "on"):
+	if backend == null or (backend_name in ["android_ble", "apple_corebluetooth"] and host_state() != "on"):
 		return false
 	hosting = true
 	advertising = true
@@ -194,9 +199,19 @@ func _event(event: Dictionary) -> void:
 	match event.get("type"):
 		"ble_state":
 			var value := str(event.get("state", "unknown"))
+			if value != "on": scanning = false
 			if value != state:
 				state = value
+				if backend_name != "android_ble":
+					if state != "on": _clear_host_state()
+					host_state_changed.emit(state)
 				state_changed.emit(state)
+		"ble_host_state":
+			var previous := host_state()
+			android_host_state = str(event.get("state", "unknown"))
+			if android_host_state != previous:
+				if android_host_state != "on": _clear_host_state()
+				host_state_changed.emit(android_host_state)
 		"ble_advertising":
 			if hosting and advertising:
 				host_status = "ready"
@@ -206,11 +221,8 @@ func _event(event: Dictionary) -> void:
 			if hosting and (last_error.begins_with("advertise_failed") or last_error == "gatt_server_unavailable"):
 				host_status = "failed"
 				host_status_changed.emit(host_status)
-			# The radio refused (off / no permission): nothing is advertising or scanning.
-			if last_error.begins_with("bluetooth_"):
-				hosting = false
-				advertising = false
-				scanning = false
+			# Native permission refusals are followed by a state update; don't let a
+			# scan refusal tear down an authorized host.
 		"ble_found":
 			var key := str(event.get("key", ""))
 			var label := str(event.get("name", ""))
@@ -254,8 +266,13 @@ func _event(event: Dictionary) -> void:
 				pending[link.substr(2)].status = StreamPeerTCP.STATUS_ERROR
 				pending.erase(link.substr(2))
 
+func _clear_host_state() -> void:
+	hosting = false
+	advertising = false
+	host_status = ""
+
 func diagnostic() -> Dictionary:
-	return {"backend": backend_name, "state": state, "hosting": hosting, "advertising": advertising, "host_status": host_status, "scanning": scanning, "devices": list_devices(), "links": streams.keys(), "last_error": last_error}
+	return {"backend": backend_name, "state": state, "hosting": hosting, "advertising": advertising, "host_status": host_status, "host_state": host_state(), "scanning": scanning, "devices": list_devices(), "links": streams.keys(), "last_error": last_error}
 
 func _exit_tree() -> void:
 	if backend != null:

@@ -32,6 +32,7 @@ func _handle(command: Dictionary) -> void:
 		"ble_host":
 			if not powered:
 				events.append({"type": "ble_error", "code": "bluetooth_off"})
+				events.append({"type": "ble_state", "state": "off"})
 				return
 			host_name = str(command.name)
 			advertising = true
@@ -44,6 +45,7 @@ func _handle(command: Dictionary) -> void:
 		"ble_scan":
 			if not powered:
 				events.append({"type": "ble_error", "code": "bluetooth_off"})
+				events.append({"type": "ble_state", "state": "off"})
 				return
 			scanning = true
 		"ble_scan_stop": scanning = false

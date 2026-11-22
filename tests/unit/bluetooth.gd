@@ -35,12 +35,20 @@ func run() -> void:
 	var host_radio := radio(air, "AA:00")
 	var guest_radio := radio(air, "BB:11")
 	check(host_radio.available() and host_radio.state == "on", "bridge reports a powered radio")
+	host_radio._event({"type": "ble_host_state", "state": "on"})
+	host_radio._event({"type": "ble_state", "state": "unauthorized"})
+	check(host_radio.host_state() == "on" and host_radio.state == "unauthorized", "Android can host without scan permission")
+	host_radio._event({"type": "ble_state", "state": "on"})
 	var loader = Loader.new()
 	var info: Dictionary = loader.inspect("res://mods/gomoku")
 	var host = Session.new()
 	root.add_child(host)
 	host.wire.bluetooth = host_radio
-	check(host.create(info, loader.rules(info), {"id": "host-player", "nickname": "Host"}, 29931) == OK, "host starts TCP and Bluetooth together")
+	var created: bool = host.create(info, loader.rules(info), {"id": "host-player", "nickname": "Host"}, 0) == OK
+	check(created, "host starts TCP and Bluetooth together")
+	if not created:
+		quit(1)
+		return
 	check(host.bluetooth_hosting and host_radio.advertising, "joinable host advertises over Bluetooth")
 	check(host_radio.host_status == "starting", "hosting is not reported ready before native confirmation")
 	host_radio._event({"type": "ble_advertising"})
@@ -50,10 +58,14 @@ func run() -> void:
 	var discovery = Discovery.new()
 	root.add_child(discovery)
 	discovery.bluetooth = guest_radio
-	guest_radio.devices_changed.connect(func(_devices): discovery.changed.emit(discovery.list_rooms()))
 	discovery.browse()
-	check(await wait_until(func(): return discovery.list_rooms().any(func(room): return room.get("transport") == "ble")), "scan lists the Bluetooth host")
+	check(not guest_radio.scanning, "ordinary LAN discovery does not start Bluetooth")
+	discovery.browse(true)
+	check(await wait_until(func(): return discovery.list_rooms().any(func(room): return room.get("transport") == "ble")), "explicit Bluetooth scan lists the host")
 	var rows: Array = discovery.list_rooms().filter(func(room): return room.get("transport") == "ble")
+	if rows.is_empty():
+		quit(1)
+		return
 	check(rows.size() == 1 and rows[0].address == "ble:AA:00" and rows[0].code == sid.left(6), "row carries ble: address and session code")
 	guest_radio._event({"type": "ble_found", "key": "apple-without-name", "name": "NP", "rssi": -60})
 	check(discovery.list_rooms().any(func(entry): return entry.address == "ble:apple-without-name" and entry.code.is_empty()), "UUID-only CoreBluetooth advert is discoverable")

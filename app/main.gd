@@ -46,6 +46,7 @@ var launch_selection: Label
 var invite_button: Button
 var pending_cancel: Button
 var settings_focus: Control
+var settings_invite: Button
 var leave_focus: Control
 var modal_focus_modes := {}
 var settings_dialog
@@ -155,7 +156,6 @@ func _ready() -> void:
 	shell.add_child(scroll)
 	var scroll_content := MarginContainer.new()
 	scroll_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll_content.add_theme_constant_override("margin_right", 16)
 	scroll_content.add_theme_constant_override("margin_bottom", 8)
 	scroll.add_child(scroll_content)
 	var layout := VBoxContainer.new()
@@ -318,7 +318,7 @@ func _navigate(next: PartyFlow.Page, take_focus: bool = true) -> void:
 	var previous := flow.page
 	flow.open(next)
 	if next == Page.NEARBY and previous != Page.NEARBY:
-		_search_nearby()
+		_search_nearby(false)
 	elif next != Page.NEARBY:
 		join_browser.stop_search()
 		if discovery.browsing: discovery.stop_browse()
@@ -389,9 +389,9 @@ func _render_page(take_focus: bool = false) -> void:
 func _status_visible() -> bool:
 	return not immersive_game and flow.page != Page.HOME and status_key not in ["LOBBY_HELP", "JOIN_HELP", "LEFT_ROOM"]
 
-func _search_nearby() -> void:
-	join_browser.begin_search()
-	discovery.browse()
+func _search_nearby(use_bluetooth: bool = false) -> void:
+	join_browser.begin_search(use_bluetooth)
+	discovery.browse(use_bluetooth)
 
 func _animate_page(page: Control) -> void:
 	if page_tween != null: page_tween.kill()
@@ -498,6 +498,13 @@ func _build_settings() -> void:
 	_label(body, "PROFILE_LOCAL", T.FONT_SIZE_META, T.FONT_WEIGHT_TITLE, T.SKY_LIP)
 	_label(body, "SETTINGS", T.FONT_SIZE_TITLE, T.FONT_WEIGHT_TITLE)
 	_label(body, "SETTINGS_HELP", T.FONT_SIZE_META, T.FONT_WEIGHT_BODY, T.MUTED)
+	# Immersive Mods with their own waiting screen may not expose an invite action.
+	settings_invite = _button(body, "OPEN_BLUETOOTH_INVITE", func():
+		settings_dialog.close()
+		_open_invite()
+	, "secondary")
+	settings_invite.icon = Icons.get_icon("bluetooth", T.SKY)
+	settings_invite.hide()
 	_label(body, "LANGUAGE", T.FONT_SIZE_META, T.FONT_WEIGHT_TITLE, T.MUTED)
 	language_choice = OptionButton.new()
 	for entry in [["LANG_SYSTEM", "system"], ["简体中文", "zh_CN"], ["English", "en"]]:
@@ -573,9 +580,11 @@ func _open_settings() -> void:
 		if language_choice.get_item_metadata(index) == profile.get("language", "system"):
 			language_choice.select(index)
 	settings_opening = false
+	settings_invite.visible = _has_bluetooth_invite()
 	settings_dialog.popup_centered(Vector2i(mini(540, int(get_viewport_rect().size.x - 32)), 720))
 	# Keep directional and Tab navigation inside this modal, also during a game.
 	var focus_order := [language_choice, sound_choice, haptic_choice, motion_choice, settings_dialog.get_ok_button()]
+	if settings_invite.visible: focus_order.push_front(settings_invite)
 	for index in range(focus_order.size()):
 		var control: Control = focus_order[index]
 		control.focus_neighbor_top = control.get_path_to(focus_order[(index + focus_order.size() - 1) % focus_order.size()])
@@ -584,7 +593,7 @@ func _open_settings() -> void:
 		control.focus_next = control.focus_neighbor_bottom
 		control.focus_neighbor_left = control.get_path()
 		control.focus_neighbor_right = control.get_path()
-	language_choice.grab_focus()
+	(focus_order[0] as Control).grab_focus()
 
 func set_language(language: String) -> void:
 	profile.language = language if language in ["system", "zh_CN", "en"] else "system"
@@ -1272,13 +1281,14 @@ func _build_lan_ui() -> void:
 	join_browser = preload("res://app/ui/screens/join_browser.gd").new()
 	setup.add_child(join_browser)
 	join_browser.selected.connect(_inspect_peer)
-	join_browser.refresh_requested.connect(_search_nearby)
+	join_browser.refresh_requested.connect(func(): _search_nearby(join_browser.bluetooth_mode))
 	join_browser.manual_requested.connect(_show_manual_join)
 	join_browser.scan_requested.connect(_start_scan)
 	join_browser.bluetooth_requested.connect(_request_bluetooth)
 	var radio = Bluetooth.shared(get_tree())
 	join_browser.set_bluetooth_available(radio.backend != null and radio.state != "unsupported")
 	radio.state_changed.connect(_bluetooth_state_changed)
+	radio.host_state_changed.connect(_bluetooth_host_state_changed)
 	radio.host_status_changed.connect(_bluetooth_host_status)
 	qr_scanner = preload("res://sdk/net/qr_scanner.gd").new()
 	add_child(qr_scanner)
@@ -1461,8 +1471,11 @@ func debug_lan_command(method: String, params: Dictionary) -> Dictionary:
 	if method == "lan.status":
 		return {"rooms": discovery.list_rooms(), "backend": discovery.backend, "discovery_error": discovery.last_error, "phase": peer_phase, "last_error": peer_error, "confirmation": download_dialog.visible and not download_dialog.working, "received": peer_transfer.received if peer_transfer != null else 0}
 	if method == "lan.search":
-		if session != null: _search_nearby() # Diagnostics only; keep the match on screen.
-		else: _open_setup(false)
+		var was_nearby := flow.page == Page.NEARBY
+		if session == null: _open_setup(false)
+		# Diagnostics may select Bluetooth without tapping or requesting access.
+		var use_bluetooth: bool = params.get("transport", "") == "ble"
+		if use_bluetooth or was_nearby or session != null: _search_nearby(use_bluetooth)
 		return {"searching": true}
 	if method == "lan.inspect":
 		if params.get("address") is String and params.address.begins_with("ble:") and params.address.length() <= 68:
@@ -1486,45 +1499,65 @@ func _exit_tree() -> void:
 
 # Both iOS and Android should prompt for Bluetooth only after an explicit tap.
 func _request_bluetooth() -> void:
+	if join_browser.bluetooth_mode:
+		_set_status("JOIN_HELP")
+		_search_nearby(false)
+		return
 	var radio = Bluetooth.shared(get_tree())
-	match radio.state:
-		"on": _set_status("JOIN_HELP"); _search_nearby()
-		"off", "unsupported": _set_status("BLUETOOTH_UNAVAILABLE")
-		"unauthorized" when OS.get_name() == "iOS": _set_status("BLUETOOTH_UNAVAILABLE")
-		_: _set_status("BLUETOOTH_PERMISSION"); radio.request_access()
+	if radio.state == "on":
+		_set_status("JOIN_HELP")
+		_search_nearby(true)
+	elif _can_request_bluetooth(radio.state):
+		_set_status("BLUETOOTH_PERMISSION")
+		radio.request_access()
+	else:
+		_set_status("BLUETOOTH_UNAVAILABLE")
+
+func _can_request_bluetooth(state: String) -> bool:
+	return state == "unknown" or (state == "unauthorized" and OS.get_name() == "Android")
 
 func _bluetooth_state_changed(state: String) -> void:
 	join_browser.set_bluetooth_available(Bluetooth.shared(get_tree()).backend != null and state != "unsupported")
-	if join_invite != null and join_invite.visible and OS.get_name() == "iOS":
-		if state == "on" and join_invite.bluetooth_status.text == "BLUETOOTH_PERMISSION": _request_bluetooth_host()
-		elif state in ["unauthorized", "off", "unsupported"]: join_invite.set_bluetooth(_has_bluetooth_invite(), "BLUETOOTH_UNAVAILABLE")
-		elif state == "on" and join_invite.bluetooth_status.text == "BLUETOOTH_UNAVAILABLE": join_invite.set_bluetooth(true)
-	if state == "on" and join_browser.is_visible_in_tree():
+	if not join_browser.is_visible_in_tree(): return
+	if state == "on" and (status_key == "BLUETOOTH_PERMISSION" or join_browser.bluetooth_mode):
 		_set_status("JOIN_HELP")
-		_search_nearby()
-	elif state in ["unauthorized", "off", "unsupported"] and join_browser.is_visible_in_tree() and status_key == "BLUETOOTH_PERMISSION":
+		_search_nearby(true)
+	elif state in ["unauthorized", "off", "unsupported"] and (status_key == "BLUETOOTH_PERMISSION" or join_browser.bluetooth_mode):
 		_set_status("BLUETOOTH_UNAVAILABLE")
+		if join_browser.bluetooth_mode: _search_nearby(true)
+
+func _bluetooth_host_state_changed(state: String) -> void:
+	if not is_instance_valid(join_invite) or not join_invite.visible: return
+	var message: String = join_invite.bluetooth_status.text
+	if state == "on" and message == "BLUETOOTH_HOST_PERMISSION":
+		_request_bluetooth_host()
+	elif state in ["unauthorized", "off", "unsupported"]:
+		join_invite.set_bluetooth(_has_bluetooth_invite(), "BLUETOOTH_UNAVAILABLE")
+	elif state == "on" and message == "BLUETOOTH_UNAVAILABLE":
+		join_invite.set_bluetooth(_has_bluetooth_invite())
 
 func _has_bluetooth_invite() -> bool:
 	var radio = Bluetooth.shared(get_tree())
-	return OS.get_name() == "iOS" and radio.backend != null and radio.state != "unsupported"
+	return OS.get_name() in ["Android", "iOS"] and radio.backend != null and radio.host_state() != "unsupported" and is_instance_valid(session) and session.has_method("accepts_new_players") and session.accepts_new_players()
 
 func _request_bluetooth_host() -> void:
-	if not is_instance_valid(session) or not session.host or not join_invite.visible: return
+	if not _has_bluetooth_invite() or not join_invite.visible: return
 	var radio = Bluetooth.shared(get_tree())
-	match radio.state:
-		"on":
-			var enabled: bool = session.has_method("enable_bluetooth_hosting") and session.enable_bluetooth_hosting()
-			_bluetooth_host_status(radio.host_status if enabled else "failed")
-		"unknown":
-			join_invite.set_bluetooth(true, "BLUETOOTH_PERMISSION", false)
-			radio.request_access()
-		_: join_invite.set_bluetooth(_has_bluetooth_invite(), "BLUETOOTH_UNAVAILABLE")
+	var state: String = radio.host_state()
+	if state == "on":
+		var enabled: bool = session.enable_bluetooth_hosting()
+		_bluetooth_host_status(radio.host_status if enabled else "failed")
+	elif _can_request_bluetooth(state):
+		join_invite.set_bluetooth(true, "BLUETOOTH_HOST_PERMISSION")
+		radio.request_access(true)
+	else:
+		join_invite.set_bluetooth(true, "BLUETOOTH_UNAVAILABLE")
 
 func _bluetooth_host_status(value: String) -> void:
 	if join_invite == null or not join_invite.visible or not _has_bluetooth_invite(): return
 	var keys := {"starting": "BLUETOOTH_HOST_STARTING", "ready": "BLUETOOTH_HOST_READY", "failed": "BLUETOOTH_HOST_FAILED"}
-	join_invite.set_bluetooth(true, keys.get(value, ""), value not in ["starting", "ready"])
+	var code := str(session.snapshot.get("game_session_id", "")).left(6) if value == "ready" else ""
+	join_invite.set_bluetooth(true, keys.get(value, ""), value not in ["starting", "ready"], code)
 
 func _start_scan() -> void:
 	if session == null:

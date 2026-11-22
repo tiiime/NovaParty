@@ -2,7 +2,7 @@
 
 ## 目的
 
-Bluetooth LE 用于双方没有共同 Wi-Fi 时联机，并与局域网发现和 TCP 连接并存。Android 开房后在蓝牙可用时自动广播；iPhone 房主从「邀请好友」选择「允许蓝牙加入」。加入者选择「加入游戏 → 蓝牙搜索」。上层 Session、Room 和 Mod 协议不区分传输方式。
+Bluetooth LE 用于双方没有共同 Wi-Fi 时联机，并与局域网发现和 TCP 连接并存。Android 开房后在蓝牙已授权且开启时自动广播。Android 和 iPhone 房主都可以从「邀请朋友」选择「允许蓝牙加入」；自带等待画面的 Mod 可从「设置 → 蓝牙邀请」进入。加入者选择「加入游戏 → 蓝牙搜索」，列表只显示蓝牙房间，可切回局域网搜索。上层 Session、Room 和 Mod 协议不区分传输方式。
 
 ## GATT 方案
 
@@ -23,7 +23,7 @@ Bluetooth LE 用于双方没有共同 Wi-Fi 时联机，并与局域网发现和
 | iOS / macOS | 广播的本地名（Local Name） | CoreBluetooth 外设只能广播本地名与 Service UUID，且空间有限 |
 | Android | 扫描响应里的 Service Data（键为 Service UUID） | Android 不能为单次广播指定本地名，修改系统蓝牙名称会影响用户设备 |
 
-扫描端按 NovaParty Service UUID / Service Data 识别。iOS 广播可能因空间限制省略名称；此时显示无短码的蓝牙设备，连接后再读取房间目录。设备 8 秒未再次出现即从列表移除。有有效短码且对应会话已通过局域网发现时，不重复显示蓝牙行。
+扫描端按 NovaParty Service UUID / Service Data 识别。iOS 广播可能因空间限制省略名称；此时显示无短码的蓝牙设备，连接后再读取房间目录。设备 8 秒未再次出现即从列表移除。蓝牙搜索与局域网搜索分开显示，同一个房间可以分别用两种方式加入。
 
 ## 建立连接
 
@@ -82,7 +82,8 @@ exchange(JSON 字符串) -> JSON 事件数组
 | --- | --- |
 | `ble_state` | `{state}`；`on` / `off` / `unauthorized` / `unsupported` / `unknown` |
 | `ble_found` | `{key, name, rssi}` |
-| `ble_advertising` | Apple 原生回调确认广播已启动 |
+| `ble_host_state` | Android 独立报告房主权限；状态值与 `ble_state` 相同 |
+| `ble_advertising` | 原生回调确认广播已启动 |
 | `ble_open` | `{link}` |
 | `ble_data` | `{link, data}`；`data` 是 base64 字节 |
 | `ble_sent` | `{link, bytes}`；归还发送窗口 |
@@ -101,7 +102,7 @@ exchange(JSON 字符串) -> JSON 事件数组
 - `BLUETOOTH_ADVERTISE`
 - `BLUETOOTH_CONNECT`
 
-Android 11 及以下使用 `BLUETOOTH`、`BLUETOOTH_ADMIN`。由于导出模板无法声明 `neverForLocation`，扫描还需要 `ACCESS_FINE_LOCATION`。
+开房只需连接与广播权限，不请求位置。Android 11 及以下使用 `BLUETOOTH`、`BLUETOOTH_ADMIN`。由于导出模板未声明 `neverForLocation`，扫描仍需要 `ACCESS_FINE_LOCATION`；Android 12 及以上按系统要求同时声明并申请 `ACCESS_COARSE_LOCATION`。
 
 ### iOS 与 macOS
 

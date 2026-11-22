@@ -73,8 +73,10 @@ func create(mod_info: Dictionary, logic, profile: Dictionary, port: int) -> Erro
 	room = Room.new(info, logic, profile.id, profile.nickname, int(Crypto.new().generate_random_bytes(4).decode_u32(0)), UserProfile.local_public(identity))
 	_set_connection("hosting")
 	_publish()
-	# Avoid showing an iOS Bluetooth prompt when the player only wants LAN.
-	if OS.get_name() != "iOS": enable_bluetooth_hosting()
+	# Only start automatically when the native radio is already ready; never prompt on open.
+	if OS.get_name() != "iOS":
+		if wire.bluetooth == null: wire.bluetooth = Wire.Bluetooth.shared(get_tree())
+		if wire.bluetooth.host_state() == "on": enable_bluetooth_hosting()
 	advertisement = preload("res://sdk/net/discovery.gd").new()
 	add_child(advertisement)
 	_refresh_advertisement()

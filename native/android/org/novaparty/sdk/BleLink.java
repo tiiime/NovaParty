@@ -82,7 +82,7 @@ public final class BleLink {
  private BluetoothLeAdvertiser advertiser;
  private String hostName="";
  private boolean advertising=false, scanning=false;
- private String lastState="";
+ private String lastState="", lastHostState="";
 
  public BleLink(Activity activity){
   this.activity=activity;this.context=activity.getApplicationContext();
@@ -106,7 +106,7 @@ public final class BleLink {
  private void handle(String op,JSONObject c) throws Exception{
   switch(op){
    case "ble_state":reportState(true);break;
-   case "ble_permissions":requestPermissions();break;
+   case "ble_permissions":requestPermissions(c.optBoolean("host",false));break;
    case "ble_host":hostStart(c.optString("name",""));break;
    case "ble_advertise":setAdvertising(c.optBoolean("enabled",true));break;
    case "ble_host_stop":hostStop();break;
@@ -126,33 +126,44 @@ public final class BleLink {
  private void emitError(String code){emit("ble_error",null,"code",code);}
 
  // ---- permissions and state -----------------------------------------------------------
- private String[] permissions(){
-  // The export template cannot mark BLUETOOTH_SCAN as neverForLocation, so scans also need location.
-  if(Build.VERSION.SDK_INT>=31)return new String[]{Manifest.permission.BLUETOOTH_SCAN,Manifest.permission.BLUETOOTH_CONNECT,Manifest.permission.BLUETOOTH_ADVERTISE,Manifest.permission.ACCESS_FINE_LOCATION};
-  return new String[]{Manifest.permission.ACCESS_FINE_LOCATION};
+ private String[] permissions(boolean host){
+  // Location is only needed for scans (the export doesn't declare neverForLocation).
+  if(Build.VERSION.SDK_INT>=31)return host
+   ? new String[]{Manifest.permission.BLUETOOTH_CONNECT,Manifest.permission.BLUETOOTH_ADVERTISE}
+   : new String[]{Manifest.permission.BLUETOOTH_CONNECT,Manifest.permission.BLUETOOTH_SCAN,Manifest.permission.ACCESS_FINE_LOCATION};
+  return host?new String[0]:new String[]{Manifest.permission.ACCESS_FINE_LOCATION};
  }
- private boolean granted(){
-  for(String permission:permissions())if(context.checkSelfPermission(permission)!=PackageManager.PERMISSION_GRANTED)return false;
+ private boolean granted(boolean host){
+  for(String permission:permissions(host))if(context.checkSelfPermission(permission)!=PackageManager.PERMISSION_GRANTED)return false;
   return true;
  }
- private void requestPermissions(){
-  if(adapter!=null&&!granted())activity.runOnUiThread(()->{try{activity.requestPermissions(permissions(),4711);}catch(Exception ignored){}});
+ private void requestPermissions(boolean host){
+  if(adapter!=null&&!granted(host))activity.runOnUiThread(()->{
+   try{
+    List<String> request=new ArrayList<>();
+    for(String permission:permissions(host))if(context.checkSelfPermission(permission)!=PackageManager.PERMISSION_GRANTED)request.add(permission);
+    // Android 12+ ignores requests for precise location unless approximate is requested with it.
+    if(Build.VERSION.SDK_INT>=31&&request.contains(Manifest.permission.ACCESS_FINE_LOCATION))request.add(Manifest.permission.ACCESS_COARSE_LOCATION);
+    if(!request.isEmpty())activity.requestPermissions(request.toArray(new String[0]),4711);
+   }catch(Exception ignored){}
+  });
  }
- private String state(){
+ private String state(boolean host){
   if(adapter==null||!context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE))return "unsupported";
-  if(!granted())return "unauthorized";
+  if(!granted(host))return "unauthorized";
   try{return adapter.isEnabled()?"on":"off";}catch(SecurityException e){return "unauthorized";}
  }
  private void reportState(boolean force){
-  String now=state();
+  String now=state(false), host=state(true);
   if(force||!now.equals(lastState)){lastState=now;emit("ble_state",null,"state",now);}
+  if(force||!host.equals(lastHostState)){lastHostState=host;emit("ble_host_state",null,"state",host);}
  }
- private boolean ready(){if(!"on".equals(state())){emitError("bluetooth_"+state());return false;}return true;}
+ private boolean ready(boolean host){String value=state(host);if(!"on".equals(value)){emitError("bluetooth_"+value);return false;}return true;}
 
  // ---- host (peripheral) ---------------------------------------------------------------
  private void hostStart(String name){
   hostStop();
-  if(!ready())return;
+  if(!ready(true))return;
   hostName=name;
   server=manager.openGattServer(context,serverCallback);
   if(server==null){emitError("gatt_server_unavailable");return;}
@@ -165,14 +176,15 @@ public final class BleLink {
   setAdvertising(true);
  }
  private final AdvertiseCallback advertiseCallback=new AdvertiseCallback(){
-  @Override public void onStartFailure(int code){synchronized(BleLink.this){advertising=false;emitError("advertise_failed_"+code);}}
+  @Override public void onStartSuccess(AdvertiseSettings effective){synchronized(BleLink.this){if(advertising)emit("ble_advertising",null,null,null);}}
+  @Override public void onStartFailure(int code){synchronized(BleLink.this){if(advertising){advertising=false;emitError("advertise_failed_"+code);}}}
  };
  private void setAdvertising(boolean enabled){
   if(server==null)return;
   if(advertising){try{if(advertiser!=null)advertiser.stopAdvertising(advertiseCallback);}catch(Exception ignored){}advertising=false;}
   if(!enabled)return;
   advertiser=adapter.getBluetoothLeAdvertiser();
-  if(advertiser==null){emitError("advertise_unsupported");return;}
+  if(advertiser==null){emitError("advertise_failed_unsupported");return;}
   AdvertiseSettings settings=new AdvertiseSettings.Builder().setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY).setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH).setConnectable(true).setTimeout(0).build();
   AdvertiseData data=new AdvertiseData.Builder().setIncludeDeviceName(false).addServiceUuid(new ParcelUuid(SERVICE)).build();
   // Android cannot set a per-advertisement local name, so the room code travels as service data.
@@ -266,7 +278,7 @@ public final class BleLink {
  }}
  private void scanStart(){
   scanStop();
-  if(!ready())return;
+  if(!ready(false))return;
   BluetoothLeScanner scanner=adapter.getBluetoothLeScanner();
   if(scanner==null){emitError("scan_unsupported");return;}
   ScanSettings settings=new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build();
@@ -280,7 +292,7 @@ public final class BleLink {
   scanning=false;seen.clear();
  }
  private void connect(String key){
-  if(!BluetoothAdapter.checkBluetoothAddress(key)||!ready()){emit("ble_closed","c:"+key,"code","connect_failed");return;}
+  if(!BluetoothAdapter.checkBluetoothAddress(key)||!ready(false)){emit("ble_closed","c:"+key,"code","connect_failed");return;}
   close("c:"+key);
   Remote remote=new Remote();remotes.put(key,remote);open(key,remote);
  }

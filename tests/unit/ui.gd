@@ -35,6 +35,11 @@ func run() -> void:
 	main.set_language("zh_CN")
 	check(TranslationServer.translate("APP_NAME") == "星星大作战", "Chinese title installed")
 	check(TranslationServer.translate("START_GAME") == "选择游戏", "Chinese home selection label")
+	main.join_invite.set_bluetooth(true, "BLUETOOTH_HOST_READY", false, "e0726a")
+	check(main.join_invite.bluetooth_room_code.visible and main.join_invite.bluetooth_room_code.text == "蓝牙房间号：E0726A", "host shows the same uppercase code as the Bluetooth list")
+	main.join_invite.set_bluetooth(true, "BLUETOOTH_HOST_FAILED")
+	check(not main.join_invite.bluetooth_room_code.visible, "stale code is hidden after advertisement failure")
+	main.join_invite.set_bluetooth(false)
 	var orbit_a: Array = main.home.orbit_positions(0)
 	var orbit_b: Array = main.home.orbit_positions(1)
 	check(orbit_a[0].distance_to(orbit_b[0]) > 1, "stars orbit over time")
@@ -47,6 +52,7 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	check(main.settings_dialog.panel.size.y < root.get_visible_rect().size.y, "settings panel stays within viewport")
+	check(main.settings_dialog.scroll.vertical_scroll_mode == ScrollContainer.SCROLL_MODE_SHOW_NEVER and not main.settings_dialog.scroll.get_v_scroll_bar().visible, "settings scroll without a visible scrollbar")
 	check(main.home.start_button.focus_mode == Control.FOCUS_NONE, "modal settings isolates home focus")
 	main.motion_choice.button_pressed = true
 	check(main.home.reduced_motion and main.profile.reduce_motion, "settings motion preference takes effect")
@@ -80,6 +86,8 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	check(main.library.columns == 2, "phone uses two cover columns")
+	var scroller: ScrollContainer = main.library.get_parent().get_parent().get_parent().get_parent()
+	check(scroller.vertical_scroll_mode == ScrollContainer.SCROLL_MODE_SHOW_NEVER and scroller.follow_focus, "shared pages hide the scrollbar and still follow focus")
 	check(main.footer.get_global_rect().end.y <= root.get_visible_rect().size.y, "phone footer remains inside safe viewport")
 	check(main.back_button.get_global_rect().end.x <= root.get_visible_rect().size.x, "phone back action fits horizontally")
 	main._open_settings()
@@ -132,7 +140,11 @@ func run() -> void:
 
 func verify_join_routes(main: Control) -> void:
 	main._open_setup(false)
-	check(main.flow.page == main.Page.NEARBY and main.discovery.browsing, "join starts discovery")
+	check(main.flow.page == main.Page.NEARBY and main.discovery.browsing and not main.discovery.bluetooth_only, "join starts with LAN discovery")
+	main._search_nearby(true)
+	check(main.discovery.bluetooth_only and main.join_browser.bluetooth.text == "WIFI_SEARCH", "Bluetooth search has a dedicated list and a way back to LAN")
+	main.join_browser.bluetooth.pressed.emit()
+	check(not main.discovery.bluetooth_only and main.join_browser.bluetooth.text == "BLUETOOTH_SEARCH", "transport action returns to LAN search")
 	var room := {"key": "fixture", "name": "Test game", "version": "1", "source_name": "Friend", "address": "127.0.0.1", "port": 27840}
 	main.join_browser.populate([room])
 	var room_button: Button = main.join_browser.room_buttons.fixture

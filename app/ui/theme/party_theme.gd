@@ -128,29 +128,14 @@ static func progress(bar: ProgressBar) -> void:
 	bar.add_theme_stylebox_override("fill", fill)
 
 static func scroll_container(scroll: ScrollContainer, inset: int = 14) -> void:
-	# Keep card focus rings and the scroll thumb clear of the content edges.
+	# Keep card focus rings clear of the content edges without a visible scrollbar.
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
 	var padding := StyleBoxEmpty.new()
 	padding.content_margin_left = inset
 	padding.content_margin_right = inset
 	padding.content_margin_top = inset
 	padding.content_margin_bottom = inset
 	scroll.add_theme_stylebox_override("panel", padding)
-	var bar := scroll.get_v_scroll_bar()
-	bar.focus_mode = Control.FOCUS_NONE
-	var track := pill(T.LINE, 6)
-	track.content_margin_left = 5
-	track.content_margin_right = 5
-	track.content_margin_top = 8
-	track.content_margin_bottom = 8
-	bar.add_theme_stylebox_override("scroll", track)
-	bar.add_theme_stylebox_override("scroll_focus", StyleBoxEmpty.new())
-	for state in ["grabber", "grabber_highlight", "grabber_pressed"]:
-		var thumb := pill(T.LINE_LIP if state == "grabber" else T.SKY, 6)
-		thumb.content_margin_left = 5
-		thumb.content_margin_right = 5
-		thumb.content_margin_top = 20
-		thumb.content_margin_bottom = 20
-		bar.add_theme_stylebox_override(state, thumb)
 
 # Application-wide defaults for plain controls; kit functions add per-control overrides.
 static func build_theme() -> Theme:

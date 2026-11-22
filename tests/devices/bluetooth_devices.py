@@ -86,14 +86,16 @@ def run(args):
     wait_for(lambda: host.call('ble.status')['advertising'], timeout=10)
     print('BLE host advertising NP' + sid[:6], flush=True)
 
-    guest.call('lan.search')
+    guest.call('lan.search', {'transport': 'ble'})
     started = time.time()
     wait_for(lambda: any(d['code'] == sid[:6] for d in guest.call('ble.status')['devices']), timeout=30)
     device = next(d for d in guest.call('ble.status')['devices'] if d['code'] == sid[:6])
     report['scan_seconds'] = round(time.time() - started, 1)
     report['rssi'] = device['rssi']
     rows = guest.call('lan.status')['rooms']
-    report['listed_as'] = 'bluetooth' if any(r.get('transport') == 'ble' for r in rows) else 'lan'
+    assert any(r.get('address') == 'ble:' + device['key'] for r in rows), rows
+    assert all(r.get('transport') == 'ble' for r in rows), rows
+    report['listed_as'] = 'bluetooth'
     screenshot(args.guest, 'guest-search')
     print('BLE guest found host in %.1fs (rssi %s, listed as %s)' % (report['scan_seconds'], device['rssi'], report['listed_as']), flush=True)
 

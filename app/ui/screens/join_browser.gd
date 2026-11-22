@@ -8,6 +8,7 @@ const Style = preload("res://app/ui/theme/party_theme.gd")
 const Icons = preload("res://app/ui/theme/party_icons.gd")
 const T = Style.T
 var bluetooth: Button
+var title: Label
 var message: Label
 var list: VBoxContainer
 var refresh: Button
@@ -18,6 +19,7 @@ var items := []
 var room_buttons := {}
 var search_timeout: Timer
 var busy := false
+var bluetooth_mode := false
 
 func _ready() -> void:
 	add_theme_constant_override("separation", 12)
@@ -31,7 +33,7 @@ func _ready() -> void:
 	var heading := HBoxContainer.new()
 	heading.add_theme_constant_override("separation", 8)
 	add_child(heading)
-	var title := Style.label(Label.new(), T.FONT_SIZE_SECTION, T.FONT_WEIGHT_TITLE)
+	title = Style.label(Label.new(), T.FONT_SIZE_SECTION, T.FONT_WEIGHT_TITLE)
 	title.text = "NEARBY_TITLE"
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.size_flags_horizontal = SIZE_EXPAND_FILL
@@ -49,7 +51,7 @@ func _ready() -> void:
 	search_timeout = Timer.new()
 	search_timeout.one_shot = true
 	search_timeout.timeout.connect(func():
-		if items.is_empty(): message.text = "NO_NEARBY_GAMES"
+		if items.is_empty(): message.text = "NO_BLUETOOTH_GAMES" if bluetooth_mode else "NO_NEARBY_GAMES"
 	)
 	add_child(search_timeout)
 	resized.connect(_adapt_actions)
@@ -74,13 +76,17 @@ func set_bluetooth_available(value: bool) -> void:
 	bluetooth.visible = value
 	_adapt_actions()
 
-func begin_search() -> void:
-	message.text = "SEARCHING_GAMES"
+func begin_search(use_bluetooth: bool) -> void:
+	bluetooth_mode = use_bluetooth
+	bluetooth.text = "WIFI_SEARCH" if bluetooth_mode else "BLUETOOTH_SEARCH"
+	bluetooth.icon = Icons.get_icon("radio" if bluetooth_mode else "bluetooth", T.SKY)
+	title.text = "BLUETOOTH_NEARBY_TITLE" if bluetooth_mode else "NEARBY_TITLE"
+	message.text = "SEARCHING_BLUETOOTH" if bluetooth_mode else "SEARCHING_GAMES"
 	search_timeout.start(5.0)
 
 func unavailable() -> void:
 	search_timeout.stop()
-	if items.is_empty(): message.text = "DISCOVERY_UNAVAILABLE"
+	if items.is_empty(): message.text = "BLUETOOTH_UNAVAILABLE" if bluetooth_mode else "DISCOVERY_UNAVAILABLE"
 
 func stop_search() -> void:
 	search_timeout.stop()
@@ -93,7 +99,7 @@ func set_busy(value: bool) -> void:
 func populate(rooms: Array) -> void:
 	items = rooms
 	message.visible = rooms.is_empty()
-	if rooms.is_empty() and message.text.is_empty(): begin_search()
+	if rooms.is_empty() and message.text.is_empty(): begin_search(bluetooth_mode)
 	var retained := {}
 	var focused := get_viewport().gui_get_focus_owner()
 	for index in range(rooms.size()):
@@ -130,8 +136,8 @@ func populate(rooms: Array) -> void:
 			list.remove_child(button)
 			button.queue_free()
 	room_buttons = retained
-	if rooms.is_empty() and search_timeout.is_stopped() and message.text == "SEARCHING_GAMES":
-		message.text = "NO_NEARBY_GAMES"
+	if rooms.is_empty() and search_timeout.is_stopped() and message.text in ["SEARCHING_GAMES", "SEARCHING_BLUETOOTH"]:
+		message.text = "NO_BLUETOOTH_GAMES" if bluetooth_mode else "NO_NEARBY_GAMES"
 	if lost_focus and is_visible_in_tree() and not busy: focus_default()
 
 func focus_default() -> void:
