@@ -19,7 +19,6 @@ var swatches := {}
 func _ready() -> void:
 	super._ready()
 	done.hide()
-	Style.scroll_container(scroll)
 	var body := VBoxContainer.new()
 	body.add_theme_constant_override("separation", 12)
 	add_content(body)
@@ -126,6 +125,7 @@ func _action(parent: Node, key: String, kind: String, callback: Callable) -> But
 func _choice(parent: Node, key: String, callback: Callable) -> Button:
 	var button := Button.new()
 	button.text = key
+	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	button.set_meta("label_key",key)
 	button.toggle_mode = true
 	button.set_meta("haptic", "select")
@@ -150,7 +150,6 @@ func edit(local: Dictionary) -> void:
 	_refresh()
 	popup_centered(Vector2i(1080,840) if size.x >= 1200 else Vector2i(600,900))
 	character_buttons[UserProfile.CHARACTERS.find(draft.avatar.character)].grab_focus()
-	_reset_scroll.call_deferred()
 
 func _refresh() -> void:
 	var public := UserProfile.local_public(draft)
@@ -198,24 +197,22 @@ func _connect_focus() -> void:
 	name_input.focus_neighbor_top = name_input.get_path_to(save_button)
 	save_button.focus_neighbor_bottom = save_button.get_path_to(name_input)
 
-func _reset_scroll() -> void:
-	# Deferred call: a hot UI swap may already have removed this panel.
-	if not is_inside_tree(): return
-	await get_tree().process_frame
-	if is_inside_tree(): scroll.scroll_vertical = 0
-
 func _layout() -> void:
 	if character_grid == null:
 		super._layout()
 		return
 	var wide := size.x >= 1200
 	desired_size = Vector2(1080,840) if wide else Vector2(600,900)
-	character_grid.columns = 6 if wide else 3
-	palette_grid.columns = 4 if wide else 2
-	theme_grid.columns = 6 if wide else 3
+	super._layout()
+	var panel_width := minf(desired_size.x, size.x - 2 * _safe_inset().x)
+	var gutters := panel.get_theme_stylebox("panel").get_minimum_size().x + 2 * content.get_theme_constant("margin_left")
+	var inner_width := panel_width - gutters
+	var full_grid := wide and inner_width >= 920
+	character_grid.columns = 6 if full_grid else 3 if inner_width >= 350 else 2
+	palette_grid.columns = 4 if full_grid else 2
+	theme_grid.columns = character_grid.columns
 	for button in character_buttons:
-		button.custom_minimum_size = Vector2(144,112) if wide else Vector2(110,90)
+		button.custom_minimum_size = Vector2(144,112) if character_grid.columns == 6 else Vector2(0,90)
 		button.add_theme_constant_override("icon_max_width",72 if wide else 60)
 	for button in character_buttons + palette_buttons + theme_buttons + [save_button,cancel_button]:
 		button.add_theme_font_size_override("font_size",22 if wide else 18)
-	super._layout()

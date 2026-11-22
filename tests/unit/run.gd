@@ -101,8 +101,70 @@ func run() -> void:
 				var next: int = room.state.hands[1][0]
 				check(room.command(1, cmd("b" + str(round_number), room.revision, {"type": "choose", "card": next})).accepted, "second choice")
 			check(room.state.finished and room.state.history.size() == 3, "three rounds finish")
+	check_spectator_manifest(loader)
+	check_host_start_manifest(loader)
 	print("RULES_RESULT checks=%d failures=%d" % [checks, failures])
 	quit(1 if failures else 0)
+
+func check_spectator_manifest(loader: RefCounted) -> void:
+	var base: Dictionary = loader.inspect("res://mods/gomoku")
+	var manifest: Dictionary = base.manifest.duplicate(true)
+	manifest.rules_files = [manifest.rules]
+	manifest.files.append("alternate.gd")
+	manifest.spectators = {"max_guests": 4, "view": "spectator.gd"}
+	var first := inspect_fixture(loader, manifest)
+	check(not first.is_empty(), "accept valid spectator declaration")
+	manifest.spectators.view = "alternate.gd"
+	var alternate := inspect_fixture(loader, manifest)
+	check(first.get("rules_fingerprint") == alternate.get("rules_fingerprint") and first.get("presentation_fingerprint") != alternate.get("presentation_fingerprint"), "spectator entrypoint only changes presentation compatibility")
+	manifest.spectators.max_guests = 8
+	var larger := inspect_fixture(loader, manifest)
+	check(alternate.get("rules_fingerprint") != larger.get("rules_fingerprint"), "spectator count affects room compatibility")
+	for invalid in [null, true, {}, {"max_guests": 0, "view": "spectator.gd"}, {"max_guests": 9, "view": "spectator.gd"}, {"max_guests": 2.5, "view": "spectator.gd"}, {"max_guests": 4, "view": "unlisted.gd"}]:
+		manifest.spectators = invalid
+		check(inspect_fixture(loader, manifest).is_empty(), "reject invalid spectator declaration: " + str(invalid))
+	var legacy: Dictionary = loader.inspect("res://mods/hidden_cards")
+	legacy.manifest.spectators = {"max_guests": 4, "view": "view.gd"}
+	check(loader.rules(legacy) == null and loader.error.ends_with("view_for_spectator"), "opt-in requires an explicit public snapshot method")
+
+func check_host_start_manifest(loader: RefCounted) -> void:
+	var base: Dictionary = loader.inspect("res://mods/gomoku")
+	var manifest: Dictionary = base.manifest.duplicate(true)
+	manifest.session_mode = "fixed"
+	manifest.players = {"min": 3, "max": 3}
+	manifest.host_start = true
+	check(inspect_fixture(loader, manifest).is_empty(), "SDK 1 cannot declare the new host action")
+	manifest.sdk = 2
+	check(not inspect_fixture(loader, manifest).is_empty(), "SDK 2 accepts three required players and host start")
+	manifest.host_start = 1
+	check(inspect_fixture(loader, manifest).is_empty(), "host_start must be boolean true")
+	manifest.host_start = true
+	manifest.players.max = 2
+	check(inspect_fixture(loader, manifest).is_empty(), "fixed maximum cannot be smaller than the minimum")
+	base.manifest.host_start = true
+	check(loader.rules(base) == null and loader.error.ends_with("can_start_round"), "host start requires rule hooks")
+
+func inspect_fixture(loader: RefCounted, manifest: Dictionary) -> Dictionary:
+	var path := "user://spectator-manifest-test-%d.zip" % Time.get_ticks_usec()
+	var packer := ZIPPacker.new()
+	if packer.open(path) != OK: return {}
+	var prefix := "mods/gomoku/"
+	packer.start_file(prefix + "manifest.json")
+	packer.write_file(JSON.stringify(manifest).to_utf8_buffer())
+	packer.close_file()
+	for file in manifest.files:
+		packer.start_file(prefix + file)
+		var source: PackedByteArray = FileAccess.get_file_as_bytes("res://" + prefix + file) if FileAccess.file_exists("res://" + prefix + file) else "extends Control\n".to_utf8_buffer()
+		packer.write_file(source)
+		packer.close_file()
+	packer.close()
+	var archive := ZIPReader.new()
+	var result: Dictionary = {}
+	if archive.open(path) == OK:
+		result = loader.inspect("res://mods/gomoku", archive)
+		archive.close()
+	DirAccess.remove_absolute(path)
+	return result
 
 func cmd(id: String, revision: int, action: Dictionary) -> Dictionary:
 	return {"type": "command", "request_id": id, "expected_revision": revision, "action": action}

@@ -2,7 +2,7 @@ extends Node
 # Excluded from Release exports. No shell/eval; only trusted Mod packages.
 const Wire = preload("res://sdk/net/wire.gd")
 const Loader = preload("res://sdk/mods/mod_loader.gd")
-const METHODS = ["qr.image", "qr.decode_image", "qr.status", "qr.scan", "qr.stop", "qr.join", "lan.search", "lan.status", "lan.inspect", "lan.confirm_download", "lan.cancel", "ble.status", "ble.request_access", "ui.status", "ui.updates", "ui.upload.begin", "ui.upload.chunk", "ui.upload.abort", "ui.upload.commit", "ui.activate", "ui.rollback", "device.info", "debug.capabilities", "room.status", "room.create", "room.join", "room.leave", "room.reconnect", "game.snapshot", "game.describe_actions", "game.submit", "game.result", "events.subscribe", "events.unsubscribe", "mods.upload.begin", "mods.upload.chunk", "mods.upload.abort", "mods.upload.commit", "mods.status", "mods.activate", "mods.rollback"]
+const METHODS = ["qr.image", "qr.decode_image", "qr.status", "qr.scan", "qr.stop", "qr.join", "lan.search", "lan.status", "lan.inspect", "lan.confirm_download", "lan.choose_role", "lan.cancel", "ble.status", "ble.request_access", "ui.status", "ui.updates", "ui.upload.begin", "ui.upload.chunk", "ui.upload.abort", "ui.upload.commit", "ui.activate", "ui.rollback", "device.info", "debug.capabilities", "room.status", "room.create", "room.join", "room.leave", "room.reconnect", "room.start_round", "game.snapshot", "game.describe_actions", "game.submit", "game.result", "events.subscribe", "events.unsubscribe", "mods.upload.begin", "mods.upload.chunk", "mods.upload.abort", "mods.upload.commit", "mods.status", "mods.activate", "mods.rollback"]
 var app: Object
 var wire
 var hot_updates
@@ -207,7 +207,7 @@ func _message(peer: int, request: Dictionary) -> void:
 		return
 	_sync_session()
 	var state := _snapshot()
-	if method in ["room.create", "room.join", "room.leave", "room.reconnect"]:
+	if method in ["room.create", "room.join", "room.leave", "room.reconnect", "room.start_round"]:
 		var result: Dictionary = room_control.handle(method, params, state)
 		_sync_session()
 		if result.has("error"):
@@ -262,6 +262,9 @@ func _message(peer: int, request: Dictionary) -> void:
 		"game.describe_actions":
 			if not state.in_room:
 				_error(peer, id, -32001, "not_ready")
+				return
+			if state.get("role") == "spectator":
+				_reply(peer, id, {"supported": false, "legal_actions": [], "blocked_by": "spectator_read_only"})
 				return
 			var logic = Loader.new().rules(current_session.info)
 			var description: Dictionary = logic.describe_actions(state.view.duplicate(true), int(state.seat)) if logic != null and logic.has_method("describe_actions") else {"supported": false}

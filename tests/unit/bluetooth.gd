@@ -44,7 +44,8 @@ func run() -> void:
 	var host = Session.new()
 	root.add_child(host)
 	host.wire.bluetooth = host_radio
-	var created: bool = host.create(info, loader.rules(info), {"id": "host-player", "nickname": "Host"}, 0) == OK
+	const PASSWORD := "room over BLE"
+	var created: bool = host.create(info, loader.rules(info), {"id": "host-player", "nickname": "Host"}, 0, {"password": PASSWORD}) == OK
 	check(created, "host starts TCP and Bluetooth together")
 	if not created:
 		quit(1)
@@ -66,7 +67,7 @@ func run() -> void:
 	if rows.is_empty():
 		quit(1)
 		return
-	check(rows.size() == 1 and rows[0].address == "ble:AA:00" and rows[0].code == sid.left(6), "row carries ble: address and session code")
+	check(rows.size() == 1 and rows[0].address == "ble:AA:00" and rows[0].code == sid.left(6) and rows[0].password_required, "row carries ble: address, session code and lock bit")
 	guest_radio._event({"type": "ble_found", "key": "apple-without-name", "name": "NP", "rssi": -60})
 	check(discovery.list_rooms().any(func(entry): return entry.address == "ble:apple-without-name" and entry.code.is_empty()), "UUID-only CoreBluetooth advert is discoverable")
 	guest_radio.devices.erase("apple-without-name")
@@ -81,7 +82,7 @@ func run() -> void:
 	transfer.completed.connect(func(path, _metadata): done[0] = path)
 	check(transfer.inspect_remote(rows[0].address, 0) == OK, "inspect over Bluetooth starts")
 	check(await wait_until(func(): return not catalog[0].is_empty()), "catalog arrives over Bluetooth")
-	check(catalog[0].get("session_id") == sid and catalog[0].get("game_id") == "gomoku", "catalog identifies the live game")
+	check(catalog[0].get("session_id") == sid and catalog[0].get("game_id") == "gomoku" and catalog[0].get("password_required") == true, "Bluetooth catalog identifies locked live game")
 	transfer.confirm_download()
 	check(await wait_until(func(): return not done[0].is_empty(), 4000), "package download completes over Bluetooth")
 	check(not done[0].is_empty() and FileAccess.get_sha256(done[0]) == catalog[0].get("sha256"), "downloaded package hash matches")
@@ -96,7 +97,7 @@ func run() -> void:
 	root.add_child(guest)
 	guest.wire.bluetooth = guest_radio
 	guest.expected_remote_session = sid
-	check(guest.join(info, {"id": "guest-player", "nickname": "Guest"}, rows[0].address, 0) == OK, "guest joins by ble: address")
+	check(guest.join(info, {"id": "guest-player", "nickname": "Guest"}, rows[0].address, 0, "", {"password": PASSWORD}) == OK, "guest joins locked room by ble: address")
 	check(await wait_until(func(): return guest.seat == 1 and not guest.snapshot.is_empty()), "handshake and first snapshot cross the link")
 	check(guest.connection_state == "connected" and host.snapshot.players.size() == 2, "both sides agree on two players")
 	host.submit({"type": "place", "x": 7, "y": 7})
@@ -129,6 +130,11 @@ func run() -> void:
 	check(await wait_until(func(): return guest.connection_state == "rejected" and guest.connection_error == "session_replaced"), "replaced connection is told and does not retry")
 	check(resumed.connection_state == "connected" and host.snapshot.players[1].connected, "retiring the old link keeps the seat online")
 	guest.queue_free()
+	var observer := Session.new()
+	root.add_child(observer)
+	observer.wire.bluetooth = guest_radio
+	check(observer.join(info, {"id": "observer", "nickname": "Observer"}, rows[0].address, 0, "", {"role": "spectator", "password": PASSWORD}) == OK, "observer can dial a full room over Bluetooth")
+	check(await wait_until(func(): return observer.snapshot.get("role") == "spectator") and not observer.snapshot.has("seat"), "Bluetooth observer gets the public snapshot")
 
 	var unknown = new_radio.connect_peer("ZZ:99")
 	check(unknown != null, "unknown device starts as a pending link")
@@ -147,7 +153,7 @@ func run() -> void:
 	var silent: Node = Bluetooth.new()
 	root.add_child(silent)
 	check(not silent.available() and silent.connect_peer("AA:00") == null and not silent.host("abcdef"), "no bridge means Bluetooth is cleanly unavailable")
-	for node in [resumed, host, discovery, silent, host_radio, guest_radio, new_radio]:
+	for node in [observer, resumed, host, discovery, silent, host_radio, guest_radio, new_radio]:
 		node.queue_free()
 	await process_frame
 	print("BLUETOOTH: %d checks, %d failures" % [checks, failures])

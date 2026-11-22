@@ -40,8 +40,7 @@ func combo(names: Array) -> Dictionary:
 
 func lobby() -> Dictionary:
 	var state: Dictionary = rules.initial_state(7)
-	state.display_seat = 0
-	for seat in range(4):
+	for seat in range(3):
 		state = rules.presence_changed(state, seat, true)
 	return state
 
@@ -141,7 +140,7 @@ func hints() -> void:
 func dealt(seed_value: int = 7) -> Dictionary:
 	var state := lobby()
 	state.seed = seed_value
-	return ok(state, 0, {"type": "start"})
+	return rules.start_round(state).state
 
 func bidding_and_play() -> void:
 	var state := lobby()
@@ -149,35 +148,34 @@ func bidding_and_play() -> void:
 	var short: Dictionary = rules.initial_state(1)
 	short = rules.presence_changed(short, 0, true)
 	short = rules.presence_changed(short, 1, true)
-	short = rules.presence_changed(short, 2, true)
-	rejected(short, 0, {"type": "start"}, "need_three_players")
+	check(rules.start_round(short).error == "round_not_ready", "two players cannot start")
 	check(rules.can_join(short) and not rules.can_join(state), "three players fill the table")
-	state = ok(state, 0, {"type": "start"})
-	check(state.phase == "bidding" and state.participants == [1, 2, 3], "display seat is not dealt in")
-	for seat in [1, 2, 3]: check(state.hands[seat].size() == 17, "17 cards each")
-	check(state.bottom.size() == 3 and _full(state.hands[1] + state.hands[2] + state.hands[3] + state.bottom), "54 unique cards dealt")
-	check(state.turn == 1, "first round starts with first player")
-	rejected(state, 2, {"type": "bid", "amount": 1}, "not_your_turn")
-	rejected(state, 1, {"type": "play", "cards": [0]}, "invalid_action")
-	rejected(state, 1, {"type": "bid", "amount": 4}, "invalid_action")
-	state = ok(state, 1, {"type": "bid", "amount": 2})
-	rejected(state, 2, {"type": "bid", "amount": 1}, "bid_too_low")
-	rejected(state, 2, {"type": "bid", "amount": 2}, "bid_too_low")
+	state = rules.start_round(state).state
+	check(state.phase == "bidding" and state.participants == [0, 1, 2], "all three seats are dealt in")
+	for seat in range(3): check(state.hands[seat].size() == 17, "17 cards each")
+	check(state.bottom.size() == 3 and _full(state.hands[0] + state.hands[1] + state.hands[2] + state.bottom), "54 unique cards dealt")
+	check(state.turn == 0, "first round starts with first player")
+	rejected(state, 1, {"type": "bid", "amount": 1}, "not_your_turn")
+	rejected(state, 0, {"type": "play", "cards": [0]}, "invalid_action")
+	rejected(state, 0, {"type": "bid", "amount": 4}, "invalid_action")
+	state = ok(state, 0, {"type": "bid", "amount": 2})
+	rejected(state, 1, {"type": "bid", "amount": 1}, "bid_too_low")
+	rejected(state, 1, {"type": "bid", "amount": 2}, "bid_too_low")
+	state = ok(state, 1, {"type": "bid", "amount": 0})
 	state = ok(state, 2, {"type": "bid", "amount": 0})
-	state = ok(state, 3, {"type": "bid", "amount": 0})
-	check(state.phase == "playing" and state.landlord == 1 and state.bid == 2 and state.hands[1].size() == 20, "highest bidder becomes landlord with bottom cards")
-	check(state.turn == 1, "landlord leads")
-	rejected(state, 1, {"type": "pass"}, "must_lead")
-	var foreign: int = state.hands[2][0]
-	rejected(state, 1, {"type": "play", "cards": [foreign]}, "card_not_owned")
-	var mine: Array = Cards.sort_hand(state.hands[1])
-	rejected(state, 1, {"type": "play", "cards": [mine[0], mine[0]]}, "invalid_action")
+	check(state.phase == "playing" and state.landlord == 0 and state.bid == 2 and state.hands[0].size() == 20, "highest bidder becomes landlord with bottom cards")
+	check(state.turn == 0, "landlord leads")
+	rejected(state, 0, {"type": "pass"}, "must_lead")
+	var foreign: int = state.hands[1][0]
+	rejected(state, 0, {"type": "play", "cards": [foreign]}, "card_not_owned")
+	var mine: Array = Cards.sort_hand(state.hands[0])
+	rejected(state, 0, {"type": "play", "cards": [mine[0], mine[0]]}, "invalid_action")
 	var low: int = mine.back()
-	state = ok(state, 1, {"type": "play", "cards": [low]})
-	check(state.lead.type == "single" and state.table["1"] == [low], "lead recorded on the table")
+	state = ok(state, 0, {"type": "play", "cards": [low]})
+	check(state.lead.type == "single" and state.table["0"] == [low], "lead recorded on the table")
+	state = ok(state, 1, {"type": "pass"})
 	state = ok(state, 2, {"type": "pass"})
-	state = ok(state, 3, {"type": "pass"})
-	check(state.turn == 1 and state.lead.is_empty() and state.table.is_empty(), "two passes return a free lead")
+	check(state.turn == 0 and state.lead.is_empty() and state.table.is_empty(), "two passes return a free lead")
 	# Instant 3 ends bidding.
 	var quick := dealt(11)
 	var first: int = quick.turn
@@ -201,40 +199,41 @@ func fixture(hands: Dictionary, landlord: int, bid: int = 1) -> Dictionary:
 	state.landlord = landlord
 	state.bid = bid
 	state.turn = landlord
-	for seat in [1, 2, 3]: state.plays[str(seat)] = 0
+	for seat in range(3): state.plays[str(seat)] = 0
 	return state
 
 func scoring() -> void:
 	# Landlord spring: farmers never play.
-	var state := fixture({1: ["3", "3", "3", "4"], 2: ["5", "6"], 3: ["7", "8"]}, 1, 2)
-	state = ok(state, 1, {"type": "play", "cards": c(["3", "3", "3", "4"])})
-	check(state.phase == "finished" and state.winner == 1 and state.result.landlord_won and state.result.spring, "landlord spring")
-	check(state.multiplier == 2 and state.result.deltas == {"1": 8, "2": -4, "3": -4}, "spring doubles: bid 2 x2, landlord gets double")
+	var state := fixture({0: ["3", "3", "3", "4"], 1: ["5", "6"], 2: ["7", "8"]}, 0, 2)
+	state = ok(state, 0, {"type": "play", "cards": c(["3", "3", "3", "4"])})
+	check(state.phase == "finished" and state.winner == 0 and state.result.landlord_won and state.result.spring, "landlord spring")
+	check(state.multiplier == 2 and state.result.deltas == {"0": 8, "1": -4, "2": -4}, "spring doubles: bid 2 x2, landlord gets double")
 	var total := 0
 	for seat in state.scores: total += int(state.scores[seat])
 	check(total == 0, "scores are zero-sum")
 	# Bomb doubles; farmer wins; landlord played twice so no anti-spring.
-	state = fixture({1: ["3", "4", "K"], 2: ["9", "9", "9", "9", "5"], 3: ["6", "7"]}, 1, 1)
-	state = ok(state, 1, {"type": "play", "cards": c(["3"])})
-	state = ok(state, 2, {"type": "play", "cards": c(["9", "9", "9", "9"])})
+	state = fixture({0: ["3", "4", "K"], 1: ["9", "9", "9", "9", "5"], 2: ["6", "7"]}, 0, 1)
+	state = ok(state, 0, {"type": "play", "cards": c(["3"])})
+	state = ok(state, 1, {"type": "play", "cards": c(["9", "9", "9", "9"])})
 	check(state.multiplier == 2 and state.bombs == 1, "bomb doubles the multiplier")
-	state = ok(state, 3, {"type": "pass"})
-	state = ok(state, 1, {"type": "pass"})
-	check(state.turn == 2 and state.lead.is_empty(), "bomb wins the trick")
-	state = ok(state, 2, {"type": "play", "cards": c(["5"])})
-	check(state.phase == "finished" and not state.result.landlord_won and state.result.spring and state.result.deltas == {"1": -8, "2": 4, "3": 4}, "landlord played once: anti-spring doubles again")
+	state = ok(state, 2, {"type": "pass"})
+	state = ok(state, 0, {"type": "pass"})
+	check(state.turn == 1 and state.lead.is_empty(), "bomb wins the trick")
+	state = ok(state, 1, {"type": "play", "cards": c(["5"])})
+	check(state.phase == "finished" and not state.result.landlord_won and state.result.spring and state.result.deltas == {"0": -8, "1": 4, "2": 4}, "landlord played once: anti-spring doubles again")
 	# Rocket.
-	state = fixture({1: ["S", "B", "3"], 2: ["4"], 3: ["5"]}, 1, 3)
-	state = ok(state, 1, {"type": "play", "cards": c(["S", "B"])})
+	state = fixture({0: ["S", "B", "3"], 1: ["4"], 2: ["5"]}, 0, 3)
+	state = ok(state, 0, {"type": "play", "cards": c(["S", "B"])})
 	check(state.multiplier == 2, "rocket doubles")
-	check(state.turn == 2, "rocket passes the turn on")
-	rejected(state, 2, {"type": "play", "cards": c(["4"])}, "does_not_beat")
+	check(state.turn == 1, "rocket passes the turn on")
+	rejected(state, 1, {"type": "play", "cards": c(["4"])}, "does_not_beat")
 	# Rematch keeps cumulative scores and rotates the first bidder.
-	state = fixture({1: ["3"], 2: ["5"], 3: ["7"]}, 1, 1)
-	state = ok(state, 1, {"type": "play", "cards": c(["3"])})
+	state = fixture({0: ["3"], 1: ["5"], 2: ["7"]}, 0, 1)
+	state = ok(state, 0, {"type": "play", "cards": c(["3"])})
+	check(not rules.view_for_spectator(state).has("revealed") and rules.view_for(state, 0).revealed[1].size() == 1, "only participants review remaining cards")
 	var scores: Dictionary = state.scores.duplicate()
-	for seat in [1, 2, 3]: state = ok(state, seat, {"type": "rematch"})
-	check(state.phase == "bidding" and state.round == 2 and state.scores == scores and state.turn == 2, "rematch keeps scores, rotates first bidder")
+	for seat in range(3): state = ok(state, seat, {"type": "rematch"})
+	check(state.phase == "bidding" and state.round == 2 and state.scores == scores and state.turn == 1, "rematch keeps scores, rotates first bidder")
 
 func bots() -> void:
 	var games := 0
@@ -261,7 +260,7 @@ func bots() -> void:
 			state = result.state
 			if action.type == "play": types[Cards.classify(action.cards).type] = true
 			var held := 0
-			for s in [1, 2, 3]: held += state.hands[s].size()
+			for s in range(3): held += state.hands[s].size()
 			if state.phase == "bidding": check(held == 51, "bidding keeps 51 cards in hands")
 		check(state.phase == "finished", "game %d finishes" % seed_value)
 		games += 1
@@ -271,7 +270,7 @@ func bots() -> void:
 		if state.result.spring: springs += 1
 		bombs += int(state.bombs)
 		check(state.hands[int(state.winner)].is_empty(), "winner emptied their hand")
-		for seat in [1, 2, 3]:
+		for seat in range(3):
 			var other: Dictionary = rules.view_for(state, seat)
 			check(other.revealed[int(state.winner)].is_empty() and other.finished, "finished view reveals the rest")
 	check(types.size() >= 6, "bots exercised many combination types: " + str(types.keys()))
@@ -282,17 +281,16 @@ func room_privacy() -> void:
 	var info: Dictionary = loader.inspect("res://mods/doudizhu")
 	check(not info.is_empty(), "manifest loads: " + loader.error)
 	if info.is_empty(): return
-	var room = Room.new(info, loader.rules(info), "host", "Host", 99)
+	var room = Room.new(info, loader.rules(info), "host", "Host", 99, {}, {"role": "spectator"})
 	for i in range(3):
 		var reply: Dictionary = room.hello({"protocol": 2, "rules_fingerprint": info.rules_fingerprint, "fingerprint": info.fingerprint, "player_id": "p%d" % i, "nickname": "P%d" % i, "capabilities": []})
 		check(reply.type == "welcome", "player %d seated" % i)
 	check(not room.rules.can_join(room.state), "table closes at three players")
-	var started: Dictionary = room.command(0, {"request_id": "s", "expected_revision": room.revision, "action": {"type": "start"}})
-	check(started.accepted, "host starts")
-	var public: Dictionary = room.snapshot(0).view
-	check(public.hand.is_empty() and public.bottom.is_empty(), "public display sees no hand and no bottom before bidding ends")
+	check(room.host_start_round().is_empty(), "seatless host starts")
+	var public: Dictionary = room.spectator_snapshot().view
+	check(not public.has("hand") and not public.has("revealed") and public.bottom.is_empty(), "public display sees no hand and no bottom before bidding ends")
 	var text := JSON.stringify(room.snapshot(1))
-	for seat in [2, 3]:
+	for seat in [0, 2]:
 		for card in room.state.hands[seat]:
 			check(not room.snapshot(1).view.hand.has(card), "seat 1 never receives seat %d's cards" % seat)
 	check(not text.contains("\"hands\"") and not text.contains("\"seed\""), "snapshot omits internal hands and seed")

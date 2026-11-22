@@ -1,5 +1,8 @@
 {
   "GOMOKU": "五子棋",
+  "SPECTATOR_LABEL": "观战中",
+  "SPECTATOR_WAIT": "等待玩家（%d/2）",
+  "SPECTATOR_TURN": "轮到 %s 落子",
   "DRAW": "平局",
   "WINNER_NAME": "%s 获胜！",
   "BLACK": "黑棋",

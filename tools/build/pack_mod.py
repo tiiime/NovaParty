@@ -18,14 +18,28 @@ def pack(source: Path, output: Path, hot: bool = False):
     mode = manifest.get('session_mode', '')
     if mode not in ['', 'drop_in', 'fixed']:
         raise ValueError('Unknown session_mode')
-    valid_bounds = (mode == 'fixed' and bounds.get('min') == 2 and type(bounds.get('max')) is int and 2 <= bounds['max'] <= 8) or (mode == '' and bounds == {'min': 2, 'max': 2}) or (drop_in and bounds.get('min') == 1 and type(bounds.get('max')) is int and 2 <= bounds['max'] <= 8)
-    if manifest['sdk'] != 1 or not valid_bounds:
-        raise ValueError('SDK 1 requires two players, fixed (2–8 seats), or drop_in (1–8 seats)')
+    sdk = manifest['sdk']
+    low, high = bounds.get('min'), bounds.get('max')
+    fixed = mode == 'fixed' and type(low) is int and type(high) is int and 2 <= low <= high <= 8 and (sdk == 2 or low == 2)
+    valid_bounds = fixed or (mode == '' and bounds == {'min': 2, 'max': 2}) or (drop_in and low == 1 and type(high) is int and 2 <= high <= 8)
+    if type(sdk) is not int or sdk not in (1, 2) or not valid_bounds:
+        raise ValueError('Invalid SDK version or player bounds')
+    if 'host_start' in manifest and (sdk != 2 or not fixed or manifest['host_start'] is not True):
+        raise ValueError('host_start requires an SDK 2 fixed-seat game')
     files = manifest['files']
     if not isinstance(files, list) or len(files) > 128 or len(files) != len(set(files)):
         raise ValueError('invalid file list')
     if manifest['rules'] not in files or manifest['view'] not in files:
         raise ValueError('entrypoints must be listed')
+    if 'spectators' in manifest:
+        spectators = manifest['spectators']
+        if not isinstance(spectators, dict) or set(spectators) != {'max_guests', 'view'}:
+            raise ValueError('spectators requires max_guests and view')
+        limit, view = spectators['max_guests'], spectators['view']
+        if type(limit) is not int or not 1 <= limit <= 8:
+            raise ValueError('spectators.max_guests must be an integer from 1 to 8')
+        if not isinstance(view, str) or not view.endswith('.gd') or view not in files:
+            raise ValueError('spectators.view must be a GDScript entrypoint listed in files')
     for name in files:
         if not isinstance(name, str) or not name or '..' in name or ':' in name or '\\' in name or name.startswith('/'):
             raise ValueError('invalid path')

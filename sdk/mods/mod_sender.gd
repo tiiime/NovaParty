@@ -15,7 +15,7 @@ func _ready() -> void:
 	wire.message.connect(_message)
 func listen(mod_info: Dictionary, source_name: String, port: int, bind_address: String = "*") -> Error:
 	info = mod_info
-	offer_context = {"game_session_id": Crypto.new().generate_random_bytes(16).hex_encode(), "players": [{"nickname": source_name.left(32)}]}
+	offer_context = {"game_session_id": Crypto.new().generate_random_bytes(16).hex_encode(), "source_name": source_name.left(32)}
 	return wire.listen(port, bind_address)
 func _message(peer: int, value: Dictionary) -> void:
 	touched[peer] = Time.get_ticks_msec()

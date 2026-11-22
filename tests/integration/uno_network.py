@@ -15,7 +15,7 @@ from client_ui_hot import shell
 from debug_integration import submit
 from integration import ROOT, free_port
 from game_link import GameLink
-from nvctl import push
+from nvctl import RPCError, push
 from pack_mod import pack
 from player_integration import wait_for
 
@@ -38,7 +38,7 @@ def run():
         clients = [table, *phones]
         build = push(table, package); table.call('mods.activate', {'build': build['build']})
         port = free_port()
-        table.room('room.create', {'game_id': game, 'port': port})
+        assert table.room('room.create', {'game_id': game, 'port': port, 'role': 'spectator'})['started']
         sid = state(table)['game_session_id']
         link = stack.enter_context(GameLink('127.0.0.1', port))
         for index, phone in enumerate(phones):
@@ -46,16 +46,23 @@ def run():
             wait_for(lambda: phone.call('lan.status')['confirmation'])
             assert phone.call('lan.status')['received'] == 0
             phone.call('lan.confirm_download')
+            wait_for(lambda: phone.call('lan.status')['role_prompt'], timeout=20)
+            assert phone.call('lan.choose_role', {'role': 'player'})['joining']
             wait_for(lambda: state(phone).get('in_room'), timeout=20)
-        wait_for(lambda: len(state(table)['players']) == 4)
+        wait_for(lambda: len(state(table)['players']) == 3)
         if phones[0].call('lan.status')['backend'] != 'unavailable':
             phones[0].call('lan.search')
             wait_for(lambda: any(r['session_id'] == sid for r in phones[0].call('lan.status')['rooms']))
-        assert table.call('game.describe_actions')['legal_actions'][0]['type'] == 'start'
-        receipt, _ = submit(table, state(table), 'start-uno', {'type': 'start'})
-        assert receipt['accepted'], receipt
+        try:
+            phones[0].room('room.start_round')
+        except RPCError as error:
+            assert str(error) == 'host_only'
+        else:
+            raise AssertionError('guest started the round')
+        assert table.room('room.start_round')['started']
         wait_for(lambda: all(state(c)['view']['phase'] == 'playing' for c in clients))
-        assert state(table)['view']['hand'] == []
+        assert state(table)['role'] == 'spectator' and 'seat' not in state(table)
+        assert not {'hand', 'drawn', 'deck', 'seed'} & state(table)['view'].keys()
         seen = []
         for phone in phones:
             snapshot = state(phone)
@@ -64,9 +71,7 @@ def run():
             assert not any(card in seen for card in snapshot['view']['hand'])
             seen.extend(snapshot['view']['hand'])
         assert table.call('game.describe_actions')['legal_actions'] == []
-        if phones[0].call('lan.status')['backend'] != 'unavailable':
-            wait_for(lambda: not any(r['session_id'] == sid for r in phones[0].call('lan.status')['rooms']))
-        # Lock membership after start without allocating a new seat.
+        # Lock player membership but keep the game discoverable for spectators. after start without allocating a new seat.
         with socket.create_connection(('127.0.0.1', port), timeout=5) as sock, sock.makefile('rb') as lines:
             sock.sendall(b'{"type":"catalog"}\n')
             catalog = json.loads(lines.readline())
@@ -74,8 +79,28 @@ def run():
             sock.sendall((json.dumps({'type': 'hello', 'protocol': 2, 'rules_fingerprint': catalog['rules_fingerprint'], 'player_id': 'late-'+uuid.uuid4().hex, 'nickname': 'Late'})+'\n').encode())
             response = json.loads(lines.readline())
             assert response['code'] == 'game_in_progress', response
-        assert len(state(table)['players']) == 4
-        print('PASS UNO regular SDK download consent, four clients, screen privacy and locked membership', flush=True)
+        assert catalog['player_slots'] == 0 and catalog['spectator_slots'] == 4
+        watcher, _ = stack.enter_context(shell(folder/'watcher'))
+        watcher.call('lan.inspect', {'address': '127.0.0.1', 'port': port, 'session_id': sid})
+        # LAN downloads are shared across these desktop test processes; a cached
+        # compatible copy may already have been loaded by the new spectator.
+        wait_for(lambda: (status := watcher.call('lan.status'))['confirmation'] or status['role_prompt'])
+        if watcher.call('lan.status')['confirmation']:
+            watcher.call('lan.confirm_download')
+        wait_for(lambda: watcher.call('lan.status')['role_prompt'], timeout=20)
+        try:
+            watcher.call('lan.choose_role', {'role': 'player'})
+        except RPCError as error:
+            assert str(error) == 'invalid_state'
+        else:
+            raise AssertionError('late player join was offered')
+        assert watcher.call('lan.choose_role', {'role': 'spectator'})['joining']
+        wait_for(lambda: state(watcher).get('in_room'))
+        assert state(watcher)['view'] == state(table)['view']
+        assert len(state(table)['players']) == 3
+        watcher.room('room.leave')
+        assert not state(table)['view']['paused']
+        print('PASS UNO: download consent, seatless host, and a late spectator receives only the public view', flush=True)
         before = state(phones[2])
         link.reject_new.set()
         link.interrupt_existing('close')
@@ -118,7 +143,7 @@ def run():
         assert state(table)['view']['phase'] == 'finished', 'game did not finish'
         assert caught
         final = state(table)
-        assert final['view']['hand'] == [] and final['view']['winner'] in by_seat
+        assert 'hand' not in final['view'] and final['view']['winner'] in by_seat
         assert all(state(c)['view']['winner'] == final['view']['winner'] for c in clients)
         for index, phone in enumerate(phones):
             result, _ = submit(phone, state(phone), 'rematch-'+str(index), {'type': 'rematch'})
@@ -128,7 +153,7 @@ def run():
                 assert state(table)['view']['phase'] == 'finished'
         assert state(table)['view']['phase'] == 'playing' and state(table)['view']['round'] == 2
         assert state(table)['game_session_id'] == sid
-        assert state(table)['view']['hand'] == []
+        assert 'hand' not in state(table)['view']
         assert all(len(state(c)['view']['hand']) == 7 for c in phones)
         for client in reversed(clients):
             client.room('room.leave')

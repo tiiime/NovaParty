@@ -60,6 +60,7 @@ func _ready() -> void:
 func _button(parent: Node, key: String, glyph: String, callback: Callable, kind: String = "secondary") -> Button:
 	var button := Button.new()
 	button.text = key
+	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	button.icon = Icons.get_icon(glyph, T.WHITE if kind == "accent" else T.SKY)
 	button.size_flags_horizontal = SIZE_EXPAND_FILL
 	button.add_theme_constant_override("h_separation", 8)
@@ -121,11 +122,12 @@ func populate(rooms: Array) -> void:
 			button.pressed.connect(func(): selected.emit(button.get_meta("room")))
 			list.add_child(button)
 		button.set_meta("room", room)
+		var lock_prefix := "🔒 " if room.get("password_required", false) else ""
 		if room.get("transport") == "ble":
 			var code := str(room.get("code", "")).to_upper()
-			button.text = tr("BLUETOOTH_GAME") + "\n" + (tr("BLUETOOTH_NO_CODE") if code.is_empty() else tr("BLUETOOTH_ROW") % code)
+			button.text = lock_prefix + tr("BLUETOOTH_GAME") + "\n" + (tr("BLUETOOTH_NO_CODE") if code.is_empty() else tr("BLUETOOTH_ROW") % code)
 		else:
-			button.text = str(room.name) + "\n" + tr("LAN_ROOM_ROW") % [str(room.source_name), str(room.version)]
+			button.text = lock_prefix + str(room.name) + "\n" + tr("LAN_ROOM_ROW") % [str(room.source_name), str(room.version)]
 		retained[key] = button
 		list.move_child(button, index)
 	var lost_focus := false

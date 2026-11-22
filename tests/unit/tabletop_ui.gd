@@ -17,6 +17,11 @@ func check(ok: bool, title: String) -> void:
 func settle() -> void:
 	for _i in range(4): await process_frame
 
+func action_rings_fit(view: Control, buttons: Array, game: String) -> void:
+	for button in buttons:
+		if not button.is_visible_in_tree(): continue
+		check(view.get_global_rect().encloses(button.get_global_rect().grow(4)), "%s action and ring fit: %s" % [game, button.name])
+
 func capture(name: String) -> void:
 	if out.is_empty() or DisplayServer.get_name() == "headless": return
 	RenderingServer.force_draw(false)
@@ -42,9 +47,9 @@ func click(board: Control, at: int) -> void:
 	e.pressed = false
 	root.push_input(e, true)
 
-func fake_guest() -> void:
+func fake_guest(id: String = "ui-fixture") -> void:
 	var r = app.session.room
-	r.hello({"protocol": 2, "rules_fingerprint": r.info.rules_fingerprint, "player_id": "ui-fixture", "nickname": "月亮"})
+	r.hello({"protocol": 2, "rules_fingerprint": r.info.rules_fingerprint, "player_id": id, "nickname": "月亮"})
 	app.session._publish()
 
 func action(seat: int, body: Dictionary) -> void:
@@ -53,7 +58,7 @@ func action(seat: int, body: Dictionary) -> void:
 	check(receipt.accepted, "fixture action accepted: " + str(body))
 	app.session._publish()
 
-func start(game: String) -> void:
+func start(game: String, options: Dictionary = {}) -> void:
 	app._open_setup(true)
 	app._add_choice("res://mods/" + game)
 	for i in range(app.choices.item_count):
@@ -63,7 +68,7 @@ func start(game: String) -> void:
 	if probe.listen(0, "127.0.0.1") == OK:
 		port = probe.get_local_port()
 		probe.stop()
-	var err: Error = app._start(true, port) if port > 0 else ERR_CANT_CREATE
+	var err: Error = app._start(true, port, options) if port > 0 else ERR_CANT_CREATE
 	check(err == OK, "start " + game + ": " + error_string(err))
 	if err != OK:
 		quit(1)
@@ -98,6 +103,7 @@ func run() -> void:
 	gomoku.set_platform_state({"can_invite": true})
 	await settle()
 	check(gomoku.settings_button.position.x == gomoku.invite_button.position.x and gomoku.settings_button.position.y < gomoku.invite_button.position.y, "Invite sits immediately below Settings")
+	action_rings_fit(gomoku, gomoku.actions.get_children(), "Gomoku TV")
 	await capture("gomoku-tv-invite")
 	gomoku.settings_button.grab_focus()
 	gomoku.settings_button.pressed.emit()
@@ -121,6 +127,8 @@ func run() -> void:
 	await capture("gomoku-phone-settings")
 	app.settings_dialog.close()
 	check(root.gui_get_focus_owner() == gomoku.settings_button, "closing restores settings entry")
+	action_rings_fit(gomoku, gomoku.actions.get_children(), "Gomoku phone")
+	check(gomoku.players_row.get_global_rect().end.y < gomoku.actions.global_position.y, "phone actions do not cover player cards")
 	app._leave()
 	root.size = Vector2i(1280, 720)
 	await start("uno")
@@ -138,9 +146,9 @@ func run() -> void:
 		check(uno.menu_panel.is_ancestor_of(root.gui_get_focus_owner()), "UNO focuses open menu")
 		uno._toggle_menu(false)
 		await capture("uno-" + str(shape.x))
-	# Turn off public table mode to exercise the private hand at multiple ratios.
-	action(0, {"type": "table_mode", "enabled": false})
-	action(0, {"type": "start"})
+	# A playing host gets a private hand at multiple ratios.
+	check(not app.game_view.start_button.disabled, "playing UNO host can start with two players")
+	app.game_view.start_button.pressed.emit()
 	for shape in [Vector2i(1280, 720), Vector2i(480, 1000)]:
 		root.size = shape
 		await settle()
@@ -148,6 +156,18 @@ func run() -> void:
 		check(uno.hand_buttons.size() == 7 and uno.hand_scroll.is_visible_in_tree(), "UNO private hand renders")
 		check(uno.get_global_rect().encloses(uno.hand_scroll.get_global_rect()), "UNO hand stays in safe viewport")
 		await capture("uno-playing-" + str(shape.x))
+	app._leave()
+	# The seatless host retains the invite QR and can start, but never connects commands.
+	await start("uno", {"role": "spectator"})
+	var public_uno = app.game_view
+	check(public_uno.start_button.visible and public_uno.start_button.disabled, "seatless host waits for players")
+	check(not public_uno.command.is_connected(app.session.submit), "seatless view has no player command binding")
+	check(public_uno.services != null and not public_uno.services.has_method("submit") and not public_uno.services.has_method("start_round"), "observer receives only narrow presentation services")
+	fake_guest()
+	fake_guest("another")
+	check(not public_uno.start_button.disabled, "seatless host can start when ready")
+	public_uno.start_button.pressed.emit()
+	check(app.session.snapshot.role == "spectator" and not app.session.snapshot.has("seat") and not app.session.snapshot.view.has("hand"), "seatless host starts and continues seeing only the public view")
 	app._leave()
 	await start("xiangqi")
 	fullscreen()
@@ -162,6 +182,8 @@ func run() -> void:
 	click(chess.board, 19)
 	check(requests.size() == 1 and requests[0].to == 19 and chess.snapshot.view.board[19] == 7, "pointer moves freely and captures through SDK")
 	check(chess.buttons.request_undo.visible, "last mover can request undo")
+	await settle()
+	action_rings_fit(chess, chess.buttons.values(), "Xiangqi phone")
 	chess.buttons.request_undo.pressed.emit()
 	check(chess.snapshot.view.undo_by == 0 and chess.snapshot.view.board[19] == 7 and chess.buttons.cancel_undo.visible and not chess.buttons.accept_undo.visible, "requester waits without changing the board")
 	action(1, {"type": "accept_undo"})
@@ -217,6 +239,7 @@ func run() -> void:
 	await capture("go-tv-score")
 	root.size = Vector2i(480, 860)
 	await settle()
+	action_rings_fit(go, go.buttons.values(), "Go phone scoring")
 	await capture("go-phone-score")
 	go.buttons.confirm_score.pressed.emit()
 	check(go.snapshot.view.phase == "score" and go.buttons.confirm_score.disabled, "own vote waits")

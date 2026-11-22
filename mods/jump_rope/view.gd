@@ -13,7 +13,7 @@ var title: Label
 var hint: Label
 var status: Label
 var meter: ProgressBar
-var buttons: VBoxContainer
+var buttons: GridContainer
 var display_button: Button
 var controller_button: Button
 var calibrate_button: Button
@@ -65,8 +65,10 @@ func _ready() -> void:
 	meter.show_percentage = false
 	meter.mouse_filter = MOUSE_FILTER_IGNORE
 	add_child(meter)
-	buttons = VBoxContainer.new()
-	buttons.add_theme_constant_override("separation", 10)
+	buttons = GridContainer.new()
+	buttons.add_theme_constant_override("h_separation", 12)
+	buttons.add_theme_constant_override("v_separation", 10)
+	buttons.minimum_size_changed.connect(_layout.call_deferred)
 	add_child(buttons)
 	display_button = _button("display", func(): _choose_role("display"), true)
 	controller_button = _button("controller", func(): _choose_role("controller"), true)
@@ -95,6 +97,8 @@ func _button(key: String, callback: Callable, primary: bool = false) -> Button:
 	item.name = key
 	item.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	UI.button(item, primary)
+	item.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	item.size_flags_horizontal = SIZE_EXPAND_FILL
 	buttons.add_child(item)
 	item.pressed.connect(callback)
 	return item
@@ -223,9 +227,12 @@ func _notification(what: int) -> void:
 func _layout() -> void:
 	if not is_instance_valid(buttons):
 		return
-	var wide := size.x >= 850 and size.x > size.y
+	var side_by_side := size.x >= 620 and size.x > size.y
 	var margin := 18.0
-	var width := minf(310, size.x - margin * 2)
+	# Compact landscape and phones with many visible actions need two columns.
+	var count := buttons.get_children().filter(func(button): return button.visible).size()
+	buttons.columns = 2 if size.y < 360 + count * 74 and size.x >= 360 else 1
+	var width := minf(400 if buttons.columns == 2 else 310, size.x - margin * 2)
 	title.position = Vector2(margin, 6)
 	title.size = Vector2(size.x - margin * 2, 44)
 	hint.position = Vector2(margin, 55)
@@ -236,9 +243,9 @@ func _layout() -> void:
 	buttons.position = Vector2(size.x - width - margin, size.y - height - margin)
 	buttons.size = Vector2(width, height)
 	stage.position = Vector2(margin, 182)
-	stage.size = Vector2(size.x - width - margin * 3 if wide else size.x - margin * 2, maxf(80, size.y - 200 if wide else size.y - height - 214))
+	stage.size = Vector2(size.x - width - margin * 3 if side_by_side else size.x - margin * 2, maxf(0, size.y - 200 if side_by_side else buttons.position.y - stage.position.y - 12))
 	if is_instance_valid(invite_panel):
-		var side := minf(300, minf(stage.size.x - 32, stage.size.y - 60))
+		var side := clampf(minf(stage.size.x - 32, stage.size.y - 60), 0, 300)
 		invite_panel.size = Vector2(side, side + 44)
 		invite_panel.position = stage.position + (stage.size - invite_panel.size) / 2
 	meter.position = Vector2(margin, 170)

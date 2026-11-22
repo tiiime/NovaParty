@@ -1,6 +1,6 @@
 extends RefCounted
 
-const SDK_VERSION = 1
+const SDK_VERSION = 2
 const Archive = preload("res://sdk/mods/package_archive.gd")
 var error := ""
 
@@ -15,7 +15,7 @@ func inspect(root: String, archive: ZIPReader = null) -> Dictionary:
 		return _fail(tr("LDR_INVALID_MANIFEST"))
 	if not manifest.get("name") is String or manifest.name.is_empty() or manifest.name.length() > 128 or not manifest.get("version") is String or manifest.version.is_empty():
 		return _fail(tr("LDR_MISSING_NAME_VERSION"))
-	if manifest.get("sdk") != SDK_VERSION or not manifest.get("id") is String:
+	if (manifest.get("sdk") != 1 and manifest.get("sdk") != SDK_VERSION) or not manifest.get("id") is String:
 		return _fail(tr("LDR_UNSUPPORTED_SDK"))
 	var version_root := "res://mod_versions/" + str(manifest.id) + "/" + str(manifest.get("build_id", ""))
 	if not manifest.id.is_valid_identifier() or (root != "res://mods/" + manifest.id and (root != version_root or not str(manifest.get("build_id", "")).is_valid_identifier())):
@@ -25,13 +25,25 @@ func inspect(root: String, archive: ZIPReader = null) -> Dictionary:
 	for entry in [manifest.get("rules", ""), manifest.get("view", "")]:
 		if not manifest.files.has(entry) or not str(entry).ends_with(".gd"):
 			return _fail(tr("LDR_MISSING_ENTRY"))
+	if manifest.has("spectators"):
+		var spectators = manifest.spectators
+		if not spectators is Dictionary or spectators.size() != 2:
+			return _fail(tr("LDR_INVALID_SPECTATORS"))
+		var limit = spectators.get("max_guests")
+		var entry = spectators.get("view")
+		if not (limit is float or limit is int) or limit < 1 or limit > 8 or limit != int(limit):
+			return _fail(tr("LDR_INVALID_SPECTATORS"))
+		if not entry is String or not entry.ends_with(".gd") or not manifest.files.has(entry):
+			return _fail(tr("LDR_INVALID_SPECTATORS"))
+	if manifest.has("host_start") and (manifest.sdk != 2 or not manifest.host_start is bool or not manifest.host_start or manifest.get("session_mode") != "fixed"):
+		return _fail(tr("LDR_INVALID_HOST_START"))
 	var mode: String = str(manifest.get("session_mode", ""))
 	if mode not in ["", "drop_in", "fixed"]:
 		return _fail(tr("LDR_TWO_PLAYERS"))
 	var drop_in: bool = mode == "drop_in"
 	var fixed: bool = mode == "fixed"
 	var bounds = manifest.get("players", {})
-	var valid_bounds: bool = bounds is Dictionary and ((mode == "" and bounds.get("min") == 2 and bounds.get("max") == 2) or (fixed and bounds.get("min") == 2 and (bounds.get("max") is int or bounds.get("max") is float) and bounds.max == int(bounds.max) and bounds.max >= 2 and bounds.max <= 8) or (drop_in and bounds.get("min") == 1 and bounds.get("max") is float and bounds.max == int(bounds.max) and bounds.max >= 2 and bounds.max <= 8))
+	var valid_bounds: bool = bounds is Dictionary and ((mode == "" and bounds.get("min") == 2 and bounds.get("max") == 2) or (fixed and _fixed_bounds(bounds, manifest.sdk == 2)) or (drop_in and bounds.get("min") == 1 and bounds.get("max") is float and bounds.max == int(bounds.max) and bounds.max >= 2 and bounds.max <= 8))
 	if not valid_bounds:
 		return _fail(tr("LDR_TWO_PLAYERS"))
 	if manifest.files.size() != _unique_count(manifest.files):
@@ -61,13 +73,23 @@ func inspect(root: String, archive: ZIPReader = null) -> Dictionary:
 	var rule_metadata: Dictionary = manifest.duplicate(true)
 	for name in ["name", "version", "view", "files", "build_id", "inputs", "localized_names", "cover"]:
 		rule_metadata.erase(name)
+	var presentation_entry: String = manifest.view
+	if manifest.has("spectators"):
+		rule_metadata.spectators.erase("view")
+		presentation_entry += "\nspectator:" + manifest.spectators.view
 	var rules_fingerprint := (JSON.stringify(rule_metadata, "", true) + "\n" + "\n".join(rule_hashes)).sha256_text()
 	var presentation_hashes := []
 	for name in names:
 		if not rule_files.has(name):
 			presentation_hashes.append(name + ":" + _content_hash(root.path_join(name), archive))
-	var presentation_fingerprint := (str(manifest.view) + "\n" + "\n".join(presentation_hashes)).sha256_text()
+	var presentation_fingerprint := (presentation_entry + "\n" + "\n".join(presentation_hashes)).sha256_text()
 	return {"manifest": manifest, "root": root, "fingerprint": fingerprint, "rules_fingerprint": rules_fingerprint, "presentation_fingerprint": presentation_fingerprint}
+
+func _fixed_bounds(bounds: Dictionary, modern: bool) -> bool:
+	var low = bounds.get("min")
+	var high = bounds.get("max")
+	if not (low is int or low is float) or not (high is int or high is float): return false
+	return low == int(low) and high == int(high) and low >= 2 and (modern or low == 2) and high >= low and high <= 8
 
 func rules(info: Dictionary):
 	var script = load(info.root.path_join(info.manifest.rules))
@@ -75,7 +97,10 @@ func rules(info: Dictionary):
 		error = tr("LDR_INVALID_RULES")
 		return null
 	var instance = script.new()
-	for method in ["initial_state", "apply", "view_for"]:
+	var methods := ["initial_state", "apply", "view_for"]
+	if info.manifest.has("spectators"): methods.append("view_for_spectator")
+	if info.manifest.get("host_start", false): methods.append_array(["can_start_round", "start_round"])
+	for method in methods:
 		if not instance.has_method(method):
 			error = tr("LDR_MISSING_RULE_METHOD") + method
 			return null

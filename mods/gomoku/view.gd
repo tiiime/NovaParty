@@ -92,6 +92,7 @@ func _ready() -> void:
 	actions.columns = 2
 	actions.add_theme_constant_override("h_separation", 12)
 	actions.add_theme_constant_override("v_separation", 10)
+	actions.minimum_size_changed.connect(_layout.call_deferred)
 	sidebar.add_child(actions)
 	result_button = _button(actions, func(): _show_result(), true)
 	reconnect_button = _button(actions, func(): platform_action.emit("reconnect"))
@@ -322,18 +323,20 @@ func _layout() -> void:
 	if not is_instance_valid(sidebar):
 		return
 	var portrait := size.x < 760
-	var width := size.x
-	var height := size.y
+	const EDGE := 6.0 # Leave room for action rings and the board's shadow.
+	var width := maxf(0.0, size.x - 2 * EDGE)
+	var height := maxf(0.0, size.y - 2 * EDGE)
+	var action_height := actions.get_combined_minimum_size().y
 	players_row.vertical = not portrait
 	if portrait:
-		sidebar.position = Vector2.ZERO
-		sidebar.size = size
+		sidebar.position = Vector2(EDGE, EDGE)
+		sidebar.size = Vector2(width, height)
 		label.position = Vector2.ZERO
 		label.size = Vector2(width, 38)
 		turn_label.position = Vector2(0, 44)
 		turn_label.size = Vector2(width, 46)
-		var extent := maxf(180, minf(width, height - 390 - actions.get_combined_minimum_size().y * 0.45))
-		board.position = Vector2((width - extent) / 2, 106)
+		var extent := maxf(100, minf(width, height - 328 - action_height))
+		board.position = Vector2(EDGE + (width - extent) / 2, EDGE + 106)
 		board.size = Vector2.ONE * extent
 		players_row.position = Vector2(0, 124 + extent)
 		players_row.size = Vector2(width, 142)
@@ -351,9 +354,9 @@ func _layout() -> void:
 		var side_width := clampf(width * .30, 300, 390)
 		var left_width := width - side_width - 32
 		var extent := minf(left_width - 12, height - 12)
-		board.position = Vector2((left_width - extent) / 2, (height - extent) / 2)
+		board.position = Vector2(EDGE + (left_width - extent) / 2, EDGE + (height - extent) / 2)
 		board.size = Vector2.ONE * extent
-		sidebar.position = Vector2(left_width + 32, 0)
+		sidebar.position = Vector2(EDGE + left_width + 32, EDGE)
 		sidebar.size = Vector2(side_width, height)
 		label.position = Vector2.ZERO
 		label.size = Vector2(side_width, 40)
@@ -371,7 +374,6 @@ func _layout() -> void:
 			item.add_theme_font_size_override("font_size", 30)
 		clock_hint.position = Vector2(0, 424)
 		clock_hint.size = Vector2(side_width, 44)
-	var action_height := actions.get_combined_minimum_size().y
 	actions.position = Vector2(0, maxf(0, sidebar.size.y - action_height))
 	actions.size = Vector2(sidebar.size.x, action_height)
 	notice_label.position = Vector2(0, actions.position.y - 62)

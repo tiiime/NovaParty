@@ -105,13 +105,13 @@ func host_state() -> String:
 func request_access(for_host: bool = false) -> void:
 	_command({"op": "ble_permissions", "host": for_host})
 
-func host(session_id: String) -> bool:
+func host(session_id: String, locked: bool = false) -> bool:
 	if backend == null or (backend_name in ["android_ble", "apple_corebluetooth"] and host_state() != "on"):
 		return false
 	hosting = true
 	advertising = true
 	host_status = "starting"
-	_command({"op": "ble_host", "name": NAME_PREFIX + session_id.left(6)})
+	_command({"op": "ble_host", "name": NAME_PREFIX + session_id.left(6) + ("L" if locked else "")})
 	return true
 
 func set_advertising(enabled: bool) -> void:
@@ -230,9 +230,12 @@ func _event(event: Dictionary) -> void:
 				return
 			var code := label.substr(NAME_PREFIX.length(), 6).to_lower()
 			if code.length() != 6 or not code.is_valid_hex_number(false): code = ""
-			var changed: bool = not devices.has(key) or (not code.is_empty() and devices[key].code != code)
-			if code.is_empty() and devices.has(key): code = devices[key].code
-			devices[key] = {"key": key, "code": code, "rssi": int(event.get("rssi", -100)), "seen": Time.get_ticks_msec()}
+			var locked := label.substr(NAME_PREFIX.length() + 6) == "L" and not code.is_empty()
+			if code.is_empty() and devices.has(key):
+				code = devices[key].code
+				locked = devices[key].get("password_required", false)
+			var changed: bool = not devices.has(key) or devices[key].code != code or devices[key].get("password_required", false) != locked
+			devices[key] = {"key": key, "code": code, "password_required": locked, "rssi": int(event.get("rssi", -100)), "seen": Time.get_ticks_msec()}
 			if changed:
 				devices_changed.emit(list_devices())
 		"ble_open":

@@ -55,7 +55,14 @@ func handle(peer: int, request: Dictionary, wire, room, info: Dictionary, join_g
 		wire.send(peer, {"type": "share_error", "code": package.error})
 		return true
 	if request.type == "catalog":
-		wire.send(peer, {"type": "catalog", "protocol": 1, "kind": "game" if join_game else "mod", "session_id": room.game_session_id, "game_id": info.manifest.id, "name": info.manifest.name, "localized_names": info.manifest.get("localized_names", {}), "version": info.manifest.version, "source_name": room.players[0].nickname, "rules_fingerprint": info.rules_fingerprint, "presentation_fingerprint": info.presentation_fingerprint, "sha256": package.sha256, "size": package.size})
+		var catalog := {"type": "catalog", "protocol": 1, "kind": "game" if join_game else "mod", "session_id": room.game_session_id, "game_id": info.manifest.id, "name": info.manifest.name, "localized_names": info.manifest.get("localized_names", {}), "version": info.manifest.version, "source_name": room.source_name, "rules_fingerprint": info.rules_fingerprint, "presentation_fingerprint": info.presentation_fingerprint, "sha256": package.sha256, "size": package.size}
+		if join_game:
+			catalog.password_required = room.password_required()
+			catalog.player_slots = room.player_slots()
+			catalog.spectator_slots = room.spectator_slots()
+			if catalog.player_slots == 0:
+				catalog.player_unavailable = room.player_unavailable_code()
+		wire.send(peer, catalog)
 	else:
 		var offset = request.get("offset")
 		if request.get("sha256") != package.sha256 or not (offset is int or offset is float) or offset != int(offset) or offset < 0 or offset >= package.size:

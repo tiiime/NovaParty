@@ -14,7 +14,6 @@ func check(value: bool, message: String) -> void:
 func _initialize() -> void: call_deferred("run")
 func fixture(hands: Array, top: int = 1) -> Dictionary:
 	var state: Dictionary = rules.initial_state(42)
-	state.display_seat = -1
 	state.phase = "playing"
 	state.round = 1
 	state.discard = [top]
@@ -119,20 +118,26 @@ func run() -> void:
 		if not [1, 2, 3, 10, 11].has(card): state.hands[1].append(card)
 	state = apply_ok(state, 0, {"type": "draw"})
 	check(state.discard == [1] and conserved(state), "recycle excludes top discard and preserves all cards")
-	var public_room = Room.new(info, Rules.new(), "table", "Table", 42)
-	for slot in range(1, 7):
-		check(public_room.hello({"protocol": 2, "rules_fingerprint": info.rules_fingerprint, "player_id": "six-" + str(slot), "nickname": "Player"}).get("seat") == slot, "six player slots plus public display")
-	check(public_room.command(0, request(public_room.revision, "start-six", {"type": "start"})).accepted, "public table starts six phones")
-	check(public_room.state.participants.size() == 6 and public_room.snapshot(0).view.hand.is_empty() and conserved(public_room.state), "screen excluded from six-player deal")
-	check(rules.describe_actions(public_room.snapshot(0).view, 0).legal_actions.is_empty(), "public screen cannot play, catch or vote")
+	var public_room = Room.new(info, Rules.new(), "table", "Table", 42, {}, {"role": "spectator"})
+	check(public_room.host_start_round() == "round_not_ready", "empty table cannot start")
+	for slot in range(6):
+		check(public_room.hello({"protocol": 2, "rules_fingerprint": info.rules_fingerprint, "player_id": "six-" + str(slot), "nickname": "Player"}).get("seat") == slot, "six player slots plus seatless public table")
+	check(public_room.host_start_round().is_empty(), "public table starts six phones")
+	var public: Dictionary = public_room.spectator_snapshot().view
+	check(public_room.state.participants.size() == 6 and not public.has("hand") and conserved(public_room.state), "screen excluded from six-player deal")
+	check(public_room.command(-1, request(public_room.revision, "spectate-vote", {"type": "rematch"})).code == "spectator_read_only", "public screen cannot vote")
+	for key in ["hand", "hands", "deck", "discard", "drawn", "seed", "shuffles"]: check(not public.has(key), "public UNO view omits " + key)
+	public_room.state.last = {"type": "draw", "seat": 1, "amount": 1, "card": 100}
+	check(not public_room.spectator_snapshot().view.last.has("card"), "draw action does not disclose the drawn identity")
 	check(public_room.hello({"protocol": 2, "rules_fingerprint": info.rules_fingerprint, "player_id": "seven", "nickname": "Player"}).type == "error", "capacity cannot grow during round")
 	var mobile_room = Room.new(info, Rules.new(), "mobile-host", "Host", 42)
-	check(mobile_room.command(0, request(mobile_room.revision, "mobile-mode", {"type": "table_mode", "enabled": false})).accepted, "phone host opts into playing before start")
 	mobile_room.hello({"protocol": 2, "rules_fingerprint": info.rules_fingerprint, "player_id": "mobile-guest", "nickname": "Guest"})
-	check(mobile_room.command(0, request(mobile_room.revision, "start-two", {"type": "start"})).accepted and mobile_room.state.hands[0].size() == 7, "two phones can play without a screen")
+	check(mobile_room.command(0, request(mobile_room.revision, "mobile-mode", {"type": "table_mode", "enabled": true})).code == "host_only", "no legacy role toggle in a new room")
+	check(mobile_room.command(1, request(mobile_room.revision, "fake-start", {"type": "start"})).code == "host_only", "a player command cannot start the round")
+	check(mobile_room.host_start_round().is_empty() and mobile_room.state.hands[0].size() == 7, "two phones can play without a screen")
 	var locked: Dictionary = rules.initial_state(77)
-	for seat in [0, 1, 2]: locked = rules.presence_changed(locked, seat, true)
-	locked = apply_ok(locked, 0, {"type": "start"})
+	for seat in [1, 2]: locked = rules.presence_changed(locked, seat, true)
+	locked = rules.start_round(locked).state
 	locked.phase = "finished"
 	locked.winner = 1
 	locked = rules.presence_changed(locked, 3, true)
@@ -144,7 +149,7 @@ func run() -> void:
 	for seat in range(1, 3):
 		var welcome: Dictionary = room.hello({"protocol": 2, "rules_fingerprint": info.rules_fingerprint, "player_id": "uno-" + str(seat), "nickname": "Player " + str(seat)})
 		tokens.append(welcome.resume_token)
-	check(room.command(0, request(room.revision, "start", {"type": "start"})).accepted, "host starts fixed three-player game")
+	check(room.host_start_round().is_empty(), "host starts fixed three-player game")
 	check(room.hello({"protocol": 2, "rules_fingerprint": info.rules_fingerprint, "player_id": "late", "nickname": "Late"}).code == "game_in_progress", "new identities blocked during round")
 	var old_revision: int = room.revision
 	room.set_connected(2, false)
@@ -163,11 +168,10 @@ func run() -> void:
 	for count in [2, 3, 6]:
 		for seed_value in range(8):
 			state = rules.initial_state(seed_value)
-			state.display_seat = -1
 			for seat in range(count): state = rules.presence_changed(state, seat, true)
 			var duplicate: Dictionary = state.duplicate(true)
-			state = apply_ok(state, 0, {"type": "start"})
-			duplicate = apply_ok(duplicate, 0, {"type": "start"})
+			state = rules.start_round(state).state
+			duplicate = rules.start_round(duplicate).state
 			check(state == duplicate and conserved(state), "seeded deal deterministic")
 			var moves := 0
 			while state.phase != "finished" and moves < 5000:

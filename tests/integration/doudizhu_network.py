@@ -16,7 +16,7 @@ from client_ui_hot import shell
 from debug_integration import submit
 from game_link import GameLink
 from integration import free_port
-from nvctl import push
+from nvctl import RPCError, push
 from pack_mod import pack
 from player_integration import wait_for
 
@@ -49,7 +49,7 @@ def run():
         build = push(table, package)
         table.call('mods.activate', {'build': build['build']})
         port = free_port()
-        table.room('room.create', {'game_id': game, 'port': port})
+        assert table.room('room.create', {'game_id': game, 'port': port, 'role': 'spectator'})['started']
         sid = state(table)['game_session_id']
         link = stack.enter_context(GameLink('127.0.0.1', port))
         for index, phone in enumerate(phones):
@@ -58,12 +58,21 @@ def run():
             wait_for(lambda: phone.call('lan.status')['confirmation'])
             assert phone.call('lan.status')['received'] == 0
             phone.call('lan.confirm_download')
+            wait_for(lambda: phone.call('lan.status')['role_prompt'], timeout=20)
+            assert phone.call('lan.choose_role', {'role': 'player'})['joining']
             wait_for(lambda: state(phone).get('in_room'), timeout=20)
-        wait_for(lambda: len(state(table)['players']) == 4)
-        assert table.call('game.describe_actions')['legal_actions'][0]['type'] == 'start'
-        act(table, clients, 'start', {'type': 'start'})
+        wait_for(lambda: len(state(table)['players']) == 3)
+        try:
+            phones[0].room('room.start_round')
+        except RPCError as error:
+            assert str(error) == 'host_only'
+        else:
+            raise AssertionError('guest started the round')
+        assert table.room('room.start_round')['started']
         wait_for(lambda: all(state(c)['view']['phase'] == 'bidding' for c in clients))
-        assert state(table)['view']['hand'] == [] and state(table)['view']['bottom'] == []
+        assert state(table)['role'] == 'spectator' and 'seat' not in state(table)
+        assert not {'hand', 'revealed', 'seed'} & state(table)['view'].keys()
+        assert state(table)['view']['bottom'] == []
         seen = []
         for phone in phones:
             view = state(phone)['view']
@@ -94,7 +103,18 @@ def run():
         landlord = int(state(table)['view']['landlord'])
         assert landlord == int(state(bidder)['seat']) and len(state(bidder)['view']['hand']) == 20
         assert all(len(state(c)['view']['bottom']) == 3 for c in clients)
-        print('PASS Dou Dizhu bidding: low bid rejected, landlord takes the bottom, bottom becomes public', flush=True)
+        spectator, _ = stack.enter_context(shell(folder / 'spectator'))
+        spectator.call('lan.inspect', {'address': '127.0.0.1', 'port': port, 'session_id': sid})
+        wait_for(lambda: (status := spectator.call('lan.status'))['confirmation'] or status['role_prompt'])
+        if spectator.call('lan.status')['confirmation']:
+            spectator.call('lan.confirm_download')
+        wait_for(lambda: spectator.call('lan.status')['role_prompt'])
+        assert spectator.call('lan.choose_role', {'role': 'spectator'})['joining']
+        wait_for(lambda: state(spectator).get('in_room'))
+        assert state(spectator)['role'] == 'spectator' and state(spectator)['view'] == state(table)['view']
+        spectator.room('room.leave')
+        assert not state(table)['view']['paused']
+        print('PASS Dou Dizhu bidding: public bottom cards, late spectator, and spectator exit does not pause play', flush=True)
 
         # Cut the transport of the phone behind the proxy, then reconnect to the same seat.
         before = state(phones[2])
@@ -136,6 +156,8 @@ def run():
         final = state(table)['view']
         assert final['phase'] == 'finished', 'hand did not finish'
         assert sum(final['scores'].values()) == 0
+        assert 'revealed' not in final and 'hand' not in final
+        assert any(any(state(c)['view']['revealed']) for c in phones)
         assert all(state(c)['view']['winner'] == final['winner'] for c in clients)
         assert all(state(c)['view']['scores'] == final['scores'] for c in clients)
         for index, phone in enumerate(phones):

@@ -59,6 +59,9 @@ func apply(state: Dictionary, seat: int, action: Dictionary) -> Dictionary:
 func view_for(state: Dictionary, _seat: int) -> Dictionary:
 	return state.duplicate(true)
 
+func view_for_spectator(state: Dictionary) -> Dictionary:
+	return {"board": state.board.duplicate(), "turn": state.turn, "finished": state.finished, "winner": state.winner, "last_move": state.last_move, "winning_line": state.winning_line.duplicate()}
+
 func _coordinate(value) -> bool:
 	return (value is int or value is float) and value == int(value) and value >= 0 and value < SIZE
 

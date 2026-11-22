@@ -15,7 +15,7 @@ func handle(method: String, params: Dictionary, context: Dictionary) -> Dictiona
 	var result: Dictionary
 	if params.get("app_instance_id") != context.app_instance_id or not (generation is int or generation is float) or generation != int(generation) or generation != context.room_generation:
 		result = {"error": "stale_room_context"}
-	elif method in ["room.leave", "room.reconnect"] and (context.local_session_id.is_empty() or params.get("local_session_id") != context.local_session_id):
+	elif method in ["room.leave", "room.reconnect", "room.start_round"] and (context.local_session_id.is_empty() or params.get("local_session_id") != context.local_session_id):
 		result = {"error": "stale_room_context"}
 	elif not app.has_method("debug_room_command"):
 		result = {"error": "unsupported_app"}

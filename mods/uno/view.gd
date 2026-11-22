@@ -24,7 +24,6 @@ var actions: GridContainer
 var hand_row: Control
 var draw_button: Button
 var start_button: Button
-var table_toggle: CheckButton
 var settings_button: Button
 var reconnect_button: Button
 var exit_button: Button
@@ -36,6 +35,8 @@ var catch_button: Button
 var result_dialog: AcceptDialog
 var color_dialog: AcceptDialog
 var help_dialog: AcceptDialog
+var help_scroll: ScrollContainer
+var help_body: Label
 var color_buttons := []
 var rules_button: Button
 var chosen_wild := -1
@@ -59,6 +60,9 @@ var wide_layout := true
 var public_layout := true
 var invite_button: Button
 const TABLE_SURFACE = Color("342822")
+const HAND_EDGE := 28.0 # Room for a tilted card, selection scale and the outer ring.
+const CARD_RING := 3
+var _hand_reveal_queued := false
 
 
 func _ready() -> void:
@@ -104,42 +108,39 @@ func _ready() -> void:
 	actions.add_theme_constant_override("h_separation", 10)
 	actions.add_theme_constant_override("v_separation", 10)
 	root_box.add_child(actions)
-	start_button = _button(actions, "Start", func(): _submit({"type": "start" if snapshot.view.phase == "lobby" else "rematch"}))
-	table_toggle = CheckButton.new()
-	table_toggle.name = "TableMode"
-	_style_button(table_toggle)
-	table_toggle.text = _t("TABLE_MODE")
-	table_toggle.toggled.connect(func(value): _submit({"type": "table_mode", "enabled": value}))
-	actions.add_child(table_toggle)
-	draw_button = _button(actions, "Draw", func(): _submit({"type": "pass" if snapshot.view.drawn != -1 else "draw"}))
+	start_button = _button(actions, "Start", _start_or_rematch)
+	draw_button = _button(actions, "Draw", func(): _submit({"type": "pass" if snapshot.view.get("drawn", -1) != -1 else "draw"}))
 	uno_toggle = CheckButton.new()
 	uno_toggle.name = "DeclareUNO"
 	_style_button(uno_toggle)
 	uno_toggle.toggled.connect(func(value): armed = value)
 	actions.add_child(uno_toggle)
-	catch_button = _button(actions, "CallUNO", func(): _submit({"type": "uno" if snapshot.view.uno_target == snapshot.seat else "catch"}))
+	catch_button = _button(actions, "CallUNO", func(): _submit({"type": "uno" if snapshot.view.uno_target == _local_seat() else "catch"}))
 	var scroller := ScrollContainer.new()
 	hand_scroll = scroller
+	scroller.get_h_scroll_bar().changed.connect(_queue_hand_reveal)
 	scroller.name = "HandScroll"
 	scroller.custom_minimum_size.y = 170
 	scroller.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroller.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroller.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
-	scroller.follow_focus = true
+	scroller.scroll_deadzone = 12 # Distinguish a touch drag from a card tap.
 	root_box.add_child(scroller)
-	var padding := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]: padding.add_theme_constant_override("margin_" + side, 8)
-	scroller.add_child(padding)
 	hand_row = Control.new()
 	hand_row.name = "Hand"
-	padding.add_child(hand_row)
+	hand_row.size_flags_horizontal = SIZE_EXPAND_FILL
+	scroller.add_child(hand_row)
 	var footer := HBoxContainer.new()
 	footer.add_theme_constant_override("separation", 8)
 	root_box.add_child(footer)
 	rules_button = _button(footer, "Rules", func():
 		_toggle_menu(false)
 		if not snapshot.is_empty() and snapshot.view.phase == "finished": result_dialog.popup_centered(Vector2i(mini(620, int(get_viewport_rect().size.x) - 32), 240))
-		else: help_dialog.popup_centered(Vector2i(mini(680, int(get_viewport_rect().size.x) - 32), 420))
+		else:
+			var viewport := get_viewport_rect().size
+			help_dialog.popup_centered(Vector2i(mini(680, int(viewport.x) - 32), mini(480, int(viewport.y) - 48)))
+			help_scroll.scroll_vertical = 0
+			help_scroll.grab_focus()
 	)
 	rules_button.text = _t("RULES_TITLE")
 	settings_button = _button(footer, "Settings", func(): _toggle_menu(false); platform_action.emit("settings"))
@@ -161,7 +162,7 @@ func _ready() -> void:
 	direction_label.add_theme_color_override("font_color", Color("ebc18b"))
 	direction_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	self_label = _label(stage, 24)
-	for node in [header, roster, status, top_card, qr, detail, notice, start_button, table_toggle, draw_button, uno_toggle, catch_button, hand_scroll]:
+	for node in [header, roster, status, top_card, qr, detail, notice, start_button, draw_button, uno_toggle, catch_button, hand_scroll]:
 		node.reparent(stage)
 	root_box.hide()
 	margin.hide()
@@ -237,6 +238,8 @@ func _build_dialogs() -> void:
 	color_dialog.get_ok_button().hide()
 	var grid := GridContainer.new()
 	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
 	color_dialog.add_child(grid)
 	for color in range(4):
 		var button := _button(grid, "Color_" + str(color), func():
@@ -252,8 +255,17 @@ func _build_dialogs() -> void:
 	add_child(color_dialog)
 	help_dialog = AcceptDialog.new()
 	help_dialog.title = _t("RULES_TITLE")
-	help_dialog.dialog_text = _t("RULES_BODY")
-	help_dialog.dialog_autowrap = true
+	help_scroll = ScrollContainer.new()
+	help_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	help_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	help_scroll.scroll_deadzone = 12
+	help_scroll.focus_mode = Control.FOCUS_ALL
+	help_scroll.gui_input.connect(_scroll_rules)
+	help_dialog.add_child(help_scroll)
+	help_body = _label(help_scroll, 20)
+	help_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	help_body.add_theme_color_override("font_color", INK)
+	help_body.text = _t("RULES_BODY")
 	add_child(help_dialog)
 	result_dialog = AcceptDialog.new()
 	result_dialog.title = _t("RESULT")
@@ -276,6 +288,13 @@ func _build_dialogs() -> void:
 		_style_button(dialog.get_ok_button())
 	_style_button(result_rematch)
 	_style_button(result_exit)
+
+func _scroll_rules(event: InputEvent) -> void:
+	var step := 54 if event.is_action_pressed("ui_down", true) else -54 if event.is_action_pressed("ui_up", true) else 0
+	if step == 0: return
+	var previous := help_scroll.scroll_vertical
+	help_scroll.scroll_vertical += step
+	if help_scroll.scroll_vertical != previous: help_scroll.accept_event()
 
 func _texture(key: String) -> Texture2D:
 	if not art_cache.has(key):
@@ -303,7 +322,7 @@ func _layout() -> void:
 	var previous_wide := wide_layout
 	wide_layout = size.x > size.y
 	if previous_wide != wide_layout and not snapshot.is_empty(): _build_roster(snapshot.view)
-	public_layout = not snapshot.is_empty() and snapshot.seat == snapshot.view.display_seat
+	public_layout = _spectating()
 	logical_size = Vector2(1920,1080) if wide_layout else Vector2(540,1100)
 	var factor := maxf(.01, minf(size.x / logical_size.x, size.y / logical_size.y))
 	stage.scale = Vector2.ONE * factor
@@ -328,7 +347,8 @@ func _layout() -> void:
 	roster.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_layout_seats()
 	var lobby: bool = snapshot.is_empty() or snapshot.view.phase == "lobby"
-	_place(status, 550 if wide_layout else 50, 132 if wide_layout else 265, 820 if wide_layout else 440, 60)
+	var compact_roster := not wide_layout and roster.get_child_count() >= 5
+	_place(status, 550 if wide_layout else 50, 132 if wide_layout else (293 if compact_roster and (lobby or not public_layout) else 265), 820 if wide_layout else 440, 60)
 	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	status.add_theme_font_size_override("font_size", 30 if wide_layout else 24)
 	status.add_theme_stylebox_override("normal", _box(Color("fff3d8"), 28))
@@ -341,17 +361,16 @@ func _layout() -> void:
 	direction_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	direction_label.text = "↻" if snapshot.is_empty() or snapshot.view.direction == 1 else "↺"
 	direction_label.z_index = 0
-	_place(draw_button, 720 if wide_layout else 110, 675 if wide_layout else 530, 240 if wide_layout else 160, 60)
+	_place(draw_button, 720 if wide_layout else 110, 675 if wide_layout else 530, 240 if wide_layout else 204, 60)
 	_place(detail, 650 if wide_layout else 70, 750 if wide_layout else 610, 620 if wide_layout else 400, 85)
 	detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_place(notice, 500 if wide_layout else 30, 215 if wide_layout else 700, 920 if wide_layout else 480, 65)
 	_place(qr, 820 if wide_layout else 160, 355 if wide_layout else 360, 280 if wide_layout else 220, 280 if wide_layout else 220)
 	_place(start_button, 770 if wide_layout else 120, 850 if wide_layout else 885, 380 if wide_layout else 300, 64)
-	_place(table_toggle, 770 if wide_layout else 120, 925 if wide_layout else 960, 380 if wide_layout else 300, 60)
 	_place(uno_toggle, 1400 if wide_layout else 345, 790 if wide_layout else 710, 260 if wide_layout else 170, 60)
-	_place(catch_button, 1400 if wide_layout else 300, 710 if wide_layout else 640, 300 if wide_layout else 216, 60)
+	_place(catch_button, 1400 if wide_layout else 250, 710 if wide_layout else 640, 300 if wide_layout else 266, 60)
 	var hand_margin := 170 if wide_layout else 8
-	_place(hand_scroll, left_edge + hand_margin, 830 if wide_layout else 790, right_edge - left_edge - 2 * hand_margin, 220 if wide_layout else 230)
+	_place(hand_scroll, left_edge + hand_margin, 812 if wide_layout else 790, right_edge - left_edge - 2 * hand_margin, 244 if wide_layout else 230)
 	hand_scroll.custom_minimum_size = Vector2.ZERO
 
 	var bottom_edge := logical_size.y - top_edge
@@ -359,21 +378,41 @@ func _layout() -> void:
 	self_label.visible = not lobby and not public_layout
 	var card_width := 112.0 if wide_layout else 94.0
 	var step := 85.0 if wide_layout else 58.0
-	var hand_width := maxf(0, hand_buttons.size() - 1) * step + card_width + 40
-	hand_row.custom_minimum_size = Vector2(maxf(hand_scroll.size.x - 16, hand_width), 205)
-	var left := maxf(20, (hand_scroll.size.x - hand_width) * .5)
-	var index := 0
-	for button in hand_buttons:
+	var fan_width := maxf(0, hand_buttons.size() - 1) * step + card_width
+	hand_row.custom_minimum_size = Vector2(fan_width + 2 * HAND_EDGE, hand_scroll.size.y)
+	var left := maxf(HAND_EDGE, (hand_scroll.size.x - fan_width) * .5)
+	for index in range(hand_buttons.size()):
+		var button: Button = hand_buttons[index]
+		var selected := int(button.get_meta("card")) == selected_card
 		button.custom_minimum_size = Vector2(112, 168) if wide_layout else Vector2(94, 150)
 		button.add_theme_font_size_override("font_size", 52 if wide_layout else 44)
 		var delta := index - (hand_buttons.size() - 1) * .5
 		button.size = button.custom_minimum_size
-		button.position = Vector2(left + index * step, 25 + minf(20, absf(delta) * 5) - (18 if int(button.get_meta("card")) == selected_card else 0))
-		button.pivot_offset = button.custom_minimum_size * .5
+		button.position = Vector2(left + index * step, 32 + minf(15, absf(delta) * 5) - (18 if selected else 0))
+		button.pivot_offset = button.size * .5
 		button.rotation_degrees = clampf(delta * 3, -12, 12)
-		index += 1
-		button.scale = Vector2.ONE * (1.06 if int(button.get_meta("card")) == selected_card else 1.0)
-		button.z_index = 5 if int(button.get_meta("card")) == selected_card else 0
+		button.scale = Vector2.ONE * (1.06 if selected else 1.0)
+		_update_card_depth(button)
+	_queue_hand_reveal()
+
+func _update_card_depth(button: Button) -> void:
+	button.z_index = 6 if button.has_focus() else 5 if int(button.get_meta("card")) == selected_card else 0
+
+func _queue_hand_reveal() -> void:
+	if _hand_reveal_queued or not is_inside_tree(): return
+	_hand_reveal_queued = true
+	get_tree().process_frame.connect(_reveal_hand_card, CONNECT_ONE_SHOT)
+
+func _reveal_hand_card() -> void:
+	_hand_reveal_queued = false
+	if not is_inside_tree() or not hand_scroll.is_visible_in_tree(): return
+	var target := get_viewport().gui_get_focus_owner() as Button
+	if target not in hand_buttons: return
+	# Calculate the full on-screen footprint, including rotation and selection lift.
+	var local := hand_scroll.get_global_transform().affine_inverse() * target.get_global_transform()
+	var bounds := local * Rect2(Vector2.ZERO, target.size).grow(CARD_RING + 1)
+	if bounds.position.x < 1.0: hand_scroll.scroll_horizontal += floori(bounds.position.x - 1.0)
+	elif bounds.end.x > hand_scroll.size.x - 1.0: hand_scroll.scroll_horizontal += ceili(bounds.end.x - hand_scroll.size.x + 1.0)
 
 func _layout_seats() -> void:
 	var total := roster.get_child_count()
@@ -386,6 +425,9 @@ func _layout_seats() -> void:
 	for node in roster.get_children():
 		var pos: Vector2 = positions[mini(i,5)] * logical_size if wide_layout else Vector2(270 if total == 1 else 65 + i * 410.0 / maxi(1,total-1), 165 + absf(i-(total-1)*.5)*18)
 		if wide_layout and not public_layout: pos = Vector2(300 + i * 1320.0 / maxi(1,total-1), 250)
+		elif not wide_layout and total >= 5:
+			# Give a full table two rows instead of overlapping narrow name pills.
+			pos = Vector2(100 + (i % 3) * 170, (122 if i < 3 else 231) if snapshot.view.phase == "lobby" else (120 if i < 3 else (760 if public_layout else 225)))
 		_place(node, pos.x - (130 if wide_layout else 52), pos.y - (85 if wide_layout else 52), 260 if wide_layout else 104, 180 if wide_layout else 115)
 		for child in node.get_children():
 			if child is TextureRect:
@@ -403,7 +445,7 @@ func _build_roster(state: Dictionary) -> void:
 	var kinds := ["bear", "fox", "panda", "bunny", "dog", "cat"]
 	var index := 0
 	for seat in range(snapshot.players.size()):
-		if seat == state.display_seat or (not wide_layout and seat == snapshot.seat): continue
+		if not wide_layout and seat == _local_seat(): continue
 		if state.phase != "lobby" and not Cards.contains_number(state.participants, seat): continue
 		var node := Control.new()
 		node.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -435,6 +477,18 @@ func _name(seat: int) -> String:
 	var player: Dictionary = snapshot.players[seat]
 	return str(player.nickname)
 
+func _spectating() -> bool:
+	return snapshot.get("role") == "spectator"
+
+func _local_seat() -> int:
+	return int(snapshot.get("seat", -1))
+
+func _start_or_rematch() -> void:
+	if snapshot.is_empty(): return
+	if snapshot.view.phase == "lobby":
+		if platform.get("can_start", false) and not start_button.disabled: platform_action.emit("start_round")
+	else: _submit({"type": "rematch"})
+
 func _allowed(kind: String) -> bool:
 	if pending_action or not platform.get("connected", true) or platform.get("input_paused", false): return false
 	for action in legal:
@@ -449,40 +503,43 @@ func render(data: Dictionary) -> void:
 	var changed: bool = snapshot.is_empty() or snapshot.get("revision", -1) != data.get("revision", -1)
 	snapshot = data.duplicate(true)
 	var state: Dictionary = snapshot.view
-	if state.hand.size() != 2:
+	var hand: Array = [] if _spectating() else state.get("hand", [])
+	var seat := _local_seat()
+	var member := not _spectating() and Cards.contains_number(state.participants, seat)
+	var drawn := int(state.get("drawn", -1))
+	if hand.size() != 2:
 		armed = false
 		old_focus.armed = false
 	if changed:
 		pending_action = false
 		notice.hide()
 		selected_card = -1
-	legal = Rules.new().describe_actions(state, int(snapshot.seat)).legal_actions
+	legal = [] if _spectating() else Rules.new().describe_actions(state, seat).legal_actions
 	settings_button.text = _t("SETTINGS")
 	invite_button.text = _t("INVITE")
-	invite_button.visible = platform.get("can_invite", false) and state.phase == "lobby"
+	invite_button.visible = platform.get("can_invite", false)
 	reconnect_button.text = _t("RECONNECT")
 	reconnect_button.visible = platform.get("can_reconnect", false)
 	menu_button.accessibility_name = _t("MENU")
 	menu_button.tooltip_text = _t("MENU")
 	exit_button.text = _t("EXIT")
-	table_toggle.text = _t("TABLE_MODE")
 	color_dialog.title = _t("CHOOSE_COLOR")
 	for i in range(color_buttons.size()): color_buttons[i].text = _t(Cards.COLORS[i])
 	help_dialog.title = _t("RULES_TITLE")
-	help_dialog.dialog_text = _t("RULES_BODY")
+	help_body.text = _t("RULES_BODY")
 	result_dialog.title = _t("RESULT")
 	result_dialog.ok_button_text = _t("REVIEW")
 	result_rematch.text = _t("REMATCH")
 	result_exit.text = _t("EXIT")
-	header.text = "UNO · " + _t("ROUND") % [maxi(1, int(state.round))]
+	header.text = "UNO · " + _t("ROUND") % [maxi(1, int(state.round))] + (" · " + _t("SPECTATING") if _spectating() else "")
 	wide_layout = size.x > size.y
 	_build_roster(state)
-	status.text = _t("WAITING") % [snapshot.players.size() - (1 if state.display_seat == 0 else 0)] if state.phase == "lobby" else _t("FINISHED") if state.phase == "finished" else _t("PAUSED") if state.paused or not platform.get("connected", true) else _t("YOUR_TURN") if state.turn == snapshot.seat else _t("TURN") % [_name(int(state.turn))]
+	status.text = _t("WAITING") % [state.connected.count(true)] if state.phase == "lobby" else _t("FINISHED") if state.phase == "finished" else _t("PAUSED") if state.paused or not platform.get("connected", true) else _t("YOUR_TURN") if not _spectating() and int(state.turn) == seat else _t("TURN") % [_name(int(state.turn))]
 	if not platform.get("connected", true) and not str(platform.get("message", "")).is_empty():
 		status.text = str(platform.message)
 	elif pending_action:
 		status.text = _t("SENDING")
-	qr.visible = state.phase == "lobby" and int(snapshot.seat) == 0 and services != null
+	qr.visible = state.phase == "lobby" and platform.get("host", false) and services != null
 	if qr.visible:
 		var source: Texture2D = services.get_join_qr()
 		if source != qr_source:
@@ -492,37 +549,35 @@ func render(data: Dictionary) -> void:
 		qr.visible = qr.texture != null
 	top_card.visible = state.top != -1
 	if state.top != -1: _paint_card(top_card, int(state.top), true)
-	detail.text = _t("LOBBY_HINT") if state.phase == "lobby" else _t("TABLE") % [_t(Cards.COLORS[int(state.color)]), "→" if state.direction == 1 else "←", int(state.hand.size())]
-	if state.phase == "lobby" and snapshot.seat == 0 and services != null:
-		var invite: Dictionary = services.get_join_info()
-		if not invite.is_empty(): detail.text += "\n" + _t("JOIN_ADDRESS") % [invite.address, int(invite.port)]
-	if snapshot.seat == state.display_seat and state.phase != "lobby": detail.text = _t("PUBLIC_STATUS") % [_t(Cards.COLORS[int(state.color)]), "→" if state.direction == 1 else "←", state.participants.size(), int(state.deck_count)]
-	if state.phase != "lobby": detail.text = _t(Cards.COLORS[int(state.color)]) + "  ·  " + ("→" if state.direction == 1 else "←") + ("  ·  +" + str(state.debt) if int(state.debt) > 0 else "")
-	self_label.text = str(snapshot.players[snapshot.seat].nickname) + " · " + _t("CARD_COUNT") % [state.hand.size()]
-	actions.visible = state.phase == "lobby" or Cards.contains_number(state.participants, int(snapshot.seat))
-	hand_scroll.visible = state.phase != "lobby" and snapshot.seat != state.display_seat
+	if state.phase == "lobby":
+		detail.text = _t("HOST_LOBBY_HINT" if platform.get("host", false) else "GUEST_LOBBY_HINT")
+		if qr.visible:
+			var invite: Dictionary = services.get_join_info()
+			if not invite.is_empty(): detail.text += "\n" + _t("JOIN_ADDRESS") % [invite.address, int(invite.port)]
+		if platform.get("password_required", false): detail.text += "\n" + _t("PASSWORD_INVITE")
+	else:
+		detail.text = _t(Cards.COLORS[int(state.color)]) + "  ·  " + ("→" if state.direction == 1 else "←") + ("  ·  +" + str(state.debt) if int(state.debt) > 0 else "")
+	self_label.text = _name(seat) + " · " + _t("CARD_COUNT") % [hand.size()] if not _spectating() else ""
+	hand_scroll.visible = state.phase != "lobby" and member
 	rules_button.text = _t("RESULT") if state.phase == "finished" else _t("RULES_TITLE")
-	table_toggle.visible = state.phase == "lobby" and snapshot.seat == 0
-	table_toggle.set_pressed_no_signal(state.display_seat == 0)
-	table_toggle.disabled = not _allowed("table_mode")
-	result_rematch.visible = Cards.contains_number(state.participants, int(snapshot.seat))
-	start_button.visible = state.phase == "lobby" or (state.phase == "finished" and Cards.contains_number(state.participants, int(snapshot.seat)))
-	start_button.text = _t("START") if state.phase == "lobby" else _t("VOTED") if Cards.contains_number(state.votes, int(snapshot.seat)) else _t("REMATCH")
-	start_button.disabled = not _allowed("start" if state.phase == "lobby" else "rematch") or (state.phase == "finished" and rematch_intent == int(state.round))
+	result_rematch.visible = member
+	start_button.visible = (state.phase == "lobby" and platform.get("host", false)) or (state.phase == "finished" and member)
+	start_button.text = _t("START") if state.phase == "lobby" else _t("VOTED") if Cards.contains_number(state.votes, seat) else _t("REMATCH")
+	start_button.disabled = (not platform.get("can_start", false) or platform.get("input_paused", false)) if state.phase == "lobby" else (not _allowed("rematch") or rematch_intent == int(state.round))
 	result_rematch.disabled = not _allowed("rematch") or rematch_intent == int(state.round)
-	draw_button.visible = state.phase == "playing" and snapshot.seat != state.display_seat
-	draw_button.text = _t("PASS") if state.drawn != -1 else _t("DRAW_DEBT") % [int(state.debt)] if int(state.debt) > 0 else _t("DRAW")
+	draw_button.visible = state.phase == "playing" and member
+	draw_button.text = _t("PASS") if drawn != -1 else _t("DRAW_DEBT") % [int(state.debt)] if int(state.debt) > 0 else _t("DRAW")
 	draw_button.disabled = not (_allowed("draw") or _allowed("pass"))
-	uno_toggle.visible = state.phase == "playing" and state.hand.size() == 2 and snapshot.seat != state.display_seat
+	uno_toggle.visible = state.phase == "playing" and hand.size() == 2 and member
 	uno_toggle.text = _t("DECLARE_UNO")
 	uno_toggle.set_pressed_no_signal(armed)
-	uno_toggle.disabled = state.turn != snapshot.seat or state.hand.size() != 2 or state.paused or not platform.get("connected", true) or platform.get("input_paused", false)
+	uno_toggle.disabled = not member or int(state.turn) != seat or hand.size() != 2 or state.paused or not platform.get("connected", true) or platform.get("input_paused", false)
 	catch_button.visible = state.phase == "playing" and (_allowed("uno") or _allowed("catch"))
-	catch_button.text = _t("CALL_UNO") if state.uno_target == snapshot.seat else _t("CATCH")
+	catch_button.text = _t("CALL_UNO") if int(state.uno_target) == seat else _t("CATCH")
 	catch_button.disabled = not (_allowed("uno") or _allowed("catch"))
 	hand_buttons.clear()
 	for child in hand_row.get_children(): hand_row.remove_child(child); child.queue_free()
-	for card in state.hand:
+	for card in hand:
 		var button := _button(hand_row, "Card_" + str(int(card)), func(): _choose(int(card)))
 		button.set_meta("card", int(card))
 		button.custom_minimum_size = Vector2(102, 144)
@@ -531,6 +586,8 @@ func render(data: Dictionary) -> void:
 			if action.type == "play" and int(action.card) == int(card): playable = true
 		button.disabled = pending_action or not playable or not platform.get("connected", true) or platform.get("input_paused", false)
 		_paint_card(button, int(card), false)
+		button.focus_entered.connect(func(): _update_card_depth(button); _queue_hand_reveal())
+		button.focus_exited.connect(_update_card_depth.bind(button))
 		hand_buttons.append(button)
 	if state.phase == "finished": result_dialog.dialog_text = _t("WINNER") % [_name(int(state.winner)), int(state.score)]
 	if state.phase == "finished" and int(state.round) != seen_round:
@@ -553,7 +610,10 @@ func _paint_card(button: Button, card: int, face_up: bool) -> void:
 	var normal := StyleBoxTexture.new()
 	normal.texture = _texture(color_key)
 	for key in ["normal", "disabled", "hover", "pressed"]: button.add_theme_stylebox_override(key, normal)
-	button.add_theme_stylebox_override("focus", _box(Color.TRANSPARENT, 16, Color("ffd575"), 5))
+	var ring := _box(Color.TRANSPARENT, 16, Color("ffd575"), 5)
+	ring.draw_center = false
+	ring.set_expand_margin_all(CARD_RING)
+	button.add_theme_stylebox_override("focus", ring)
 	if not face_up:
 		button.modulate = Color.WHITE if not button.disabled else Color(.64,.60,.56)
 		button.accessibility_name = _t(color_key) + " · " + button.tooltip_text
@@ -570,6 +630,10 @@ func _choose(card: int) -> void:
 	if DisplayServer.is_touchscreen_available() and selected_card != card:
 		selected_card = card
 		_layout()
+		for button in hand_buttons:
+			if int(button.get_meta("card")) == card:
+				button.grab_focus()
+				break
 		return
 	selected_card = -1
 	if Cards.info(card).color == -1:
@@ -581,7 +645,7 @@ func _choose(card: int) -> void:
 		armed = false
 
 func _submit(action: Dictionary) -> void:
-	if snapshot.is_empty() or pending_action or not platform.get("connected", true) or platform.get("input_paused", false): return
+	if snapshot.is_empty() or _spectating() or pending_action or not platform.get("connected", true) or platform.get("input_paused", false): return
 	notice.hide()
 	if action.type == "rematch":
 		if rematch_intent == int(snapshot.view.round): return
@@ -595,7 +659,7 @@ func _emit_action(action: Dictionary) -> void:
 		pending_action = false
 		return
 	status.text = _t("SENDING")
-	for button in hand_buttons + [start_button, draw_button, table_toggle, catch_button, result_rematch]: button.disabled = true
+	for button in hand_buttons + [start_button, draw_button, catch_button, result_rematch]: button.disabled = true
 	# Touch pulse via the platform; hosts without haptics ignore the unknown action.
 	platform_action.emit("haptic:select")
 	command.emit(action)
@@ -633,7 +697,7 @@ func _retry_rematch() -> void:
 	if not is_inside_tree(): return
 	await get_tree().create_timer(.05).timeout
 	if not is_inside_tree() or snapshot.is_empty() or not platform.get("connected", true): return
-	if snapshot.view.phase == "finished" and rematch_intent == int(snapshot.view.round) and not snapshot.view.paused and not Cards.contains_number(snapshot.view.votes, int(snapshot.seat)):
+	if snapshot.view.phase == "finished" and rematch_intent == int(snapshot.view.round) and not snapshot.view.paused and not _spectating() and not Cards.contains_number(snapshot.view.votes, _local_seat()):
 		command.emit({"type": "rematch"})
 	elif snapshot.view.paused:
 		rematch_intent = -1

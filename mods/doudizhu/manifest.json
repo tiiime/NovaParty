@@ -5,12 +5,14 @@
     "zh": "斗地主",
     "en": "Dou Dizhu"
   },
-  "version": "0.1.0",
-  "sdk": 1,
+  "version": "0.2.0",
+  "sdk": 2,
   "session_mode": "fixed",
+  "host_start": true,
+  "spectators": {"max_guests": 4, "view": "view.gd"},
   "players": {
-    "min": 2,
-    "max": 4
+    "min": 3,
+    "max": 3
   },
   "rules": "rules.gd",
   "view": "view.gd",

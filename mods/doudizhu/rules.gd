@@ -1,28 +1,32 @@
 extends RefCounted
-# Dou Dizhu, three players. The host runs this; every client receives only view_for(seat).
+# Dou Dizhu, three players. The host runs this and sends a private or public projection.
 #
 # Phases: lobby -> bidding -> playing -> finished (-> bidding on unanimous rematch).
 # Bidding: each player in turn bids 1-3 above the current bid or passes; 3 ends bidding.
 # If everyone passes the hand is redealt. The landlord takes the 3 bottom cards and leads.
 # Score per round = bid x 2^(bombs + rockets) x spring; landlord wins/loses double.
 const Cards = preload("cards.gd")
-const CAPACITY = 4 # Optional public display at seat 0 plus three players.
 const PLAYERS = 3
 
 func initial_state(seed_value: int) -> Dictionary:
-	return {"seed": seed_value, "shuffles": 0, "phase": "lobby", "display_seat": 0, "connected": [false, false, false, false],
-		"participants": [], "hands": [[], [], [], []], "bottom": [], "turn": -1, "bidder": -1, "bid": 0, "bids": {}, "bid_turns": 0,
+	return {"seed": seed_value, "shuffles": 0, "phase": "lobby", "connected": [false, false, false],
+		"participants": [], "hands": [[], [], []], "bottom": [], "turn": -1, "bidder": -1, "bid": 0, "bids": {}, "bid_turns": 0,
 		"landlord": -1, "lead": {}, "lead_seat": -1, "lead_cards": [], "table": {}, "plays": {}, "multiplier": 1, "bombs": 0,
 		"winner": -1, "result": {}, "scores": {}, "round": 0, "votes": [], "last": {}}
 
 func can_join(state: Dictionary) -> bool:
-	return state.phase == "lobby" and _player_count(state) < PLAYERS
+	return state.phase == "lobby" and state.connected.count(true) < PLAYERS
 
-func _player_count(state: Dictionary) -> int:
-	return state.connected.count(true) - (1 if state.display_seat == 0 and state.connected[0] else 0)
+func can_start_round(state: Dictionary) -> bool:
+	return state.phase == "lobby" and state.connected.count(true) == PLAYERS
+
+func start_round(state: Dictionary) -> Dictionary:
+	if not can_start_round(state): return {"error": "round_not_ready"}
+	_deal(state)
+	return {"state": state}
 
 func presence_changed(state: Dictionary, seat: int, connected: bool) -> Dictionary:
-	if seat >= 0 and seat < CAPACITY: state.connected[seat] = connected
+	if seat >= 0 and seat < PLAYERS: state.connected[seat] = connected
 	return state
 
 func _paused(state: Dictionary) -> bool:
@@ -41,8 +45,8 @@ func _deal(state: Dictionary) -> void:
 	# Rematches keep the same three players; only a new lobby can enroll players.
 	if state.phase == "lobby":
 		state.participants = []
-		for seat in range(CAPACITY):
-			if state.connected[seat] and seat != state.display_seat: state.participants.append(seat)
+		for seat in range(PLAYERS):
+			if state.connected[seat]: state.participants.append(seat)
 		for seat in state.participants: state.scores[_key(int(seat))] = 0
 		state.round = 0
 	var deck: Array = range(54)
@@ -54,7 +58,7 @@ func _deal(state: Dictionary) -> void:
 		var item = deck[i]
 		deck[i] = deck[j]
 		deck[j] = item
-	state.hands = [[], [], [], []]
+	state.hands = [[], [], []]
 	for i in range(51):
 		state.hands[int(state.participants[i % 3])].append(deck[i])
 	state.bottom = deck.slice(51)
@@ -114,20 +118,10 @@ func _finish(state: Dictionary, winner: int) -> void:
 	state.result = {"landlord_won": landlord_won, "spring": spring, "bid": state.bid, "multiplier": state.multiplier, "bombs": state.bombs, "deltas": deltas}
 
 func apply(state: Dictionary, seat: int, action: Dictionary) -> Dictionary:
-	if not Cards.integer(seat, 0, CAPACITY - 1) or not state.connected[seat]:
+	if not Cards.integer(seat, 0, PLAYERS - 1) or not state.connected[seat]:
 		return {"error": "player_offline"}
 	var kind = action.get("type")
-	if kind == "table_mode":
-		if state.phase != "lobby" or seat != 0: return {"error": "host_only"}
-		if not action.get("enabled") is bool: return {"error": "invalid_action"}
-		if not action.enabled and state.connected.count(true) > PLAYERS: return {"error": "too_many_players"}
-		state.display_seat = 0 if action.enabled else -1
-		return {"state": state}
-	if kind == "start":
-		if state.phase != "lobby" or seat != 0: return {"error": "host_only"}
-		if _player_count(state) != PLAYERS: return {"error": "need_three_players"}
-		_deal(state)
-		return {"state": state}
+	if kind in ["start", "table_mode"]: return {"error": "host_only"}
 	if state.phase == "lobby": return {"error": "not_started"}
 	if not Cards.contains_number(state.participants, seat): return {"error": "not_a_player"}
 	if _paused(state): return {"error": "players_disconnected"}
@@ -204,31 +198,32 @@ func apply(state: Dictionary, seat: int, action: Dictionary) -> Dictionary:
 	return {"state": state}
 
 func view_for(state: Dictionary, seat: int) -> Dictionary:
+	var public := view_for_spectator(state)
+	var member := Cards.contains_number(state.participants, seat)
+	public.hand = Cards.sort_hand(state.hands[seat]) if member else []
+	# Only participants get the existing end-of-round hand review.
+	public.revealed = []
+	for i in range(PLAYERS):
+		public.revealed.append(Cards.sort_hand(state.hands[i]) if member and public.finished else [])
+	return public
+
+func view_for_spectator(state: Dictionary) -> Dictionary:
 	var counts := []
 	for hand in state.hands: counts.append(hand.size())
-	var finished: bool = state.phase == "finished"
-	var hands_shown := []
-	for i in range(CAPACITY):
-		# Remaining hands are revealed to everyone only once the round is over.
-		hands_shown.append(Cards.sort_hand(state.hands[i]) if finished else [])
+	var last := {}
+	for key in ["type", "seat", "amount", "bid", "combo"]:
+		if state.last.has(key): last[key] = state.last[key]
 	return {"phase": state.phase, "participants": state.participants.duplicate(), "connected": state.connected.duplicate(),
-		"display_seat": state.display_seat, "hand": [] if seat == int(state.display_seat) or not Cards.contains_number(state.participants, seat) else Cards.sort_hand(state.hands[seat]),
 		"counts": counts, "bottom": state.bottom.duplicate() if int(state.landlord) >= 0 else [], "turn": state.turn,
 		"bid": state.bid, "bids": state.bids.duplicate(), "landlord": state.landlord, "lead": state.lead.duplicate(),
 		"lead_seat": state.lead_seat, "lead_cards": state.lead_cards.duplicate(), "table": state.table.duplicate(true),
 		"multiplier": state.multiplier, "bombs": state.bombs, "paused": _paused(state), "winner": state.winner,
 		"result": state.result.duplicate(true), "scores": state.scores.duplicate(), "round": state.round,
-		"votes": state.votes.duplicate(), "last": state.last.duplicate(true), "revealed": hands_shown,
-		"finished": finished}
+		"votes": state.votes.duplicate(), "last": last, "finished": state.phase == "finished"}
 
 func describe_actions(view: Dictionary, seat: int) -> Dictionary:
 	var legal := []
-	if view.phase == "lobby":
-		if seat == 0:
-			var players: int = view.connected.count(true) - (1 if view.display_seat == 0 and view.connected[0] else 0)
-			if players == PLAYERS: legal.append({"type": "start"})
-			if view.display_seat != 0 or view.connected.count(true) <= PLAYERS: legal.append({"type": "table_mode", "enabled": view.display_seat != 0})
-	elif not view.paused and Cards.contains_number(view.participants, seat):
+	if view.phase != "lobby" and not view.paused and Cards.contains_number(view.participants, seat):
 		if view.phase == "finished":
 			if not Cards.contains_number(view.votes, seat): legal.append({"type": "rematch"})
 		elif int(view.turn) == seat:
@@ -240,5 +235,5 @@ func describe_actions(view: Dictionary, seat: int) -> Dictionary:
 				for cards in Cards.hints(view.hand, {} if free_lead else view.lead):
 					legal.append({"type": "play", "cards": cards})
 				if not free_lead: legal.append({"type": "pass"})
-	return {"schema": {"type": "object", "required": ["type"], "properties": {"type": {"enum": ["start", "table_mode", "bid", "play", "pass", "rematch"]}, "amount": {"type": "integer", "minimum": 0, "maximum": 3}, "cards": {"type": "array", "items": {"type": "integer", "minimum": 0, "maximum": 53}, "minItems": 1, "maxItems": 20, "uniqueItems": true}, "enabled": {"type": "boolean"}}, "additionalProperties": false},
+	return {"schema": {"type": "object", "required": ["type"], "properties": {"type": {"enum": ["bid", "play", "pass", "rematch"]}, "amount": {"type": "integer", "minimum": 0, "maximum": 3}, "cards": {"type": "array", "items": {"type": "integer", "minimum": 0, "maximum": 53}, "minItems": 1, "maxItems": 20, "uniqueItems": true}}, "additionalProperties": false},
 		"legal_actions": legal, "note": "play lists suggested combinations; any legal combination that beats the lead is accepted"}

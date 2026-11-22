@@ -83,6 +83,18 @@ func run() -> void:
 	check(view.controller_button.disabled, "desktop sensor unavailable blocks controller")
 	view.set_platform_state({"connected": true, "reduce_motion": true, "input_paused": true})
 	check(view.stage.reduced_motion, "reduced motion honored")
+	TranslationServer.set_locale("en")
+	view.render(room.snapshot(2))
+	view.set_platform_state({"connected": true, "can_reconnect": true, "can_invite": true})
+	root.content_scale_mode = Window.CONTENT_SCALE_MODE_DISABLED
+	root.size = Vector2i(720, 480)
+	view.size = Vector2(720, 480)
+	for i in range(4): await process_frame
+	var area: Rect2 = view.get_global_rect()
+	check(view.buttons.columns == 2, "short landscape uses compact action columns")
+	for button in view.buttons.get_children():
+		if button.visible: check(area.encloses(button.get_global_rect().grow(4)), "compact action and ring fit: " + button.name)
+	check(view.stage.get_global_rect().end.x < view.buttons.global_position.x, "compact side-by-side layout separates play from actions")
 	view.queue_free()
 	await process_frame
 	print("JUMP_ROPE: %d checks, %d failures" % [checks, failures])

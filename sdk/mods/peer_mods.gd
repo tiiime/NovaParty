@@ -71,6 +71,18 @@ func _message(_peer: int, value: Dictionary) -> void:
 		if value.session_id.length() != 32 or not value.session_id.is_valid_hex_number(false) or not value.game_id.is_valid_identifier() or (not expected_session.is_empty() and value.session_id != expected_session):
 			_fail("room_changed")
 			return
+		if value.has("player_unavailable") and value.player_unavailable not in ["room_full", "game_in_progress"]:
+			_fail("invalid_catalog")
+			return
+		if value.has("password_required") and not value.password_required is bool:
+			_fail("invalid_catalog")
+			return
+		for key in ["player_slots", "spectator_slots"]:
+			if not value.has(key): continue
+			var slots = value[key]
+			if not (slots is int or slots is float) or slots < 0 or slots > 8 or slots != int(slots):
+				_fail("invalid_catalog")
+				return
 		metadata = value
 		deadline = 0 # Waiting for an explicit user decision has no download timeout.
 		catalog_received.emit(metadata)

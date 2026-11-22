@@ -1,5 +1,8 @@
 {
   "GOMOKU": "Gomoku",
+  "SPECTATOR_LABEL": "Spectating",
+  "SPECTATOR_WAIT": "Waiting for players (%d/2)",
+  "SPECTATOR_TURN": "%s to play",
   "DRAW": "Draw",
   "WINNER_NAME": "%s wins!",
   "BLACK": "Black",

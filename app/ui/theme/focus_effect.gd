@@ -1,6 +1,8 @@
 extends Control
 # A lightweight canvas halo and short scale tweens; no bloom/postprocessing needed on TV.
 const T = preload("res://app/ui/theme/tokens.gd")
+const HALO_SPREAD := 9
+const MAX_GROWTH := 10.0 # Per edge, even for full-width buttons on TV.
 var button: Button
 var feedback
 var hovered := false
@@ -68,9 +70,34 @@ func _ready() -> void:
 	_center()
 	_refresh()
 
+static func _focus_scale(control: Control) -> float:
+	var preferred := T.FOCUS_CARD_SCALE if control.get_meta("focus_card", false) else T.FOCUS_BUTTON_SCALE
+	return _bounded_scale(control, preferred)
+
+static func _bounded_scale(control: Control, preferred: float) -> float:
+	return minf(preferred, 1.0 + 2.0 * MAX_GROWTH / maxf(1.0, maxf(control.size.x, control.size.y)))
+
+static func visual_rect(control: Control, relative_to: Control) -> Rect2:
+	var rect := Rect2(Vector2.ZERO, control.size)
+	var transform := relative_to.get_global_transform_with_canvas().affine_inverse() * control.get_global_transform_with_canvas()
+	if control.has_node("FocusFeedback"):
+		var target_scale := _focus_scale(control)
+		# Account for the current tween without waiting for it to settle.
+		var ratio := (Vector2.ONE * target_scale).max(control.scale) / control.scale
+		var painted := rect.grow(HALO_SPREAD + 1)
+		var pivot := control.pivot_offset
+		rect = Rect2(pivot + (painted.position - pivot) * ratio, painted.size * ratio)
+	elif control.has_theme_stylebox("focus"):
+		var ring := control.get_theme_stylebox("focus")
+		if ring is StyleBoxFlat:
+			rect = rect.grow_individual(maxf(0.0, ring.expand_margin_left) + 1.0, maxf(0.0, ring.expand_margin_top) + 1.0,
+				maxf(0.0, ring.expand_margin_right) + 1.0, maxf(0.0, ring.expand_margin_bottom) + 1.0)
+	return transform * rect
+
 func _center() -> void:
 	button.pivot_offset = button.size * 0.5
-	queue_redraw()
+	if _active(): _refresh()
+	else: queue_redraw()
 
 func _active() -> bool:
 	return button.is_visible_in_tree() and not button.disabled and (button.has_focus() or hovered)
@@ -82,7 +109,7 @@ func _refresh() -> void:
 	if not is_instance_valid(button): return
 	var active := _active()
 	button.z_index = 1 if active else 0
-	var amount: float = (T.FOCUS_CARD_SCALE if button.get_meta("focus_card", false) else T.FOCUS_BUTTON_SCALE) if button.has_focus() else T.FOCUS_HOVER_SCALE
+	var amount := _focus_scale(button) if button.has_focus() else _bounded_scale(button, T.FOCUS_HOVER_SCALE)
 	_animate(Vector2.ONE * amount if active else Vector2.ONE, T.MOTION_FOCUS)
 	set_process(active and not _reduced())
 	phase = 0
@@ -106,7 +133,7 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	if not is_instance_valid(button) or not _active() or glow == null: return
 	var pulse := 0.0 if _reduced() else sin(phase * TAU * T.FOCUS_HALO_HZ) * 0.5 + 0.5
-	for spread in [9, 7, 5]:
+	for spread in [HALO_SPREAD, HALO_SPREAD - 2, HALO_SPREAD - 4]:
 		glow.border_color = Color(1.0, 0.49, 0.06, (0.12 + pulse * 0.10) * (12.0 - spread) / 7.0)
 		draw_style_box(glow, Rect2(Vector2.ZERO, size).grow(spread))
 	if button.has_focus():

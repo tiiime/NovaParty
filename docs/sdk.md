@@ -74,8 +74,8 @@ func render(snapshot: Dictionary) -> void
 `Session` 是 Godot Node，加入场景树后调用：
 
 ```gdscript
-create(mod_info, rules, profile, port) -> Error
-join(mod_info, profile, address, port, resume_token = "") -> Error
+create(mod_info, rules, profile, port, options = {}) -> Error
+join(mod_info, profile, address, port, resume_token = "", options = {}) -> Error
 submit(action) -> void
 ```
 
@@ -85,7 +85,32 @@ submit(action) -> void
 
 ## 当前限制
 
-默认双人游戏在双方在线时才接受操作，离线保留座位和恢复凭据；重连与五子棋重赛见后续章节。Drop-in 模式可独立继续并复用离线槽位。当前尚无通用准备阶段、观战、存档和主机迁移。
+默认双人游戏在双方在线时才接受操作，离线保留座位和恢复凭据；重连与五子棋重赛见后续章节。Drop-in 模式可独立继续并复用离线槽位。当前尚无通用准备阶段、存档和主机迁移。
+
+## 可选观战契约
+
+内置五子棋 0.3.0、UNO 0.2.0、斗地主 0.2.0 支持平台观战。打包工具和加载器识别以下可选清单字段；不要给尚未提供公开观战视图的 Mod 添加此声明。
+
+```json
+"spectators": {"max_guests": 4, "view": "spectator.gd"}
+```
+
+- 不声明即不支持。`max_guests` 是 `1`–`8` 的整数，与 `players.min/max` 无关；观战房主既不占玩家位，也不计入来宾观战名额。`view` 是列入 `files` 的相对 `.gd` 路径。观战名额影响会话兼容性；观战表现入口及文件可随表现独立更新。
+- 规则实现 `view_for_spectator(state: Dictionary) -> Dictionary`。从权威状态白名单构建公开快照，只返回适合全桌公开的信息（例如棋盘、轮次、公开出牌和手牌数量）。不能调用某个玩家位的 `view_for`，也不能只在界面隐藏私有数据。
+- 观战脚本继承 `Control`，提供 `render(snapshot)`；观战快照的身份为 `role: "spectator"`，没有玩家 `seat`。视图只接收公开数据，不提供玩家操作。房主侧拒绝观战身份的玩家命令；观战视图不接收完整 Session，仅可使用公开头像及房主邀请服务。房主仍能邀请来宾。五子棋在两位玩家到齐后自动开局；UNO 和斗地主使用下文的 SDK 2 房主开局回调。
+- 观战名额未满时，可在玩家满员或对局进行中加入观战；观众不进玩家在线名单，离开或断线不触发玩家席位、暂停或复赛投票变化。同一房间内观众不能转为玩家，退出或断线后重进也不能绕过；房主按该房间内的身份记录校验，重连恢复原身份。新房间可重新选择身份。
+- 加入入口取决于房主公布的实时名额，不只读取本地清单。观众离线释放名额，重连仍用原身份，但若名额被占满，须等有空位才能重新进入。
+
+### 房间密码
+
+- 创建房间时可选填房间密码。留空为公开房间：附近可发现，加入游戏和观战均不需要密码。填写后，附近列表仍可看到房间，但标注为密码房；首次加入和观战共用同一个房间密码。扫码、手动地址和蓝牙也不能绕过验证。
+- 密码是房主为本次房间设置的平台选项，不写进 Mod 清单。发现消息、公开目录和二维码最多说明是否需要密码，不携带密码或其校验材料。房主在分配席位或观战名额、发送任何游戏快照之前验证；重连沿用原身份的恢复凭据，不再要求输入密码。密码不进入 Mod、快照、用户配置或诊断日志。`options` 可指定 `role: "player" | "spectator"`（默认玩家）和 `password`（最多 64 字符，默认空）；重连传原角色和恢复凭据，不传密码。挑战应答不是加密传输，只适用于可信的本地网络，见 [通信协议](protocol.md#房间密码与观战)。
+
+### SDK 2：房主开局
+
+需要手动开局的固定席位 Mod 可声明 `"sdk": 2`、`"session_mode": "fixed"` 和 `"host_start": true`，并实现 `can_start_round(state) -> bool` 与 `start_round(state) -> Dictionary`。平台传入当前规则状态的副本；前者只判断条件，后者可更新副本并在成功时返回 `{"state": ...}`，失败返回 `{"error": ...}`。SDK 2 的固定席位支持 `2 <= players.min <= players.max <= 8`。SDK 1 包仍可装载并保留原有规则和界面。
+
+表现通过 `set_platform_state()` 的 `host` 和 `can_start` 决定开局按钮是否可用，发出 `platform_action("start_round")` 请求本机平台执行。授权仅来自本机是否是房主，不依赖 seat 0；不会在游戏协议中发送管理命令。成功开局推进一次 revision，其后出牌、叫分和重赛仍走玩家命令。观战房主不会收到 `seat` 或玩家命令连接，也不占初局人数和重赛票数。
 
 ## Debug 操作描述与结果（0.1.2）
 
@@ -136,7 +161,7 @@ Session 自动提供 mDNS 游戏发布及普通 SDK Mod 共享。接收端 `Peer
 - 规则实现纯函数 `presence_changed(state, seat, connected)`；首次创建会调用座位 0 的在线通知，此后成员加入/断线/重连时调用并递增 revision。
 - 可实现 `can_join(state) -> bool` 控制新身份加入。既有身份的凭据重连在此门槛前验证，不会因本局锁定而被拒绝。返回 false 时暂停 mDNS 发布，恢复 true 时重新发布。
 - SDK 不替 Mod 决定准备阶段或暂停策略。固定模式允许单个发起者提交等待页设置；Mod 必须验证开始时的实际参与人数，记录本局参与座位，并自行拒绝断线期间的游戏操作。
-- 坐席不一定等于参与发牌的人。UNO 的公共屏幕 + 最多 6 玩家使用 7 个坐席，屏幕不进入参与者列表、手牌和重赛投票；其他游戏可采用不同角色。
+- 旧版 UNO / 斗地主在 Mod 内用座位 0 表示公共屏幕。新版已改用平台观战，清单中的席位只分配给玩家。旧包仍可运行，但不能与新版房间混玩。
 - 合法操作描述也必须适配 JSON float 数字，不能用类型敏感的 `Array.has(int)` 检查从网络读取的 float 座位数组。参考 `mods/uno/cards.gd`。
 
 示例见 [UNO](uno.md)。当前计时钩子仍只支持双人累计计时，UNO 没有使用它。`debug.capabilities.session_modes` 可检查基座是否声明 `fixed` 支持；这只是开发诊断接口，普通 SDK 游戏不依赖 Debug。

@@ -139,7 +139,7 @@ def main():
         client = Client(json.loads(args.connection.read_text()), args.timeout)
         if args.wait:
             client.call('events.subscribe')
-        result = client.room(args.method, params) if args.method in ['room.create', 'room.join', 'room.leave', 'room.reconnect'] else client.call(args.method, params)
+        result = client.room(args.method, params) if args.method in ['room.create', 'room.join', 'room.leave', 'room.reconnect', 'room.start_round'] else client.call(args.method, params)
         if args.wait:
             if not result.get('queued'):
                 raise RPCError(result.get('code', 'not_queued'))

@@ -23,6 +23,7 @@ def run():
    source=temp/'mod';shutil.copytree(ROOT/'mods/gomoku',source)
    manifest=json.loads((source/'manifest.json').read_text())
    game='lan_probe_'+uuid.uuid4().hex[:12];manifest['id']=game;manifest['name']='局域网试验';manifest['version']='3.2.1'
+   manifest.pop('spectators', None)  # The legacy public-room path still autojoins.
    (source/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False))
    package=temp/'probe.zip';pack(source,package,hot=True)
    build=push(host,package);host.call('mods.activate',{'build':build['build']})

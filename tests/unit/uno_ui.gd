@@ -9,35 +9,63 @@ func check(value: bool, message: String) -> void:
 		failures += 1
 		printerr("UNO_UI FAIL: " + message)
 func _initialize() -> void: call_deferred("run")
+
+func check_long_hand(view: Control, data: Dictionary) -> void:
+	# Use a very full hand so both ends need scrolling and hit maximum tilt.
+	data.view.hand = range(24)
+	view.render(data)
+	var scroll: ScrollContainer = view.hand_scroll
+	check(scroll.horizontal_scroll_mode == ScrollContainer.SCROLL_MODE_SHOW_NEVER and not scroll.get_h_scroll_bar().visible, "hand scroll has no visible bar")
+	for index in [23, 0, 12]:
+		var button: Button = view.hand_buttons[index]
+		button.disabled = false
+		view.selected_card = -1
+		view._layout()
+		button.grab_focus()
+		for i in range(3): await process_frame
+		var local := scroll.get_global_transform().affine_inverse() * button.get_global_transform()
+		var clip := Rect2(Vector2.ZERO, scroll.size)
+		check(clip.encloses(local * Rect2(Vector2.ZERO, button.size).grow(4)), "tilted focus ring fits at card %d" % index)
+		if index == 23: check(scroll.scroll_horizontal > 0, "focus scrolls to far end of a long hand")
+		view.selected_card = index
+		view._layout()
+		for i in range(3): await process_frame
+		local = scroll.get_global_transform().affine_inverse() * button.get_global_transform()
+		check(button.scale.x > 1.0 and clip.encloses(local * Rect2(Vector2.ZERO, button.size).grow(4)), "lifted and enlarged card %d fits with ring" % index)
+	view.selected_card = -1
 func run() -> void:
 	var loader := Loader.new()
 	var info := loader.inspect("res://mods/uno")
-	var room = Room.new(info, loader.rules(info), "tv", "电视小星", 43)
-	for seat in range(1, 4):
+	var room = Room.new(info, loader.rules(info), "tv", "电视小星", 43, {}, {"role": "spectator"})
+	for seat in range(3):
 		room.hello({"protocol": 2, "rules_fingerprint": info.rules_fingerprint, "player_id": "phone-" + str(seat), "nickname": "手机玩家 " + str(seat)})
 	root.size = Vector2i(1920, 1080)
 	var view = load(info.root.path_join(info.manifest.view)).new()
 	root.add_child(view)
 	view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	view.render(room.snapshot(0))
+	view.render(room.spectator_snapshot())
+	check(not view.start_button.visible, "guest observer cannot start the lobby")
+	view.set_platform_state({"connected": true, "host": true, "can_start": true})
 	await process_frame
 	check(view.hand_buttons.is_empty() and view.start_button.visible and not view.start_button.disabled, "public lobby has start and no cards")
 	var received := []
+	var platform_actions := []
 	view.command.connect(func(action): received.append(action))
+	view.platform_action.connect(func(action): platform_actions.append(action))
 	view.start_button.pressed.emit()
 	await process_frame
-	check(received.size() == 1 and received[0].type == "start", "one deferred lobby action")
-	check(room.command(0, {"request_id": "begin", "expected_revision": room.revision, "action": {"type": "start"}}).accepted, "public host starts")
-	view.render(room.snapshot(0))
+	check(received.is_empty() and platform_actions == ["start_round"], "start uses only the local host action")
+	check(room.host_start_round().is_empty(), "public host starts")
+	view.render(room.spectator_snapshot())
 	await process_frame
 	check(view.hand_buttons.is_empty(), "TV has no private hand")
 	check(view.draw_button.disabled and view.catch_button.disabled and view.uno_toggle.disabled, "public screen cannot play or catch")
-	check(room.state.participants == [1, 2, 3] and room.state.hands[0].is_empty(), "screen is excluded from deal")
-	var public: Dictionary = room.snapshot(0).view
-	check(public.hand.is_empty() and not public.has("hands") and not public.has("deck"), "public snapshot contains no hand payload")
-	room.state.hands[0] = [42] # Even corrupt internal observer data is filtered out.
-	check(room.snapshot(0).view.hand.is_empty(), "screen privacy is enforced in rules, not UI")
-	room.state.hands[0] = []
+	check(room.state.participants == [0, 1, 2] and not view.snapshot.has("seat"), "screen is excluded from deal")
+	var public: Dictionary = room.spectator_snapshot().view
+	check(not public.has("hand") and not public.has("hands") and not public.has("deck"), "public snapshot contains no hand payload")
+	view._submit({"type": "draw"})
+	await process_frame
+	check(received.is_empty(), "observer UI emits no game command")
 	if OS.get_cmdline_user_args().has("--capture"):
 		await create_timer(.5).timeout
 		root.get_texture().get_image().save_png("res://build/validation/uno-tv.png")
@@ -61,6 +89,11 @@ func run() -> void:
 	check(not view.wide_layout and view.logical_size == Vector2(540,1100), "portrait uses dedicated table and hand composition")
 	check(view.stage.position.x >= 0 and view.stage.size.x * view.stage.scale.x <= 540, "phone table fits horizontal viewport")
 	check(view.hand_scroll.position.y + view.hand_scroll.size.y <= view.logical_size.y, "phone hand stays inside stage")
+	await check_long_hand(view, room.snapshot(seat))
+	root.size = Vector2i(1280, 720)
+	await process_frame
+	await check_long_hand(view, room.snapshot(seat))
+	root.size = Vector2i(540, 1100)
 	view.on_command_notice("card_not_playable")
 	view.render(room.snapshot(seat))
 	check(view.notice.visible, "rejected action remains visible across same-revision render")
@@ -90,15 +123,39 @@ func run() -> void:
 	await process_frame
 	check(view.header.text.contains("Round"), "English mod-owned catalogue")
 	check(view.menu_button.position.x + view.menu_button.size.x <= view.logical_size.x, "English phone menu fits")
+	view.rules_button.pressed.emit()
+	await process_frame
+	await process_frame
+	check(view.help_dialog.size.y <= root.get_visible_rect().size.y and view.help_scroll.get_v_scroll_bar().max_value > view.help_scroll.get_v_scroll_bar().page, "long rules scroll within a bounded phone dialog")
+	check(not view.help_scroll.get_v_scroll_bar().visible and view.help_scroll.has_focus(), "rules scroll is reachable by touch and remote without the bar")
+	var down := InputEventAction.new()
+	down.action = "ui_down"
+	down.pressed = true
+	view.help_dialog.push_input(down)
+	await process_frame
+	check(view.help_scroll.scroll_vertical > 0, "remote down scrolls the rules text")
+	down.pressed = false
+	view.help_dialog.push_input(down)
+	view.help_dialog.hide()
 	room.state.phase = "finished"
 	room.state.winner = seat
 	room.state.score = 123
 	view.render(room.snapshot(seat))
 	check(view.result_dialog.visible and view.result_dialog.dialog_text.contains("123"), "winner dialog contains score")
-	var six = Room.new(info, loader.rules(info), "six-tv", "TV", 99)
-	for i in range(1, 7): six.hello({"protocol": 2, "rules_fingerprint": info.rules_fingerprint, "player_id": "six-" + str(i), "nickname": "Phone " + str(i)})
-	six.command(0, {"request_id": "six-start", "expected_revision": six.revision, "action": {"type": "start"}})
+	var six = Room.new(info, loader.rules(info), "six-tv", "TV", 99, {}, {"role": "spectator"})
+	for i in range(6): six.hello({"protocol": 2, "rules_fingerprint": info.rules_fingerprint, "player_id": "six-" + str(i), "nickname": "Phone " + str(i)})
+	six.host_start_round()
 	root.size = Vector2i(540, 960)
+	view.render(six.spectator_snapshot())
+	await process_frame
+	await process_frame
+	var roster_rects: Array[Rect2] = []
+	for node in view.roster.get_children():
+		var pill: Rect2 = node.get_child(0).get_global_rect() # Avatar on the portrait table.
+		check(view.get_global_rect().encloses(pill), "public avatar fits portrait viewport")
+		for previous in roster_rects: check(not previous.intersects(pill), "six spectator avatars do not overlap")
+		roster_rects.append(pill)
+	check(roster_rects.size() == 6 and not view.hand_scroll.visible, "portrait spectator sees all six players and no hand")
 	view.render(six.snapshot(1))
 	await process_frame
 	await process_frame

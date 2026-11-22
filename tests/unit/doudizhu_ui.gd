@@ -30,7 +30,7 @@ func shot(name: String) -> void:
 # Wire round trip: JSON numbers arrive as floats on real clients.
 func show_seat(seat: int, size: Vector2i) -> void:
 	root.size = size
-	view.render(JSON.parse_string(JSON.stringify(room.snapshot(seat))))
+	view.render(JSON.parse_string(JSON.stringify(room.spectator_snapshot() if seat < 0 else room.snapshot(seat))))
 	await process_frame
 	await process_frame
 
@@ -45,28 +45,36 @@ func run() -> void:
 	var loader := Loader.new()
 	var info := loader.inspect("res://mods/doudizhu")
 	check(not info.is_empty(), "manifest: " + loader.error)
-	room = Room.new(info, loader.rules(info), "tv", "客厅电视", 2026)
+	room = Room.new(info, loader.rules(info), "tv", "客厅电视", 2026, {}, {"role": "spectator"})
 	view = load(info.root.path_join(info.manifest.view)).new()
 	root.add_child(view)
 	view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	view.command.connect(func(action): received.append(action))
-	await show_seat(0, Vector2i(1920, 1080))
+	await show_seat(-1, Vector2i(1920, 1080))
+	check(not view.start_button.visible, "guest observer cannot start the lobby")
+	view.set_platform_state({"connected": true, "host": true, "can_start": false})
 	check(view.lobby_panel.visible and view.start_button.visible and view.start_button.disabled, "empty lobby: start waits for three players")
 	check(view.lobby_title.text.contains("0/3"), "lobby counts players: " + view.lobby_title.text)
-	for seat in range(1, 4):
-		room.hello({"protocol": 2, "rules_fingerprint": info.rules_fingerprint, "player_id": "phone-%d" % seat, "nickname": ["小熊", "狐狸", "熊猫"][seat - 1]})
-	await show_seat(0, Vector2i(1920, 1080))
+	for seat in range(3):
+		room.hello({"protocol": 2, "rules_fingerprint": info.rules_fingerprint, "player_id": "phone-%d" % seat, "nickname": ["小熊", "狐狸", "熊猫"][seat]})
+	await show_seat(-1, Vector2i(1920, 1080))
+	view.set_platform_state({"connected": true, "host": true, "can_start": room.can_host_start()})
 	check(not view.start_button.disabled and view.lobby_title.text.contains("3/3"), "three players enable start")
-	check(view.table_toggle.visible and view.table_toggle.button_pressed, "public table mode is on by default")
 	await shot("lobby-tv")
+	var platform_actions := []
+	view.platform_action.connect(func(action): platform_actions.append(action))
 	view.start_button.pressed.emit()
 	await process_frame
-	check(received.size() == 1 and received[0].type == "start", "start emits one deferred action")
-	check(act(0, {"type": "start"}), "host starts the round")
-	await show_seat(0, Vector2i(1920, 1080))
+	check(received.is_empty() and platform_actions == ["start_round"], "start emits a host action, not a player command")
+	check(room.host_start_round().is_empty(), "host starts the round")
+	await show_seat(-1, Vector2i(1920, 1080))
 	check(view.public_layout and view.hand_buttons.is_empty() and not view.hand_row.visible, "public table shows no hand")
 	check(view.seats_layer.get_child_count() == 6, "public table shows three seats with play areas")
 	check(view.bottom_row.get_child_count() == 3 and view.bottom_row.get_child(0) is Panel, "bottom cards face down before a landlord")
+	await show_seat(-1, Vector2i(540, 960))
+	check(not view.wide and view.seats_layer.get_child_count() == 6 and view.stage.scale.x >= 0.8, "portrait spectator gets a full-width three-player table")
+	for child in view.seats_layer.get_children():
+		check(view.get_global_rect().encloses(child.get_global_rect()), "portrait public seat and play area stay visible")
 	for button in view.action_row.get_children(): check(not button.visible, "public table has no actions: " + button.name)
 	var first: int = room.state.turn
 	await show_seat(first, Vector2i(540, 1100))
@@ -94,6 +102,9 @@ func run() -> void:
 	await process_frame
 	var raised: Button = view.hand_buttons.back()
 	check(view.selected.size() == 1 and raised.position.y < rest_y, "selected card rises")
+	check(view.hand_row.get_global_rect().encloses(raised.get_global_rect().grow(4)) and raised.z_index > view.hand_buttons[0].z_index, "selected last card keeps a complete frontmost ring")
+	view.hand_buttons[0].grab_focus()
+	check(view.hand_row.get_global_rect().encloses(view.hand_buttons[0].get_global_rect().grow(4)) and view.hand_buttons[0].z_index > raised.z_index, "first card focus ring draws above the fan")
 	check(not view.play_button.disabled and view.my_bubble.text == "单张", "single is playable and named")
 	# Two different ranks are not a combination.
 	view.hand_buttons[0].pressed.emit()
@@ -144,12 +155,20 @@ func run() -> void:
 	await shot("result-phone")
 	view.handle_platform_back()
 	check(not view.result_panel.visible, "back closes the result sheet to review the table")
-	await show_seat(0, Vector2i(1920, 1080))
+	await show_seat(-1, Vector2i(1920, 1080))
+	check(not view.result_rematch.visible and not view.snapshot.view.has("revealed"), "spectators cannot vote or see remaining cards")
 	await shot("result-tv")
 	# English catalog.
 	TranslationServer.set_locale("en")
 	await show_seat(landlord, Vector2i(540, 1100))
 	check(view.result_title.text.contains("Landlord wins") and view.result_rematch.text == "Play again", "English texts")
+	check(view.get_global_rect().encloses(view.result_panel.get_global_rect()), "wrapped English result fits the phone")
+	view._show_rules()
+	await process_frame
+	await process_frame
+	check(view.get_global_rect().encloses(view.rules_panel.get_global_rect()) and view.rules_scroll.get_global_rect().end.y < view.rules_close.global_position.y, "rules scroll within sheet and leave close button visible")
+	check(view.rules_scroll.has_focus() and not view.rules_scroll.get_v_scroll_bar().visible, "rules are reachable by remote without a visible bar")
+	view.handle_platform_back()
 	TranslationServer.set_locale("zh_CN")
 	# Platform pause disables controls.
 	view.set_platform_state({"connected": false, "input_paused": false})

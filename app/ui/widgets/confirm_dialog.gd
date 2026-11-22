@@ -27,6 +27,7 @@ func _ready() -> void:
 	ok_button = Button.new()
 	Style.button(ok_button, "danger")
 	for button in [cancel_button, ok_button]:
+		button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		footer.add_child(button)
 	cancel_button.pressed.connect(close)

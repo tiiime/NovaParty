@@ -64,8 +64,10 @@ python3 tools/dev/nvctl.py --connection /tmp/novaparty-debug/tv.json --watch eve
 | `device.info` | `{}` | 实例 ID、系统、型号、版本、模式 |
 | `debug.capabilities` | `{}` | 协议 1、方法列表、容量、`hot_update` 能力对象（上传/表现更新可用，局中规则升级不可用） |
 | `room.status` | `{}` | 快照元信息与玩家连接信息，不包含 `view` |
-| `room.create` / `room.join` | 生命周期上下文、`game_id`、可选 `port` / `nickname`；加入另需 IP `address` | 发起创建/连接，不代表加入握手已完成 |
+| `room.create` / `room.join` | 生命周期上下文、`game_id`、可选 `port` / `nickname` / `role`（`player` 或 `spectator`）；加入另需 IP `address` | 发起创建/连接，不代表加入握手已完成 |
 | `room.leave` / `room.reconnect` | 生命周期上下文，另含 `local_session_id` | 离开当前房间 / 使用当前内存凭据重连参与者 |
+| `room.start_round` | 生命周期上下文，另含 `local_session_id` | 仅本机房主；请求支持 `host_start` 的 Mod 开局 |
+| `lan.choose_role` | `role` | 仅在开放房间的加入身份弹窗中选择可用身份；密码仍通过正式 UI 输入 |
 | `game.snapshot` | `{}` | 本机玩家经过 `view_for` 过滤的快照，含 `host` / `connected` |
 | `game.describe_actions` | `{}` | 可选规则钩子的 Schema、`legal_actions`、`context`；未实现钩子返回 `supported: false` |
 | `game.submit` | 上面的完整操作请求 | 排队结果；通过事件或查询获取最终回执 |
@@ -96,7 +98,7 @@ python3 tests/integration/debug_exports.py
 
 快照和 `room.status` 在大厅也返回 `app_instance_id`、`room_generation`、`local_session_id`；存在 Session 时返回 `session_state` 和 `connection_error`。状态包括 `lobby`、`hosting`、`connecting`、`handshaking`、`connected`、`failed`、`rejected`、`disconnected`。`in_room: false` 也可能表示加入尚未完成，通过结构化状态区分。
 
-生命周期命令需保存唯一 `request_id`、当前 `app_instance_id` 和 `room_generation`，离开/重连另须本地 Session ID。相同请求返回缓存结果，复用 ID 改参数拒绝；保留最近 128 项（包括错误）。缓存淘汰后代次检查仍阻止旧请求改变新房间。已有 Session 时创建/加入返回 `room_busy`，不得静默替换对局。`room.reconnect` 仅支持已有内存凭据的断线参与者，不支持房主恢复。
+生命周期命令需保存唯一 `request_id`、当前 `app_instance_id` 和 `room_generation`，离开/重连/开局另须本地 Session ID。相同请求返回缓存结果，复用 ID 改参数拒绝；保留最近 128 项（包括错误）。缓存淘汰后代次检查仍阻止旧请求改变新房间。已有 Session 时创建/加入返回 `room_busy`，不得静默替换对局。`room.reconnect` 仅支持已有内存凭据的断线参与者，不支持房主恢复。
 
 `nvctl.py` 对上述方法自动补齐缺失上下文，显式传入的旧字段不会被覆盖。对不确定结果的重试应保存完整 JSON，原样调用；不要依赖重新补上下文。开房示例：
 

@@ -70,7 +70,7 @@ jobs:
           python3 tools/design/build_design_tokens.py --check
           python3 tools/design/build_app_icons.py --check
           set -o pipefail
-          for suite in run uno uno_ui doudizhu doudizhu_ui user_profile profile_network ui bluetooth; do
+          for suite in run uno uno_ui doudizhu doudizhu_ui gomoku jump_rope tabletop_ui user_profile profile_network ui bluetooth room_access; do
             "$GODOT" --headless --path . --script "tests/unit/$suite.gd" 2>&1 | tee "$RUNNER_TEMP/$suite.log"
             if grep -E 'ERROR:|SCRIPT ERROR:' "$RUNNER_TEMP/$suite.log"; then exit 1; fi
           done

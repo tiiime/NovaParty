@@ -18,12 +18,12 @@ func listen(port: int, bind_address: String = "*") -> Error:
 	return server.listen(port, bind_address)
 
 # Accept Bluetooth guests next to TCP ones. Returns false when the platform has no radio bridge.
-func listen_bluetooth(session_id: String) -> bool:
+func listen_bluetooth(session_id: String, locked: bool = false) -> bool:
 	if bluetooth == null:
 		bluetooth = Bluetooth.shared(get_tree())
 	if not bluetooth.incoming.is_connected(_accept):
 		bluetooth.incoming.connect(_accept)
-	return bluetooth.host(session_id)
+	return bluetooth.host(session_id, locked)
 
 func _accept(stream) -> void:
 	if peers.size() >= 16:

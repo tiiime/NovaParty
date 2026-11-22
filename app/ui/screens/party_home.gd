@@ -6,6 +6,7 @@ signal user_requested
 const UserProfile = preload("res://sdk/session/user_profile.gd")
 const Style = preload("res://app/ui/theme/party_theme.gd")
 const Icons = preload("res://app/ui/theme/party_icons.gd")
+const FocusScroll = preload("res://app/ui/widgets/focus_scroll.gd")
 const T = Style.T
 const STAR = preload("res://assets/ui/star.svg")
 const ORBIT_SPEED := 0.65
@@ -16,6 +17,7 @@ var nickname_button: Button
 var reduced_motion := false
 var motion_time := 0.0
 var margin: MarginContainer
+var scroll: ScrollContainer
 var split: BoxContainer
 var header: HBoxContainer
 var panel: PanelContainer
@@ -52,17 +54,16 @@ func _ready() -> void:
 	badge.autowrap_mode = TextServer.AUTOWRAP_OFF
 	badge.add_theme_stylebox_override("normal", Style.pill(T.SKY_SOFT, T.RADIUS_BUTTON))
 
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.follow_focus = true
-	scroll.scroll_deadzone = 12
-	Style.scroll_container(scroll, 8)
-	shell.add_child(scroll)
+	var viewport := FocusScroll.new()
+	scroll = viewport
+	viewport.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	viewport.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	shell.add_child(viewport)
+	var padding := viewport.padding()
+	padding.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	viewport.add_child(padding)
 	var centered := CenterContainer.new()
-	centered.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	centered.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.add_child(centered)
+	padding.add_child(centered)
 	split = BoxContainer.new()
 	split.add_theme_constant_override("separation", 24)
 	centered.add_child(split)
@@ -136,6 +137,7 @@ func _label(parent: Node, key: String, extent: int, weight: int, color: Color) -
 func _button(parent: Node, key: String, icon: String, kind: String, callback: Callable, height: int = T.BUTTON_HEIGHT_LARGE) -> Button:
 	var button := Button.new()
 	button.text = key
+	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	button.icon = Icons.get_icon(icon, T.INK if kind == "primary" else T.SKY)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.add_theme_constant_override("h_separation", 12)
@@ -164,9 +166,10 @@ func set_safe_insets(value: Dictionary) -> void:
 func _layout() -> void:
 	if not is_instance_valid(split): return
 	var width := size.x - margin.get_theme_constant("margin_left") - margin.get_theme_constant("margin_right")
-	var wide := width >= 840
+	var inner_width := maxf(0.0, width - 2 * FocusScroll.GUTTER)
+	var wide := inner_width >= 816
 	split.vertical = not wide
-	split.custom_minimum_size.x = clampf(width - 40, 240, 1080 if wide else 600)
+	split.custom_minimum_size.x = minf(inner_width, 1080 if wide else 600)
 	panel.custom_minimum_size = Vector2(560, 410) if wide else Vector2(0, 0)
 	artwork.custom_minimum_size = Vector2(0, 204 if wide else 164)
 	title.add_theme_font_size_override("font_size", 48 if wide else 39)

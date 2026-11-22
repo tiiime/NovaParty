@@ -71,9 +71,10 @@ func stop_browse() -> void:
 		android.stop_browse()
 	rooms.clear()
 
-func advertise(port: int, session_id: String, info: Dictionary, nickname: String) -> void:
+func advertise(port: int, session_id: String, info: Dictionary, nickname: String, locked: bool = false) -> void:
 	own_session = session_id
 	var txt := {"v": "1", "sid": session_id, "game": info.manifest.id, "name": str(info.manifest.name).left(32), "ver": info.manifest.version, "host": nickname.left(32)}
+	if locked: txt.lock = "1"
 	if apple != null:
 		_exchange({"op": "advertise", "port": port, "txt": txt})
 	elif android != null:
@@ -111,7 +112,7 @@ func _event(value: Dictionary) -> void:
 			return
 		if not value.get("address") is String or not value.address.is_valid_ip_address() or int(value.get("port", 0)) < 1024 or int(value.get("port", 0)) > 65535 or rooms.size() >= 64:
 			return
-		rooms[str(value.key)] = {"key": str(value.key), "session_id": str(txt.sid).left(128), "game_id": txt.game, "name": str(txt.get("name", txt.game)).left(64), "version": str(txt.get("ver", "")).left(32), "source_name": str(txt.get("host", "")).left(32), "address": value.address, "port": int(value.port)}
+		rooms[str(value.key)] = {"key": str(value.key), "session_id": str(txt.sid).left(128), "game_id": txt.game, "name": str(txt.get("name", txt.game)).left(64), "version": str(txt.get("ver", "")).left(32), "source_name": str(txt.get("host", "")).left(32), "password_required": txt.get("lock") == "1", "address": value.address, "port": int(value.port)}
 		changed.emit(list_rooms())
 
 func list_rooms() -> Array:
@@ -119,7 +120,7 @@ func list_rooms() -> Array:
 		var nearby := []
 		if bluetooth_scanning:
 			for device in bluetooth.list_devices():
-				nearby.append({"key": "ble:" + device.key, "transport": "ble", "session_id": "", "code": device.code, "game_id": "", "name": "", "version": "", "source_name": "", "address": "ble:" + device.key, "port": 0, "rssi": device.rssi})
+				nearby.append({"key": "ble:" + device.key, "transport": "ble", "session_id": "", "code": device.code, "password_required": device.get("password_required", false), "game_id": "", "name": "", "version": "", "source_name": "", "address": "ble:" + device.key, "port": 0, "rssi": device.rssi})
 		return nearby
 	var unique := {}
 	for room in rooms.values():

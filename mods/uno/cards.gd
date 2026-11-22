@@ -1,5 +1,5 @@
 extends RefCounted
-const CAPACITY = 7 # Public display plus up to six players.
+const CAPACITY = 6 # Public display plus up to six players.
 const COLORS = ["red", "yellow", "green", "blue"]
 static func integer(value, low: int, high: int) -> bool:
 	return (value is int or value is float) and is_finite(float(value)) and value >= low and value <= high and value == floor(float(value))

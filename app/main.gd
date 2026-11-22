@@ -10,7 +10,7 @@ const Page = PartyFlow.Page
 var flow := PartyFlow.new()
 const SwitchRow = preload("res://app/ui/widgets/switch_row.gd")
 const UI_API = 2
-const SAFE_PAGE_GUTTER := 20
+const SAFE_PAGE_GUTTER := 22
 const UserProfile = preload("res://sdk/session/user_profile.gd")
 var user_panel
 const JoinCode = preload("res://sdk/net/join_code.gd")
@@ -28,6 +28,31 @@ var peer_target := {}
 var peer_phase := "idle"
 var peer_error := ""
 var expected_join_session := ""
+var room_access: Control
+
+# A narrow, local presentation service for observers. Never hand them the Session
+# node, its socket, or the authoritative rules state.
+class SpectatorServices extends RefCounted:
+	var _session: WeakRef
+
+	func _init(session: Node):
+		_session = weakref(session)
+
+	func get_join_info(address_override: String = "") -> Dictionary:
+		var current = _session.get_ref()
+		return current.get_join_info(address_override) if current != null and current.host else {}
+
+	func get_join_qr(address_override: String = "") -> Texture2D:
+		var current = _session.get_ref()
+		return current.get_join_qr(address_override) if current != null and current.host else null
+
+	func get_player_profile(player_seat: int) -> Dictionary:
+		var current = _session.get_ref()
+		return current.get_player_profile(player_seat) if current != null else {}
+
+	func get_avatar_texture(public_profile: Dictionary) -> Texture2D:
+		return UserProfile.texture(public_profile)
+var join_offer := {}
 var shell_managed := false
 var ui_preparing := false
 var ui_ready := false
@@ -150,16 +175,11 @@ func _ready() -> void:
 	shell.add_child(heading)
 	page_eyebrow = _label(heading, "APP_NAME", T.FONT_SIZE_META, T.FONT_WEIGHT_TITLE, T.SKY_LIP)
 	page_title = _label(heading, "APP_NAME", 38, T.FONT_WEIGHT_TITLE)
-	var scroll := ScrollContainer.new()
-	scroll.scroll_deadzone = 12
+	var scroll := preload("res://app/ui/widgets/focus_scroll.gd").new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.follow_focus = true
-	Style.scroll_container(scroll)
 	shell.add_child(scroll)
-	var scroll_content := MarginContainer.new()
-	scroll_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll_content.add_theme_constant_override("margin_bottom", 8)
+	var scroll_content := scroll.padding()
 	scroll.add_child(scroll_content)
 	var layout := VBoxContainer.new()
 	layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -425,7 +445,7 @@ func _set_status(key: String, arguments: Array = []) -> void:
 	status_arguments = arguments
 	status.text = tr(key) % arguments if not arguments.is_empty() else tr(key)
 	status.visible = _status_visible()
-	var tone := "success" if key in ["CONNECTED", "INSTALLED_MOD"] else "wait" if key in ["CONNECTING", "CONNECTING_BLUETOOTH", "RECONNECTING", "CHECKING_GAME", "VALIDATING_GAME", "DOWNLOAD_CONFIRMATION", "ROOM_CREATED", "PEER_OFFLINE"] else "danger"
+	var tone := "success" if key in ["CONNECTED", "SPECTATING", "INSTALLED_MOD"] else "wait" if key in ["CONNECTING", "CONNECTING_BLUETOOTH", "RECONNECTING", "CHECKING_GAME", "VALIDATING_GAME", "DOWNLOAD_CONFIRMATION", "ROOM_CREATED", "PEER_OFFLINE"] else "danger"
 	status.add_theme_stylebox_override("normal", Style.banner(tone))
 	status.add_theme_color_override("font_color", T.SUCCESS if tone == "success" else T.DANGER if tone == "danger" else T.INK)
 	_send_game_status()
@@ -453,7 +473,12 @@ func _finish_failed_join(failed_session: Node, code: String) -> void:
 	_clear_session()
 	joined = false
 	token = ""
-	_peer_failed(code)
+	if code in ["password_required", "wrong_password"] and not join_offer.is_empty():
+		_navigate(flow.join_origin, false)
+		join_offer.password_required = true
+		_prompt_join(join_offer, tr(_join_error_key(code)))
+	else:
+		_peer_failed(code)
 
 func _connection_changed(state: String, code: String) -> void:
 	if flow.page == Page.CONNECTING:
@@ -509,7 +534,6 @@ func _build_settings() -> void:
 	var body := VBoxContainer.new()
 	body.add_theme_constant_override("separation", 16)
 	settings_dialog.add_content(body)
-	settings_dialog.set_content_gutter(22)
 	_label(body, "PROFILE_LOCAL", T.FONT_SIZE_META, T.FONT_WEIGHT_TITLE, T.SKY_LIP)
 	_label(body, "SETTINGS", T.FONT_SIZE_TITLE, T.FONT_WEIGHT_TITLE)
 	_label(body, "SETTINGS_HELP", T.FONT_SIZE_META, T.FONT_WEIGHT_BODY, T.MUTED)
@@ -608,9 +632,6 @@ func _open_settings() -> void:
 		control.focus_next = control.focus_neighbor_bottom
 		control.focus_neighbor_left = control.get_path()
 		control.focus_neighbor_right = control.get_path()
-		if control != settings_dialog.get_ok_button() and not control.has_meta("settings_reveal"):
-			control.set_meta("settings_reveal", true)
-			control.focus_entered.connect(func(): settings_dialog.reveal.call_deferred(control))
 	(focus_order[0] as Control).grab_focus()
 
 func set_language(language: String) -> void:
@@ -663,6 +684,7 @@ func _render_snapshot(data: Dictionary) -> void:
 	if peer_phase == "joining":
 		peer_phase = "joined"
 		peer_error = ""
+		join_offer.clear()
 	token = session.resume_token
 	var entering := flow.page != Page.MATCH
 	if entering: flow.open(Page.MATCH)
@@ -673,7 +695,10 @@ func _render_snapshot(data: Dictionary) -> void:
 		names.append(player.nickname + " · " + tr("ONLINE" if player.connected else "OFFLINE"))
 	roster.text = "   /   ".join(names)
 	if session.connection_state in ["connected", "hosting"]:
-		if session.host and data.players.size() == 1:
+		if data.get("role") == "spectator":
+			var watch_status := "PEER_OFFLINE" if offline and mod_info.manifest.get("session_mode", "") != "drop_in" else "SPECTATING"
+			if status_key != watch_status: _set_status(watch_status)
+		elif session.host and data.players.size() == 1:
 			_set_status("ROOM_CREATED", [_local_addresses()])
 		elif offline and mod_info.manifest.get("session_mode", "") != "drop_in":
 			_set_status("PEER_OFFLINE")
@@ -729,11 +754,19 @@ func _add_choice(root: String) -> void:
 	choices.set_item_metadata(choices.item_count - 1, root)
 	_refresh_library()
 
-func _launch_game() -> void:
-	# The manual form's remote port must not silently change the local host port.
-	_start(true, 27840)
+func _supports_room_access() -> bool:
+	var script: Script = Session
+	return script.get_script_method_list().any(func(method): return method.name == "supports_room_access")
 
-func _start(as_host: bool, local_port: int = -1) -> Error:
+func _launch_game() -> void:
+	if choices.selected < 0: return
+	if not _supports_room_access():
+		_start(true, 27840)
+		return
+	var info := loader.inspect(choices.get_item_metadata(choices.selected))
+	if not info.is_empty(): room_access.create_prompt(info.manifest.has("spectators"))
+
+func _start(as_host: bool, local_port: int = -1, options: Dictionary = {}) -> Error:
 	# Keep the selected game stable for a resume attempt.
 	if choices.selected < 0 or choices.selected >= choices.item_count: return ERR_INVALID_DATA
 	var root: String = mod_info.root if not as_host and not token.is_empty() and not mod_info.is_empty() else choices.get_item_metadata(choices.selected)
@@ -756,12 +789,17 @@ func _start(as_host: bool, local_port: int = -1) -> Error:
 	var connection_profile := profile.duplicate(true)
 	connection_profile.nickname = UserProfile.local_public(profile).display_name
 	_save_profile()
-	var view_script = load(root.path_join(mod_info.manifest.view))
+	var spectating: bool = options.get("role", "player") == "spectator"
+	if spectating and not mod_info.manifest.has("spectators"):
+		_set_status("JOIN_SPECTATORS_UNSUPPORTED")
+		return ERR_UNAVAILABLE
+	var view_entry: String = mod_info.manifest.spectators.view if spectating else mod_info.manifest.view
+	var view_script = load(root.path_join(view_entry))
 	if not view_script is Script or not view_script.can_instantiate() or not ClassDB.is_parent_class(view_script.get_instance_base_type(), "Control"):
 		_set_status("GAME_VIEW_FAILED")
 		return ERR_INVALID_DATA
 	game_view = view_script.new()
-	if not game_view.has_signal("command") or not game_view.has_method("render"):
+	if (not spectating and not game_view.has_signal("command")) or not game_view.has_method("render"):
 		game_view.free()
 		game_view = null
 		_set_status("GAME_VIEW_FAILED")
@@ -772,8 +810,8 @@ func _start(as_host: bool, local_port: int = -1) -> Error:
 	expected_join_session = ""
 	room_generation += 1
 	(get_parent() if shell_managed else self).add_child(session)
-	game_view.command.connect(session.submit)
-	_connect_game_controls(game_view)
+	if not spectating: game_view.command.connect(session.submit)
+	_connect_game_controls(game_view, spectating)
 	session.updated.connect(_render_snapshot)
 	session.notice.connect(_handle_notice)
 	session.status_changed.connect(_connection_changed)
@@ -782,7 +820,7 @@ func _start(as_host: bool, local_port: int = -1) -> Error:
 	if as_host:
 		token = ""
 		var listen_port := local_port if local_port > 0 else int(port.value)
-		error = session.create(mod_info, logic, connection_profile, listen_port)
+		error = session.create(mod_info, logic, connection_profile, listen_port) if options.is_empty() else session.create(mod_info, logic, connection_profile, listen_port, options)
 		if error != OK:
 			_clear_session()
 			_navigate(Page.LIBRARY)
@@ -790,7 +828,7 @@ func _start(as_host: bool, local_port: int = -1) -> Error:
 	else:
 		_navigate(Page.CONNECTING)
 		_set_status("CONNECTING_BLUETOOTH" if address.text.begins_with("ble:") else "CONNECTING")
-		error = session.join(mod_info, connection_profile, address.text.strip_edges(), int(port.value), token)
+		error = session.join(mod_info, connection_profile, address.text.strip_edges(), int(port.value), token) if options.is_empty() else session.join(mod_info, connection_profile, address.text.strip_edges(), int(port.value), token, options)
 		if error != OK: _finish_failed_join(session, "connect_failed")
 	return error
 
@@ -928,7 +966,9 @@ func _adapt_display() -> void:
 		_adapt_footer.call_deferred()
 
 func _go_back() -> void:
-	if qr_scanner != null and qr_scanner.active:
+	if is_instance_valid(room_access) and room_access.visible:
+		room_access.close()
+	elif qr_scanner != null and qr_scanner.active:
 		qr_scanner.stop()
 		_render_page(true)
 	elif download_dialog.visible or peer_transfer != null or flow.page == Page.CONNECTING:
@@ -966,11 +1006,13 @@ func debug_replace_view(info: Dictionary) -> Dictionary:
 		return {"error": "not_ready"}
 	if info.manifest.id != session.info.manifest.id or info.rules_fingerprint != session.info.rules_fingerprint:
 		return {"error": "rules_changed_during_game"}
-	var script = load(info.root.path_join(info.manifest.view))
+	var spectating: bool = session.snapshot.get("role") == "spectator"
+	var entry: String = info.manifest.spectators.view if spectating else info.manifest.view
+	var script = load(info.root.path_join(entry))
 	if not script is GDScript or not script.can_instantiate() or not ClassDB.is_parent_class(script.get_instance_base_type(), "Control"):
 		return {"error": "invalid_view_script"}
 	var candidate = script.new()
-	if not candidate is Control or not candidate.has_signal("command") or not candidate.has_method("render"):
+	if not candidate is Control or (not spectating and not candidate.has_signal("command")) or not candidate.has_method("render"):
 		if candidate is Node:
 			candidate.free()
 		return {"error": "invalid_view_contract"}
@@ -983,10 +1025,10 @@ func debug_replace_view(info: Dictionary) -> Dictionary:
 	game_area.add_child(candidate)
 	candidate.render(session.snapshot.duplicate(true))
 	# Connect only after prepare/render: initialization cannot submit an action.
-	old.command.disconnect(session.submit)
+	if not spectating: old.command.disconnect(session.submit)
 	game_view = candidate
-	candidate.command.connect(session.submit)
-	_connect_game_controls(candidate)
+	if not spectating: candidate.command.connect(session.submit)
+	_connect_game_controls(candidate, spectating)
 	old.get_parent().remove_child(old)
 	old.queue_free()
 	candidate.show()
@@ -1006,7 +1048,7 @@ func debug_replace_view(info: Dictionary) -> Dictionary:
 func debug_view_state() -> Dictionary:
 	if is_instance_valid(game_view) and game_view.has_method("capture_view_state"):
 		var state: Dictionary = game_view.capture_view_state()
-		state["command_connections"] = game_view.get_signal_connection_list("command").size()
+		state["command_connections"] = game_view.get_signal_connection_list("command").size() if game_view.has_signal("command") else 0
 		return state
 	return {}
 
@@ -1025,6 +1067,11 @@ func debug_select_build(info: Dictionary) -> void:
 func debug_room_command(method: String, params: Dictionary) -> Dictionary:
 	if not OS.is_debug_build() or not OS.has_feature("novaparty_debug"):
 		return {"error": "debug_disabled"}
+	if method == "room.start_round":
+		if not is_instance_valid(session) or not session.host or not session.has_method("start_round"):
+			return {"error": "host_only"}
+		if _top_modal() != null or not session.start_round(): return {"error": "round_not_ready"}
+		return {"started": true}
 	if method == "room.leave":
 		if not is_instance_valid(session):
 			return {"error": "not_in_room"}
@@ -1045,6 +1092,9 @@ func debug_room_command(method: String, params: Dictionary) -> Dictionary:
 		return {"error": "room_busy"}
 	var game = params.get("game_id")
 	var room_port = params.get("port", 27840)
+	var role = params.get("role", "player")
+	if not role is String or role not in ["player", "spectator"] or (role == "spectator" and not _supports_room_access()):
+		return {"error": "invalid_role"}
 	if not game is String or not (room_port is int or room_port is float) or room_port != int(room_port) or room_port < 1024 or room_port > 65535:
 		return {"error": "invalid_room_parameters"}
 	var selected := -1
@@ -1067,7 +1117,8 @@ func debug_room_command(method: String, params: Dictionary) -> Dictionary:
 	choices.select(selected)
 	port.value = int(room_port)
 	token = ""
-	var error: Error = _start(method == "room.create")
+	var options := {"role": role} if role == "spectator" else {}
+	var error: Error = _start(method == "room.create", -1, options)
 	if error != OK:
 		return {"error": "start_failed"}
 	return {"started": true, "role": "host" if session.host else "guest", "room_generation": room_generation, "local_session_id": session.local_session_id}
@@ -1198,7 +1249,7 @@ func ui_import(old: Control) -> bool:
 	if game_view != null:
 		if old.has_method("_disconnect_game_controls"):
 			old._disconnect_game_controls(game_view)
-		_connect_game_controls(game_view)
+		_connect_game_controls(game_view, session.snapshot.get("role") == "spectator" or (_supports_room_access() and session.role == "spectator"))
 	_layout_game()
 	_refresh_library()
 	return true
@@ -1246,9 +1297,10 @@ func ui_restore_focus(old_focus: Control, old: Control, path: NodePath) -> void:
 			_render_page(true)
 
 # Optional Mod UI extension; no dependency from a Mod on app internals.
-func _connect_game_controls(view: Control) -> void:
+func _connect_game_controls(view: Control, spectating: bool = false) -> void:
 	if view.has_method("set_session_services") and session != null:
-		view.set_session_services(session)
+		if spectating: view.set_session_services(SpectatorServices.new(session))
+		else: view.set_session_services(session)
 	if view.has_signal("platform_action") and not view.is_connected("platform_action", _game_platform_action):
 		view.connect("platform_action", _game_platform_action)
 	_send_game_status()
@@ -1265,6 +1317,9 @@ func _game_platform_action(action: String) -> void:
 		"settings": _open_settings()
 		"reconnect": _reconnect()
 		"invite": _open_invite()
+		"start_round":
+			if flow.page == Page.MATCH and _top_modal() == null and is_instance_valid(session) and session.has_method("start_round"):
+				session.start_round()
 		"exit":
 			if session != null and (session.snapshot.get("view", {}).get("finished", false) or session.snapshot.get("view", {}).get("phase") == "finished"):
 				_leave()
@@ -1278,6 +1333,11 @@ func _send_game_status() -> void:
 	var modal_open := _top_modal() != null
 	var message := status.text if status_key not in ["CONNECTED", "LOBBY_HELP", "LEFT_ROOM", "ROOM_CREATED"] else ""
 	var state := {"enabled": true, "connected": ready_to_play, "can_reconnect": _can_reconnect(), "can_invite": ready_to_play and session.host and (not session.get_join_info().is_empty() or _has_bluetooth_invite()), "message": message, "reduce_motion": bool(profile.get("reduce_motion", false)), "input_paused": modal_open}
+	if ready_to_play and session.has_method("can_start_round"):
+		state.can_start = session.can_start_round()
+	if session != null and session.has_method("start_round"):
+		state.host = session.host
+		state.password_required = session.host and session.room != null and session.room.password_required()
 	if game_view.get_meta("novaparty_platform_state", {}) == state: return
 	game_view.set_meta("novaparty_platform_state", state.duplicate(true))
 	game_view.set_platform_state(state)
@@ -1360,6 +1420,20 @@ func _build_lan_ui() -> void:
 	)
 	download_dialog.canceled.connect(_cancel_peer_join)
 	download_dialog.visibility_changed.connect(_modal_changed)
+	room_access = preload("res://app/ui/dialogs/room_access.gd").new()
+	room_access.theme = theme
+	layer.add_child(room_access)
+	room_access.visibility_changed.connect(_modal_changed)
+	room_access.chosen.connect(func(role: String, password: String):
+		if room_access.creating:
+			_start(true, 27840, {"role": role, "password": password})
+		else:
+			_continue_peer_join(join_offer, role, password)
+	)
+	room_access.confirmed.connect(func():
+		if room_access.creating: create_button.grab_focus()
+		else: _cancel_peer_join()
+	)
 
 func _show_manual_join() -> void:
 	if session != null or peer_transfer != null: return
@@ -1389,13 +1463,46 @@ func _peer_catalog(metadata: Dictionary) -> void:
 	if metadata.get("kind", "game") != "game":
 		_peer_failed("not_a_game")
 		return
+	join_offer = metadata.duplicate(true)
+	if not _supports_room_access():
+		if metadata.get("password_required", false) or metadata.get("player_slots", 1) <= 0: _peer_failed("incompatible")
+		else: _continue_peer_join(join_offer)
+		return
+	var can_play: bool = metadata.get("player_slots", 1) > 0
+	var can_watch: bool = metadata.get("spectator_slots", 0) > 0
+	if not can_play and not can_watch:
+		_peer_failed(str(metadata.get("player_unavailable", "room_full")))
+	elif (can_watch or metadata.get("password_required", false)) and not _find_peer_mod(metadata).is_empty():
+		_prompt_join(join_offer)
+	else:
+		_continue_peer_join(join_offer)
+
+func _prompt_join(metadata: Dictionary, error: String = "") -> void:
+	peer_phase = "role"
+	_render_page()
+	var localized = metadata.get("localized_names", {})
+	var label: String = metadata.name
+	if localized is Dictionary: label = str(localized.get("zh" if TranslationServer.get_locale().begins_with("zh") else "en", label))
+	room_access.join_prompt(metadata.get("player_slots", 1) > 0, metadata.get("spectator_slots", 0) > 0, metadata.get("password_required", false), label, error)
+
+func _find_peer_mod(metadata: Dictionary) -> Dictionary:
 	for index in range(choices.item_count):
 		var path: String = choices.get_item_metadata(index)
 		known_mods[path] = loader.inspect(path)
 	for info in known_mods.values():
 		if not info.is_empty() and info.manifest.id == metadata.game_id and info.rules_fingerprint == metadata.rules_fingerprint:
-			_join_peer(info, metadata)
-			return
+			return info
+	return {}
+
+func _continue_peer_join(metadata: Dictionary, role: String = "player", password: String = "") -> void:
+	var info := _find_peer_mod(metadata)
+	if not info.is_empty():
+		_join_peer(info, metadata, role, password)
+		return
+	# A failed password attempt may have closed the previous catalog connection.
+	if peer_transfer == null:
+		_inspect_peer(peer_target)
+		return
 	peer_phase = "confirmation"
 	_render_page()
 	var display_name: String = str(metadata.name)
@@ -1412,9 +1519,18 @@ func _peer_downloaded(path: String, metadata: Dictionary) -> void:
 	if info.is_empty():
 		_peer_failed(loader.error)
 		return
-	_join_peer(info, metadata)
+	known_mods[info.root] = info
+	if _supports_room_access() and metadata.has("player_slots"):
+		# The offer may have changed during a package download. Refresh the live
+		# room before presenting available roles (especially on a slow BLE link).
+		var target := peer_target.duplicate(true)
+		target.session_id = metadata.session_id
+		_reset_peer_join()
+		_inspect_peer(target)
+	else:
+		_join_peer(info, metadata)
 
-func _join_peer(info: Dictionary, metadata: Dictionary) -> void:
+func _join_peer(info: Dictionary, metadata: Dictionary, role: String = "player", password: String = "") -> void:
 	known_mods[info.root] = info
 	var selected := -1
 	for index in range(choices.item_count):
@@ -1431,15 +1547,26 @@ func _join_peer(info: Dictionary, metadata: Dictionary) -> void:
 	address.text = peer_target.address
 	port.value = int(peer_target.port)
 	token = ""
-	_reset_peer_join()
+	var options := {"role": role, "password": password} if role == "spectator" or not password.is_empty() else {}
+	if peer_transfer != null:
+		peer_transfer.cancel()
+		peer_transfer.queue_free()
+		peer_transfer = null
+	download_dialog.hide()
+	room_access.hide()
 	expected_join_session = metadata.session_id
 	peer_phase = "joining"
-	var error := _start(false)
+	var error := _start(false, -1, options)
 	if error != OK and peer_phase == "joining": _peer_failed("incompatible")
 
 func _join_error_key(code: String, resuming: bool = false) -> String:
 	match code:
 		"room_full": return "JOIN_ROOM_FULL"
+		"password_required": return "ROOM_PASSWORD_REQUIRED"
+		"wrong_password": return "ROOM_WRONG_PASSWORD"
+		"spectators_full": return "JOIN_SPECTATORS_FULL"
+		"spectators_unsupported": return "JOIN_SPECTATORS_UNSUPPORTED"
+		"role_locked": return "JOIN_ROLE_LOCKED"
 		"game_in_progress": return "JOIN_IN_PROGRESS"
 		"room_changed", "invalid_resume_token", "session_replaced": return "JOIN_ROOM_ENDED" if resuming else "JOIN_ROOM_CHANGED"
 		"incompatible", "not_a_game": return "JOIN_INCOMPATIBLE"
@@ -1461,6 +1588,8 @@ func _reset_peer_join() -> void:
 		peer_transfer.queue_free()
 		peer_transfer = null
 	if download_dialog != null: download_dialog.hide()
+	if room_access != null: room_access.hide()
+	join_offer.clear()
 	peer_phase = "idle"
 	peer_error = ""
 	expected_join_session = ""
@@ -1500,7 +1629,7 @@ func debug_lan_command(method: String, params: Dictionary) -> Dictionary:
 		radio.request_access()
 		return {"requested": true}
 	if method == "lan.status":
-		return {"rooms": discovery.list_rooms(), "backend": discovery.backend, "discovery_error": discovery.last_error, "phase": peer_phase, "last_error": peer_error, "confirmation": download_dialog.visible and not download_dialog.working, "received": peer_transfer.received if peer_transfer != null else 0}
+		return {"rooms": discovery.list_rooms(), "backend": discovery.backend, "discovery_error": discovery.last_error, "phase": peer_phase, "last_error": peer_error, "confirmation": download_dialog.visible and not download_dialog.working, "role_prompt": room_access.visible and not room_access.creating, "received": peer_transfer.received if peer_transfer != null else 0}
 	if method == "lan.search":
 		var was_nearby := flow.page == Page.NEARBY
 		if session == null: _open_setup(false)
@@ -1519,6 +1648,14 @@ func debug_lan_command(method: String, params: Dictionary) -> Dictionary:
 	if method == "lan.confirm_download" and peer_phase == "confirmation":
 		download_dialog.confirm.pressed.emit()
 		return {"downloading": true}
+	if method == "lan.choose_role" and peer_phase == "role" and room_access.visible and not join_offer.get("password_required", false):
+		var role = params.get("role")
+		if role == "player" and join_offer.get("player_slots", 1) > 0:
+			_continue_peer_join(join_offer, "player")
+			return {"joining": true}
+		if role == "spectator" and join_offer.get("spectator_slots", 0) > 0:
+			_continue_peer_join(join_offer, "spectator")
+			return {"joining": true}
 	if method == "lan.cancel":
 		_cancel_peer_join()
 		return {"canceled": true}
@@ -1570,7 +1707,7 @@ func _bluetooth_host_state_changed(state: String) -> void:
 
 func _has_bluetooth_invite() -> bool:
 	var radio = Bluetooth.shared(get_tree())
-	return OS.get_name() in ["Android", "iOS"] and radio.backend != null and radio.host_state() != "unsupported" and is_instance_valid(session) and session.has_method("accepts_new_players") and session.accepts_new_players()
+	return OS.get_name() in ["Android", "iOS"] and radio.backend != null and radio.host_state() != "unsupported" and is_instance_valid(session) and (session.accepts_new_connections() if session.has_method("accepts_new_connections") else session.accepts_new_players())
 
 func _request_bluetooth_host() -> void:
 	if not _has_bluetooth_invite() or not join_invite.visible: return
@@ -1608,7 +1745,7 @@ func _update_join_invite() -> void:
 	if join_invite == null or session == null:
 		return
 	var controlled: bool = game_view != null and game_view.has_method("controls_join_qr") and game_view.controls_join_qr()
-	var waiting: bool = session.host and session.snapshot.get("players", []).size() == 1
+	var waiting: bool = session.host and not mod_info.manifest.get("host_start", false) and session.snapshot.get("players", []).size() < 2
 	if join_invite.visible and not waiting and not invite_dismissed:
 		join_invite.close()
 	elif waiting and not controlled and not invite_dismissed and not join_invite.visible:
@@ -1621,12 +1758,12 @@ func _open_invite(manual: bool = true) -> void:
 	if info.is_empty() and not has_bluetooth: return
 	if manual: invite_dismissed = true
 	join_invite.set_bluetooth(has_bluetooth)
-	join_invite.present(session.get_join_qr() if not info.is_empty() else null, info)
+	join_invite.present(session.get_join_qr() if not info.is_empty() else null, info, session.room != null and session.room.has_method("password_required") and session.room.password_required())
 	if has_bluetooth and session.bluetooth_hosting:
 		_bluetooth_host_status(Bluetooth.shared(get_tree()).host_status)
 
 func _top_modal() -> Control:
-	for modal in [download_dialog, leave_dialog, user_panel, settings_dialog, join_invite]:
+	for modal in [room_access, download_dialog, leave_dialog, user_panel, settings_dialog, join_invite]:
 		if is_instance_valid(modal) and modal.visible: return modal
 	return null
 
@@ -1636,7 +1773,7 @@ func _modal_changed() -> void:
 		if is_instance_valid(control): control.focus_mode = modal_focus_modes[control]
 	modal_focus_modes.clear()
 	if top != null:
-		for branch in [home, content_margin, immersive_surface, join_invite, user_panel, settings_dialog, leave_dialog, download_dialog]:
+		for branch in [home, content_margin, immersive_surface, join_invite, user_panel, settings_dialog, leave_dialog, download_dialog, room_access]:
 			if is_instance_valid(branch) and branch != top: _suspend_focus(branch)
 	_send_game_status()
 

@@ -1,4 +1,5 @@
 extends SceneTree
+const FocusEffect = preload("res://app/ui/theme/focus_effect.gd")
 var checks := 0
 var failures := 0
 
@@ -11,6 +12,14 @@ func check(condition: bool, message: String) -> void:
 func _initialize() -> void:
 	call_deferred("run")
 
+func painted_focus_fits(control: Control, viewport: Control) -> bool:
+	return Rect2(Vector2.ZERO, viewport.size).encloses(FocusEffect.visual_rect(control, viewport))
+
+func focus_fits(control: Control, viewport: Control, message: String) -> void:
+	control.grab_focus()
+	for i in range(4): await process_frame
+	check(control.has_focus() and painted_focus_fits(control, viewport), message)
+
 func run() -> void:
 	root.size = Vector2i(1920, 1080)
 	var main = load("res://app/main.tscn").instantiate()
@@ -21,13 +30,15 @@ func run() -> void:
 	check(root.content_scale_size == Vector2i(1280, 720), "landscape scale")
 	check(main.theme.default_font.has_char("棋".unicode_at(0)), "bundled font contains Chinese glyphs")
 	var portrait: Dictionary = main.safe_padding(Rect2i(0, 177, 1170, 2253), Vector2i(1170, 2532), Vector2(390, 844))
-	check(portrait.top == 79 and portrait.bottom == 54 and portrait.left == 20, "portrait avoids notch and home indicator")
+	check(portrait.top == 81 and portrait.bottom == 56 and portrait.left == 22, "portrait avoids notch and home indicator")
 	var landscape: Dictionary = main.safe_padding(Rect2i(177, 0, 2178, 1068), Vector2i(2532, 1170), Vector2(844, 390))
-	check(landscape.left == 79 and landscape.right == 79 and landscape.bottom == 54, "rotated safe area avoids both side cutouts")
+	check(landscape.left == 81 and landscape.right == 81 and landscape.bottom == 56, "rotated safe area avoids both side cutouts")
 	check(not quit_on_go_back, "Android back must not auto-quit")
 	check(main.home.visible and not main.content_margin.visible, "real startup opens party home")
 	check(root.gui_get_focus_owner() == main.home.start_button, "home focuses the primary action")
 	check(main.home.header.size.y < 82 and main.home.start_button.get_global_rect().end.y <= root.get_visible_rect().size.y, "landscape brand and badge leave room for the primary action")
+	await focus_fits(main.home.start_button, main.home.scroll, "home start and its halo fit on TV")
+	await focus_fits(main.home.settings_button, main.home, "home dock highlight stays on screen")
 	main.set_language("en")
 	check(TranslationServer.translate("APP_NAME") == "NovaParty", "English title installed")
 	check(TranslationServer.translate("START_GAME") == "Choose a game", "English home selection label")
@@ -75,6 +86,9 @@ func run() -> void:
 	# Other games enter the library explicitly as external test fixtures.
 	main._add_choice("res://mods/hidden_cards")
 	main._add_choice("res://mods/jump_rope")
+	main._add_choice("res://mods/uno")
+	main._add_choice("res://mods/go")
+	main._add_choice("res://mods/xiangqi")
 	check(not main.home.is_processing(), "hidden home stops decorative processing")
 	await process_frame
 	await process_frame
@@ -96,7 +110,15 @@ func run() -> void:
 	await process_frame
 	check(main.library.columns == 2, "phone uses two cover columns")
 	var scroller: ScrollContainer = main.library.get_parent().get_parent().get_parent().get_parent()
-	check(scroller.vertical_scroll_mode == ScrollContainer.SCROLL_MODE_SHOW_NEVER and scroller.follow_focus, "shared pages hide the scrollbar and still follow focus")
+	check(scroller.vertical_scroll_mode == ScrollContainer.SCROLL_MODE_SHOW_NEVER and not scroller.get_v_scroll_bar().visible, "shared pages hide the scrollbar")
+	await focus_fits(main.library.cards.back(), scroller, "last library card and halo are fully scrolled into view")
+	check(scroller.scroll_vertical > 0, "hidden scrollbar does not disable focus scrolling")
+	await focus_fits(main.library.cards.front(), scroller, "first library card and halo are fully revealed from the bottom")
+	await focus_fits(main.library.cards[1], scroller, "selected library card keeps its complete highlight")
+	var manual_scroll := int(scroller.get_v_scroll_bar().max_value - scroller.get_v_scroll_bar().page)
+	scroller.scroll_vertical = manual_scroll
+	for i in range(3): await process_frame
+	check(scroller.scroll_vertical == manual_scroll, "focus reveal does not snap back during manual scrolling")
 	check(main.footer.get_global_rect().end.y <= root.get_visible_rect().size.y, "phone footer remains inside safe viewport")
 	check(main.back_button.get_global_rect().end.x <= root.get_visible_rect().size.x, "phone back action fits horizontally")
 	main._open_settings()
@@ -121,6 +143,15 @@ func run() -> void:
 	await process_frame
 	check(root.content_scale_size == Vector2i(540, 960), "portrait scale")
 	check(main.home.header.size.y < 82 and main.home.join_button.get_global_rect().end.y < main.home.nickname_button.global_position.y, "portrait join stays above the quick-access dock")
+	# Exercise a tall, narrow safe area as well as the default width.
+	main.home.set_safe_insets({"left": 70, "right": 70, "top": 70, "bottom": 54})
+	await focus_fits(main.home.join_button, main.home.scroll, "portrait join and halo fit with safe insets")
+	await focus_fits(main.home.start_button, main.home.scroll, "portrait start and halo fit after scrolling back")
+	main._open_user_profile()
+	await process_frame
+	await focus_fits(main.user_panel.theme_buttons.back(), main.user_panel.scroll, "last profile swatch keeps its scaled halo")
+	await focus_fits(main.user_panel.character_buttons.front(), main.user_panel.scroll, "profile character halo fits when scrolling back up")
+	main.user_panel.close()
 	await verify_join_routes(main)
 	if root.gui_get_focus_owner():
 		root.gui_get_focus_owner().release_focus()
@@ -154,12 +185,16 @@ func verify_join_routes(main: Control) -> void:
 	check(main.discovery.bluetooth_only and main.join_browser.bluetooth.text == "WIFI_SEARCH", "Bluetooth search has a dedicated list and a way back to LAN")
 	main.join_browser.bluetooth.pressed.emit()
 	check(not main.discovery.bluetooth_only and main.join_browser.bluetooth.text == "BLUETOOTH_SEARCH", "transport action returns to LAN search")
+	# Stop live discovery so it cannot replace the synthetic scan fixture mid-layout.
+	main.discovery.stop_browse()
 	var room := {"key": "fixture", "name": "Test game", "version": "1", "source_name": "Friend", "address": "127.0.0.1", "port": 27840}
 	main.join_browser.populate([room])
 	var room_button: Button = main.join_browser.room_buttons.fixture
 	room_button.grab_focus()
 	main.join_browser.populate([room.merged({"version": "2"}, true)])
 	check(main.join_browser.room_buttons.fixture == room_button and root.gui_get_focus_owner() == room_button, "discovery refresh retains room and focus by key")
+	var scroller: ScrollContainer = main.join_browser.get_parent().get_parent().get_parent().get_parent()
+	await focus_fits(room_button, scroller, "room button keeps its entire focus glow")
 	main._show_manual_join()
 	check(not main.discovery.browsing and main.network_row.visible and not main.library.visible, "manual join is a dedicated form with no guessed game")
 	main.address.text = "not an address"

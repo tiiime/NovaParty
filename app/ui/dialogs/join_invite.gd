@@ -2,6 +2,7 @@ extends "res://app/ui/widgets/sheet.gd"
 signal bluetooth_requested
 const Icons = preload("res://app/ui/theme/party_icons.gd")
 var scan_caption: Label
+var password_caption: Label
 var bluetooth_button: Button
 var bluetooth_status: Label
 var bluetooth_room_code: Label
@@ -16,6 +17,8 @@ func _ready() -> void:
 	stack.add_theme_constant_override("separation", 12)
 	add_content(stack)
 	_caption(stack, "OPEN_INVITE", T.FONT_SIZE_TITLE, T.FONT_WEIGHT_TITLE, T.INK)
+	password_caption = _caption(stack, "INVITE_PASSWORD_REQUIRED", T.FONT_SIZE_META, T.FONT_WEIGHT_LABEL, T.MUTED)
+	password_caption.hide()
 	bluetooth_button = Button.new()
 	bluetooth_button.text = "BLUETOOTH_HOST"
 	bluetooth_button.icon = Icons.get_icon("bluetooth", T.SKY)
@@ -59,7 +62,8 @@ func _caption(parent: Node, key: String, extent: int, weight: int, color: Color)
 	parent.add_child(caption)
 	return caption
 
-func present(texture: Texture2D, info: Dictionary) -> void:
+func present(texture: Texture2D, info: Dictionary, locked: bool = false) -> void:
+	password_caption.visible = locked
 	var address := str(info.get("address", ""))
 	address_text = ("[" + address + "]" if address.contains(":") else address) + ":" + str(int(info.get("port", 0))) if not address.is_empty() else ""
 	image.texture = texture
