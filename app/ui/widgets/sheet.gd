@@ -5,6 +5,7 @@ const T = Style.T
 var tween: Tween
 var panel: PanelContainer
 var scroll: ScrollContainer
+var content: MarginContainer
 var done: Button
 var desired_size := Vector2(492, 620)
 
@@ -28,6 +29,9 @@ func _ready() -> void:
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
 	scroll.follow_focus = true
 	stack.add_child(scroll)
+	content = MarginContainer.new()
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(content)
 	done = Button.new()
 	done.text = "CLOSE"
 	done.set_meta("sound_cue", "back")
@@ -39,7 +43,25 @@ func _ready() -> void:
 
 func add_content(control: Control) -> void:
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(control)
+	content.add_child(control)
+
+# Reserve space inside the clipping viewport for focus rings and scaled controls.
+func set_content_gutter(gutter: int) -> void:
+	for side in ["left", "right", "top", "bottom"]:
+		content.add_theme_constant_override("margin_" + side, gutter)
+	# Godot's follow_focus only reveals the unscaled control, not its focus outline.
+	scroll.follow_focus = false
+
+func reveal(control: Control) -> void:
+	if not is_inside_tree(): return
+	# Wait for the panel and scrolling containers to finish sorting after opening.
+	await get_tree().process_frame
+	if not is_inside_tree() or not visible or not is_instance_valid(control) or not control.has_focus(): return
+	# Use the largest steady focus scale, even if the motion tween hasn't settled.
+	var box := control.get_global_rect().grow_individual(0, 2, 0, 2)
+	var clip := scroll.get_global_rect().grow(-10)
+	if box.position.y < clip.position.y: scroll.scroll_vertical -= ceili(clip.position.y - box.position.y)
+	elif box.end.y > clip.end.y: scroll.scroll_vertical += ceili(box.end.y - clip.end.y)
 
 func get_ok_button() -> Button:
 	return done

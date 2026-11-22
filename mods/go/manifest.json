@@ -1,0 +1,14 @@
+{
+  "id": "go",
+  "name": "围棋 · 9 路",
+  "localized_names": {"zh": "围棋 · 9 路", "en": "Go · 9×9"},
+  "version": "0.1.0",
+  "sdk": 1,
+  "rules": "rules.gd",
+  "view": "view.gd",
+  "cover": "cover.svg",
+  "files": ["rules.gd", "view.gd", "board.gd", "cover.svg", "locale-en.json", "locale-zh.json"],
+  "rules_files": ["rules.gd"],
+  "players": {"min": 2, "max": 2},
+  "inputs": ["touch", "directional"]
+}

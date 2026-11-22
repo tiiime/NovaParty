@@ -77,6 +77,7 @@ var rules_body: Label
 var rules_close: Button
 var menu_rules: Button
 var menu_settings: Button
+var menu_invite: Button
 var menu_reconnect: Button
 var menu_exit: Button
 var pending_action := false
@@ -228,6 +229,8 @@ func _build_menu() -> void:
 	menu_reconnect.hide()
 	menu_rules = _button(list, "Rules", func(): _toggle_menu(false); _show_rules(), "secondary")
 	menu_settings = _button(list, "Settings", func(): _toggle_menu(false); platform_action.emit("settings"), "secondary")
+	menu_invite = _button(list, "Invite", func(): _toggle_menu(false); platform_action.emit("invite"), "secondary")
+	menu_invite.hide()
 	menu_exit = _button(list, "Exit", func(): _toggle_menu(false); platform_action.emit("exit"), "danger")
 
 func _build_lobby() -> void:
@@ -448,6 +451,8 @@ func _texts() -> void:
 	menu_reconnect.visible = platform.get("can_reconnect", false)
 	menu_rules.text = _t("RULES")
 	menu_settings.text = _t("SETTINGS")
+	menu_invite.text = _t("INVITE")
+	menu_invite.visible = platform.get("can_invite", false) and snapshot.view.phase == "lobby"
 	menu_exit.text = _t("EXIT")
 	rules_body.text = _t("RULES_BODY")
 	rules_close.text = _t("CLOSE")
@@ -568,7 +573,8 @@ func _layout() -> void:
 	_place(header, 48 if big else 20, 28 if big else 16, 900 if big else 380, 50)
 	header.add_theme_font_size_override("font_size", 36 if big else 26)
 	_place(menu_button, logical_size.x - (128 if big else 84), 24 if big else 12, 80 if big else 64, 60)
-	_place(menu_panel, logical_size.x - (380 if big else 300), 96 if big else 80, 330 if big else 280, 338 if menu_reconnect.visible else 260)
+	_place(menu_panel, logical_size.x - (380 if big else 300), 96 if big else 80, 330 if big else 280, menu_panel.get_combined_minimum_size().y)
+	if menu_panel.visible: _link_menu_focus()
 	_place(chips, 48 if big else 20, 84 if big else 60, 300 if big else 200, 40)
 	_place(felt, 24 if big else 8, 150 if big else 140, logical_size.x - (48 if big else 16), (610 if big else 600))
 	_place(status, (logical_size.x - (720 if big else 480)) * 0.5, 430 if big else 470, 720 if big else 480, 60)
@@ -797,8 +803,23 @@ func _emit(action: Dictionary) -> void:
 
 func _toggle_menu(open: bool) -> void:
 	menu_panel.visible = open
-	if open: (menu_reconnect if menu_reconnect.visible else menu_rules).grab_focus()
-	else: menu_button.grab_focus()
+	if not open:
+		menu_button.grab_focus()
+		return
+	_link_menu_focus()
+
+func _link_menu_focus() -> void:
+	var entries: Array = menu_panel.get_child(0).get_children().filter(func(button): return button.visible)
+	for i in range(entries.size()):
+		var b: Button = entries[i]
+		b.focus_previous = b.get_path_to(entries[i - 1])
+		b.focus_next = b.get_path_to(entries[(i + 1) % entries.size()])
+		b.focus_neighbor_top = b.focus_previous
+		b.focus_neighbor_bottom = b.focus_next
+		b.focus_neighbor_left = b.get_path_to(b)
+		b.focus_neighbor_right = b.focus_neighbor_left
+	if not platform.get("input_paused", false) and get_viewport().gui_get_focus_owner() not in entries:
+		entries[0].grab_focus()
 
 func _show_rules() -> void:
 	rules_panel.show()
@@ -853,7 +874,7 @@ func handle_platform_back() -> bool:
 	return false
 
 func restore_platform_focus(_kind: String) -> void:
-	focus_default()
+	menu_button.grab_focus()
 
 func focus_default() -> void:
 	if snapshot.is_empty(): return

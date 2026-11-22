@@ -112,7 +112,7 @@ Session 的 `action_result(result)` 对房主与加入方均发出最终回执�
 
 可选规则方法 `clock_context(state)` 返回确定性的 `{seat: -1|0|1, round: int}`，由 SDK 发起端统一累计时间。时钟通过快照顶层 `clock` 字段同步，不参与 revision；规则不能读取墙上时间。两人到齐才运行，断线暂停、终局停止、round 改变归零。没有该钩子的游戏不增加周期快照。公开玩家增加不含凭据的短 `code`。
 
-可选表现扩展包括 `wants_fullscreen()`、`platform_action` 信号、`set_platform_state()`、`focus_default()`、`restore_platform_focus()`、`handle_platform_back()` 和 `on_command_notice()`。扩展用于把设置、重连、退出交给宿主，避免 Mod 依赖业务场景路径。具体语义与兼容边界见 [五子棋 0.2.0](gomoku.md)。
+可选表现扩展包括 `wants_fullscreen()`、`platform_action` 信号、`set_platform_state()`、`focus_default()`、`restore_platform_focus()`、`handle_platform_back()` 和 `on_command_notice()`。扩展用于把设置、重连、退出交给宿主，避免 Mod 依赖业务场景路径。`wants_fullscreen()` 为 `true` 时，宿主将视图放在独立的安全区容器内，不经过大厅滚动布局；可选 `fullscreen_background() -> Color` 设置安全区外的铺底色。`set_platform_state()` 中的 `can_invite` 可用于显示平台邀请按钮，发出 `platform_action("invite")` 打开平台邀请界面。旧客户端忽略新增可选方法。其他语义与兼容边界见 [五子棋 0.2.0](gomoku.md)。
 
 ## Drop-in 会话（0.1.9）
 

@@ -74,6 +74,7 @@ func _ready() -> void:
 	role_button = _button("change_role", func(): _choose_role("none"))
 	reconnect_button = _button("reconnect", func(): platform_action.emit("reconnect"))
 	_button("settings", func(): platform_action.emit("settings"))
+	_button("invite", func(): platform_action.emit("invite")).hide()
 	exit_button = _button("exit", func(): platform_action.emit("exit"))
 	resized.connect(_layout)
 	_layout()
@@ -147,6 +148,7 @@ func _refresh() -> void:
 	role_button.visible = role != "none"
 	role_button.disabled = not can_change
 	reconnect_button.visible = platform.get("can_reconnect", false)
+	buttons.get_node("invite").visible = platform.get("can_invite", false)
 	meter.visible = role == "controller"
 	for child in buttons.get_children():
 		child.text = _t(str(child.name))
@@ -258,8 +260,10 @@ func focus_default() -> void:
 	elif role == "none" and not display_button.disabled: display_button.grab_focus()
 	else: exit_button.grab_focus()
 
-func restore_platform_focus(_action: String = "") -> void:
-	focus_default()
+func restore_platform_focus(action: String = "") -> void:
+	var button := buttons.get_node_or_null(action) as Button if not action.is_empty() else null
+	if is_instance_valid(button) and button.visible and not button.disabled: button.grab_focus()
+	else: focus_default()
 
 func on_command_notice(code: String) -> bool:
 	if code not in ["controllers_full", "stale_generation", "invalid_action"]: return false

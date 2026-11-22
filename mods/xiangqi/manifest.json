@@ -1,0 +1,14 @@
+{
+  "id": "xiangqi",
+  "name": "象棋",
+  "localized_names": {"zh": "象棋", "en": "Chinese Chess"},
+  "version": "0.2.0",
+  "sdk": 1,
+  "rules": "rules.gd",
+  "view": "view.gd",
+  "cover": "cover.svg",
+  "files": ["rules.gd", "view.gd", "board.gd", "cover.svg", "locale-en.json", "locale-zh.json"],
+  "rules_files": ["rules.gd"],
+  "players": {"min": 2, "max": 2},
+  "inputs": ["touch", "directional"]
+}

@@ -10,6 +10,7 @@ const Page = PartyFlow.Page
 var flow := PartyFlow.new()
 const SwitchRow = preload("res://app/ui/widgets/switch_row.gd")
 const UI_API = 2
+const SAFE_PAGE_GUTTER := 20
 const UserProfile = preload("res://sdk/session/user_profile.gd")
 var user_panel
 const JoinCode = preload("res://sdk/net/join_code.gd")
@@ -82,6 +83,8 @@ var port: SpinBox
 var status: Label
 var roster: Label
 var game_area: VBoxContainer
+var immersive_surface: ColorRect
+var immersive_area: MarginContainer
 var game_view
 var immersive_game := false
 var mod_info := {}
@@ -266,6 +269,16 @@ func _ready() -> void:
 	roster.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	game_area = VBoxContainer.new()
 	layout.add_child(game_area)
+	immersive_surface = ColorRect.new()
+	immersive_surface.color = T.PAGE
+	immersive_surface.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	immersive_surface.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(immersive_surface)
+	immersive_area = MarginContainer.new()
+	immersive_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	immersive_area.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	immersive_surface.add_child(immersive_area)
+	immersive_surface.hide()
 	_build_settings()
 	_build_user_profile()
 	_build_leave_dialog()
@@ -335,7 +348,8 @@ func _render_page(take_focus: bool = false) -> void:
 	var connecting := page == Page.CONNECTING
 	var match_page := page == Page.MATCH
 	home.visible = is_home
-	content_margin.visible = not is_home
+	content_margin.visible = not is_home and not (match_page and immersive_game)
+	immersive_surface.visible = match_page and immersive_game
 	setup.visible = choosing or nearby or manual
 	library.visible = choosing
 	join_browser.visible = nearby
@@ -495,6 +509,7 @@ func _build_settings() -> void:
 	var body := VBoxContainer.new()
 	body.add_theme_constant_override("separation", 16)
 	settings_dialog.add_content(body)
+	settings_dialog.set_content_gutter(22)
 	_label(body, "PROFILE_LOCAL", T.FONT_SIZE_META, T.FONT_WEIGHT_TITLE, T.SKY_LIP)
 	_label(body, "SETTINGS", T.FONT_SIZE_TITLE, T.FONT_WEIGHT_TITLE)
 	_label(body, "SETTINGS_HELP", T.FONT_SIZE_META, T.FONT_WEIGHT_BODY, T.MUTED)
@@ -593,6 +608,9 @@ func _open_settings() -> void:
 		control.focus_next = control.focus_neighbor_bottom
 		control.focus_neighbor_left = control.get_path()
 		control.focus_neighbor_right = control.get_path()
+		if control != settings_dialog.get_ok_button() and not control.has_meta("settings_reveal"):
+			control.set_meta("settings_reveal", true)
+			control.focus_entered.connect(func(): settings_dialog.reveal.call_deferred(control))
 	(focus_order[0] as Control).grab_focus()
 
 func set_language(language: String) -> void:
@@ -788,7 +806,7 @@ func _clear_session() -> void:
 		previous.get_parent().remove_child(previous)
 		previous.queue_free()
 	if game_view != null:
-		game_area.remove_child(game_view)
+		game_view.get_parent().remove_child(game_view)
 		game_view.queue_free()
 		game_view = null
 	immersive_game = false
@@ -969,7 +987,7 @@ func debug_replace_view(info: Dictionary) -> Dictionary:
 	game_view = candidate
 	candidate.command.connect(session.submit)
 	_connect_game_controls(candidate)
-	game_area.remove_child(old)
+	old.get_parent().remove_child(old)
 	old.queue_free()
 	candidate.show()
 	if candidate.has_method("restore_view_state"):
@@ -1060,20 +1078,24 @@ func _apply_safe_area() -> void:
 	if not is_instance_valid(content_margin):
 		return
 	var padding := {"left": T.PAGE_MARGIN, "top": T.PAGE_MARGIN, "right": T.PAGE_MARGIN, "bottom": T.PAGE_MARGIN}
+	var immersive_padding := {"left": 8, "top": 8, "right": 8, "bottom": 8}
 	if OS.get_name() in ["iOS", "Android"]:
 		var safe := DisplayServer.get_display_safe_area()
 		var window_rect := Rect2i(get_window().position, get_window().size)
 		var overlap := safe.intersection(window_rect)
 		if overlap.has_area():
 			padding = safe_padding(Rect2i(overlap.position - window_rect.position, overlap.size), get_window().size, get_viewport_rect().size)
+			for edge in padding: immersive_padding[edge] += padding[edge] - SAFE_PAGE_GUTTER
 	if home:
 		home.set_safe_insets(padding)
 	for edge in padding:
 		content_margin.add_theme_constant_override("margin_" + edge, padding[edge])
+		if is_instance_valid(immersive_area):
+			immersive_area.add_theme_constant_override("margin_" + edge, immersive_padding[edge])
 	_layout_game()
 
 static func safe_padding(safe: Rect2i, native: Vector2i, logical: Vector2) -> Dictionary:
-	var padding := {"left": 20, "top": 20, "right": 20, "bottom": 20}
+	var padding := {"left": SAFE_PAGE_GUTTER, "top": SAFE_PAGE_GUTTER, "right": SAFE_PAGE_GUTTER, "bottom": SAFE_PAGE_GUTTER}
 	if native.x <= 0 or native.y <= 0 or safe.size.x <= 0 or safe.size.y <= 0:
 		return padding
 	var area := safe.intersection(Rect2i(Vector2i.ZERO, native))
@@ -1193,6 +1215,12 @@ func ui_restore_focus(old_focus: Control, old: Control, path: NodePath) -> void:
 			motion_choice.grab_focus()
 		elif old_focus == old.get("sound_choice"):
 			sound_choice.grab_focus()
+		elif old_focus == old.get("haptic_choice"):
+			haptic_choice.grab_focus()
+		elif old_focus == old.get("language_choice"):
+			language_choice.grab_focus()
+		elif old_focus == old.get("settings_invite") and settings_invite.visible:
+			settings_invite.grab_focus()
 		elif old_focus == old.settings_dialog.get_ok_button():
 			settings_dialog.get_ok_button().grab_focus()
 	elif old.leave_dialog.visible and session != null:
@@ -1238,7 +1266,7 @@ func _game_platform_action(action: String) -> void:
 		"reconnect": _reconnect()
 		"invite": _open_invite()
 		"exit":
-			if session != null and session.snapshot.get("view", {}).get("finished", false):
+			if session != null and (session.snapshot.get("view", {}).get("finished", false) or session.snapshot.get("view", {}).get("phase") == "finished"):
 				_leave()
 			else:
 				_request_leave()
@@ -1256,15 +1284,18 @@ func _send_game_status() -> void:
 	if modal_open: _suspend_focus(game_view)
 
 func _layout_game() -> void:
+	var previous_focus := get_viewport().gui_get_focus_owner()
 	immersive_game = is_instance_valid(session) and is_instance_valid(game_view) and game_view.has_method("wants_fullscreen") and game_view.wants_fullscreen()
 	if immersive_game:
-		var height := get_viewport_rect().size.y - content_margin.get_theme_constant("margin_top") - content_margin.get_theme_constant("margin_bottom")
-		game_area.custom_minimum_size.y = maxf(520, height - 36)
-	else:
-		game_area.custom_minimum_size.y = 0
+		immersive_surface.color = game_view.fullscreen_background() if game_view.has_method("fullscreen_background") else T.PAGE
+	if is_instance_valid(game_view):
+		var target: Control = immersive_area if immersive_game else game_area
+		if game_view.get_parent() != target: game_view.reparent(target, false)
 	_render_page()
 	_update_join_invite()
 	_send_game_status()
+	if _top_modal() == null and is_instance_valid(previous_focus) and previous_focus.is_visible_in_tree():
+		if previous_focus.focus_mode != Control.FOCUS_NONE: previous_focus.grab_focus()
 
 func _restore_exit_focus() -> void:
 	if is_instance_valid(leave_focus) and leave_focus.is_visible_in_tree():
@@ -1517,6 +1548,7 @@ func _can_request_bluetooth(state: String) -> bool:
 	return state == "unknown" or (state == "unauthorized" and OS.get_name() == "Android")
 
 func _bluetooth_state_changed(state: String) -> void:
+	if not is_inside_tree(): return  # UI hot swap may have already detached this shell.
 	join_browser.set_bluetooth_available(Bluetooth.shared(get_tree()).backend != null and state != "unsupported")
 	if not join_browser.is_visible_in_tree(): return
 	if state == "on" and (status_key == "BLUETOOTH_PERMISSION" or join_browser.bluetooth_mode):
@@ -1604,7 +1636,7 @@ func _modal_changed() -> void:
 		if is_instance_valid(control): control.focus_mode = modal_focus_modes[control]
 	modal_focus_modes.clear()
 	if top != null:
-		for branch in [home, content_margin, join_invite, user_panel, settings_dialog, leave_dialog, download_dialog]:
+		for branch in [home, content_margin, immersive_surface, join_invite, user_panel, settings_dialog, leave_dialog, download_dialog]:
 			if is_instance_valid(branch) and branch != top: _suspend_focus(branch)
 	_send_game_status()
 

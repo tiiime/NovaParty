@@ -94,11 +94,15 @@ func _ready() -> void:
 	actions.add_theme_constant_override("v_separation", 10)
 	sidebar.add_child(actions)
 	result_button = _button(actions, func(): _show_result(), true)
-	invite_button = _button(actions, func(): platform_action.emit("invite"), true)
-	invite_button.name = "Invite"
 	reconnect_button = _button(actions, func(): platform_action.emit("reconnect"))
 	settings_button = _button(actions, func(): platform_action.emit("settings"))
 	exit_button = _button(actions, func(): platform_action.emit("exit"))
+	invite_button = _button(actions, func(): platform_action.emit("invite"), true)
+	invite_button.name = "Invite"
+	# Stable two-column grid: Settings/Exit, then Invite/secondary actions.
+	actions.move_child(settings_button, 0)
+	actions.move_child(exit_button, 1)
+	actions.move_child(invite_button, 2)
 	result_button.name = "Result"
 	reconnect_button.name = "Reconnect"
 	settings_button.name = "Settings"

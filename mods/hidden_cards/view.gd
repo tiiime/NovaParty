@@ -55,37 +55,47 @@ func _refresh() -> void:
 	heading.text = _t("MATCH_STATUS") % [mini(int(state.round) + 1, 3), int(state.scores[seat]), int(state.scores[1 - seat]), phase]
 	if not note.is_empty(): heading.text += "\n" + note
 	var can_choose: bool = online and platform.connected and not platform.input_paused and not state.finished and state.chosen == -1 and pending == -1
-	_clear(cards)
+	# Keep existing controls on presence, locale and submission updates.
+	var existing := []
+	for button in cards.get_children(): existing.append(int(button.get_meta("card")))
+	var hand := []
+	for value in state.hand: hand.append(int(value))
+	if existing != hand:
+		_clear(cards)
+		for card in hand: _add_card(card)
 	var target: Button
-	for value in state.hand:
-		var card := int(value)
-		var button := Button.new()
-		button.name = "Card_" + str(card)
-		button.text = _card(card)
-		button.set_meta("card", card)
-		button.custom_minimum_size.y = 116
-		button.size_flags_horizontal = SIZE_EXPAND_FILL
-		button.add_theme_font_size_override("font_size", 36)
-		var suit := card / 13
-		for key in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_disabled_color"]:
-			button.add_theme_color_override(key, Color("ab3558") if suit in [1, 3] else INK)
-		button.add_theme_stylebox_override("normal", _box(Color.WHITE, Color("c8d0e4"), 4))
-		button.add_theme_stylebox_override("hover", _box(SOFT, BLUE, 4))
-		button.add_theme_stylebox_override("pressed", _box(GOLD, Color("d4a524"), 0))
+	for button in cards.get_children():
+		var card: int = button.get_meta("card")
 		button.add_theme_stylebox_override("disabled", _box(GOLD if card in [int(state.chosen), pending] else SOFT, Color("c8d0e4"), 0))
-		var ring := _box(Color.TRANSPARENT, Color("ff8a1c"), 0)
-		ring.draw_center = false
-		ring.set_border_width_all(4)
-		ring.set_expand_margin_all(3)
-		button.add_theme_stylebox_override("focus", ring)
 		button.disabled = not can_choose
-		button.pressed.connect(func(): _choose_card(card))
-		cards.add_child(button)
 		if can_choose and (target == null or card == focused_card): target = button
 	if target != null and (owned_focus or focused == null): target.grab_focus()
 	_clear(history_box)
 	for values in state.history:
 		_label(history_box, 18, Color.WHITE).text = _t("REVEAL") % [_card(int(values[seat])), _card(int(values[1 - seat]))]
+
+@warning_ignore("integer_division")
+func _add_card(card: int) -> void:
+	var button := Button.new()
+	button.name = "Card_" + str(card)
+	button.text = _card(card)
+	button.set_meta("card", card)
+	button.custom_minimum_size.y = 116
+	button.size_flags_horizontal = SIZE_EXPAND_FILL
+	button.add_theme_font_size_override("font_size", 36)
+	var suit := card / 13
+	for key in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_disabled_color"]:
+		button.add_theme_color_override(key, Color("ab3558") if suit in [1, 3] else INK)
+	button.add_theme_stylebox_override("normal", _box(Color.WHITE, Color("c8d0e4"), 4))
+	button.add_theme_stylebox_override("hover", _box(SOFT, BLUE, 4))
+	button.add_theme_stylebox_override("pressed", _box(GOLD, Color("d4a524"), 0))
+	var ring := _box(Color.TRANSPARENT, Color("ff8a1c"), 0)
+	ring.draw_center = false
+	ring.set_border_width_all(4)
+	ring.set_expand_margin_all(3)
+	button.add_theme_stylebox_override("focus", ring)
+	button.pressed.connect(func(): _choose_card(card))
+	cards.add_child(button)
 
 func _label(parent: Node, extent: int, fill: Color) -> Label:
 	var label := Label.new()

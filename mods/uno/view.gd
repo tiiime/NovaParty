@@ -57,6 +57,8 @@ var art_cache := {}
 var logical_size := Vector2(1920, 1080)
 var wide_layout := true
 var public_layout := true
+var invite_button: Button
+const TABLE_SURFACE = Color("342822")
 
 
 func _ready() -> void:
@@ -65,7 +67,7 @@ func _ready() -> void:
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var background := Panel.new()
 	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	background.add_theme_stylebox_override("panel", _box(Color("edf4ff"), 26))
+	background.add_theme_stylebox_override("panel", _box(TABLE_SURFACE, 0))
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(background)
 	var margin := MarginContainer.new()
@@ -122,6 +124,7 @@ func _ready() -> void:
 	scroller.custom_minimum_size.y = 170
 	scroller.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroller.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroller.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
 	scroller.follow_focus = true
 	root_box.add_child(scroller)
 	var padding := MarginContainer.new()
@@ -134,6 +137,7 @@ func _ready() -> void:
 	footer.add_theme_constant_override("separation", 8)
 	root_box.add_child(footer)
 	rules_button = _button(footer, "Rules", func():
+		_toggle_menu(false)
 		if not snapshot.is_empty() and snapshot.view.phase == "finished": result_dialog.popup_centered(Vector2i(mini(620, int(get_viewport_rect().size.x) - 32), 240))
 		else: help_dialog.popup_centered(Vector2i(mini(680, int(get_viewport_rect().size.x) - 32), 420))
 	)
@@ -161,7 +165,6 @@ func _ready() -> void:
 		node.reparent(stage)
 	root_box.hide()
 	margin.hide()
-	background.hide()
 	menu_button = _button(stage, "Menu", func(): _toggle_menu(not menu_panel.visible))
 	menu_button.text = "☰"
 	menu_button.accessibility_name = _t("MENU")
@@ -170,7 +173,10 @@ func _ready() -> void:
 	stage.add_child(menu_panel)
 	var menu_list := VBoxContainer.new()
 	menu_panel.add_child(menu_list)
-	for button in [reconnect_button, rules_button, settings_button, exit_button]: button.reparent(menu_list)
+	for button in [reconnect_button, rules_button, settings_button]: button.reparent(menu_list)
+	invite_button = _button(menu_list, "Invite", func(): _toggle_menu(false); platform_action.emit("invite"))
+	invite_button.hide()
+	exit_button.reparent(menu_list)
 	menu_panel.hide()
 	resized.connect(_layout)
 	_layout()
@@ -299,17 +305,25 @@ func _layout() -> void:
 	if previous_wide != wide_layout and not snapshot.is_empty(): _build_roster(snapshot.view)
 	public_layout = not snapshot.is_empty() and snapshot.seat == snapshot.view.display_seat
 	logical_size = Vector2(1920,1080) if wide_layout else Vector2(540,1100)
-	var factor := minf(size.x / logical_size.x, size.y / logical_size.y)
+	var factor := maxf(.01, minf(size.x / logical_size.x, size.y / logical_size.y))
 	stage.scale = Vector2.ONE * factor
 	stage.size = logical_size
 	stage.position = (size - logical_size * factor) * .5
-	_place(table_art, 0, 0, logical_size.x, logical_size.y)
+	# The art stretches independently from controls, so no visible bars on 16:10 or tall phones.
+	table_art.stretch_mode = TextureRect.STRETCH_SCALE
+	_place(table_art, -stage.position.x / factor, -stage.position.y / factor, size.x / factor, size.y / factor)
 	table_art.texture = _texture("table-wide" if wide_layout else "table-phone")
-	_place(header, 96 if wide_layout else 24, 45 if wide_layout else 20, 1300 if wide_layout else 420, 52)
+	var left_edge := -stage.position.x / factor
+	var right_edge := logical_size.x - left_edge
+	var top_edge := -stage.position.y / factor
+	var gutter := 38 if wide_layout else 24
+	_place(header, left_edge + gutter, top_edge + 20, minf(logical_size.x - 122, 1300), 52)
 	header.add_theme_font_size_override("font_size", 36 if wide_layout else 26)
-	_place(menu_button, 1760 if wide_layout else 452, 50 if wide_layout else 20, 64, 60)
-	_place(menu_panel, 1450 if wide_layout else 210, 120 if wide_layout else 90, 370 if wide_layout else 306, 304)
+	_place(menu_button, right_edge - gutter - 64, top_edge + 20, 64, 64)
+	var menu_width := 370 if wide_layout else 306
+	_place(menu_panel, right_edge - gutter - menu_width, top_edge + 96, menu_width, menu_panel.get_combined_minimum_size().y)
 	menu_panel.z_index = 30
+	if menu_panel.visible: _link_menu_focus()
 	_place(roster, 0, 0, logical_size.x, logical_size.y)
 	roster.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_layout_seats()
@@ -336,10 +350,12 @@ func _layout() -> void:
 	_place(table_toggle, 770 if wide_layout else 120, 925 if wide_layout else 960, 380 if wide_layout else 300, 60)
 	_place(uno_toggle, 1400 if wide_layout else 345, 790 if wide_layout else 710, 260 if wide_layout else 170, 60)
 	_place(catch_button, 1400 if wide_layout else 300, 710 if wide_layout else 640, 300 if wide_layout else 216, 60)
-	_place(hand_scroll, 250 if wide_layout else 8, 830 if wide_layout else 790, 1420 if wide_layout else 524, 220 if wide_layout else 230)
+	var hand_margin := 170 if wide_layout else 8
+	_place(hand_scroll, left_edge + hand_margin, 830 if wide_layout else 790, right_edge - left_edge - 2 * hand_margin, 220 if wide_layout else 230)
 	hand_scroll.custom_minimum_size = Vector2.ZERO
 
-	_place(self_label, 96 if wide_layout else 24, 1010 if wide_layout else 1040, 500, 44)
+	var bottom_edge := logical_size.y - top_edge
+	_place(self_label, left_edge + gutter, bottom_edge - 52, minf(logical_size.x - 48, 500), 40)
 	self_label.visible = not lobby and not public_layout
 	var card_width := 112.0 if wide_layout else 94.0
 	var step := 85.0 if wide_layout else 58.0
@@ -442,6 +458,8 @@ func render(data: Dictionary) -> void:
 		selected_card = -1
 	legal = Rules.new().describe_actions(state, int(snapshot.seat)).legal_actions
 	settings_button.text = _t("SETTINGS")
+	invite_button.text = _t("INVITE")
+	invite_button.visible = platform.get("can_invite", false) and state.phase == "lobby"
 	reconnect_button.text = _t("RECONNECT")
 	reconnect_button.visible = platform.get("can_reconnect", false)
 	menu_button.accessibility_name = _t("MENU")
@@ -589,6 +607,8 @@ func _t(key: String) -> String:
 	var locale := TranslationServer.get_locale().get_slice("_", 0)
 	return str(messages.get(locale, messages.en).get(key, messages.en.get(key, key)))
 
+func fullscreen_background() -> Color: return TABLE_SURFACE
+
 func wants_fullscreen() -> bool: return true
 func controls_join_qr() -> bool: return true
 func set_session_services(value) -> void: services = value
@@ -640,12 +660,26 @@ func restore_view_state(value: Dictionary) -> void:
 
 func _toggle_menu(open: bool) -> void:
 	menu_panel.visible = open
-	if open: (reconnect_button if reconnect_button.visible else rules_button).grab_focus()
-	else: menu_button.grab_focus()
+	if not open:
+		menu_button.grab_focus()
+		return
+	_link_menu_focus()
+
+func _link_menu_focus() -> void:
+	var entries: Array = menu_panel.get_child(0).get_children().filter(func(button): return button.visible)
+	for i in range(entries.size()):
+		var b: Button = entries[i]
+		b.focus_previous = b.get_path_to(entries[i - 1])
+		b.focus_next = b.get_path_to(entries[(i + 1) % entries.size()])
+		b.focus_neighbor_top = b.focus_previous
+		b.focus_neighbor_bottom = b.focus_next
+		b.focus_neighbor_left = b.get_path_to(b)
+		b.focus_neighbor_right = b.focus_neighbor_left
+	if not platform.get("input_paused", false) and get_viewport().gui_get_focus_owner() not in entries:
+		entries[0].grab_focus()
 
 func restore_platform_focus(_action: String = "") -> void:
-	if not platform.get("connected", true): menu_button.grab_focus()
-	else: focus_default()
+	menu_button.grab_focus()
 
 func handle_platform_back() -> bool:
 	if menu_panel == null or not menu_panel.visible: return false

@@ -41,8 +41,11 @@ def run():
                     assert 'mods/gomoku/manifest.json' in names and 'mods/gomoku/rules.gd' in names
                 packs[preset] = archive
                 print('PASS ' + preset + ': only Gomoku bundled; future Mod and its imported asset excluded', flush=True)
-            external = temp/'jump-rope.zip'
-            pack(ROOT/'mods/jump_rope', external, hot=True)
+            packages = []
+            for game in ['jump_rope', 'xiangqi', 'go']:
+                package = temp / (game + '.zip')
+                pack(ROOT / 'mods' / game, package)
+                packages.append(str(package))
             project = temp/'project'
             project.mkdir()
             (project/'project.godot').write_text('config_version=5\n[application]\nconfig/name="NovaParty Bundling Test '+token+'"\n')
@@ -71,27 +74,33 @@ func run() -> void:
     app.ui_feedback.refresh_preferences()
     await process_frame
     if app.choices.item_count != 1: quit(5); return
-    app._install_package(args[1])
-    if app.choices.item_count != 2: quit(6); return
-    var found := false
-    for i in range(app.choices.item_count):
+    for i in range(1, args.size()):
+        app._install_package(args[i])
+        if app.choices.item_count != i + 1: quit(6); return
         var info: Dictionary = app.loader.inspect(app.choices.get_item_metadata(i))
-        if info.manifest.id == "jump_rope": found = true
-    if not found: quit(7); return
+        if info.manifest.id != ["jump_rope", "xiangqi", "go"][i - 1]: quit(7); return
+        var rules = app.loader.rules(info)
+        if rules == null or rules.initial_state(1).is_empty(): quit(8); return
+        var view = load(info.root.path_join(info.manifest.view)).new()
+        if not view.has_signal("command") or not view.has_method("render"): quit(9); return
+        view.free()
+        if info.manifest.has("cover"):
+            var pic := Image.new()
+            if pic.load_svg_from_string(FileAccess.get_file_as_string(info.root.path_join(info.manifest.cover))) != OK: quit(10); return
     app.queue_free()
     app = null
     old = null
     await create_timer(0.25).timeout
-    print("BUNDLED_MODS_RUNTIME_OK clean startup, legacy UI compatibility, external Jump Rope install")
+    print("BUNDLED_MODS_RUNTIME_OK clean startup, legacy UI compatibility, external Jump Rope, Xiangqi and Go install")
     quit()
 ''')
-            result = subprocess.run([GODOT, '--headless', '--path', str(project), '--script', str(project/'run.gd'), '--', str(packs['Android Release']), str(external)], capture_output=True, text=True, timeout=30)
+            result = subprocess.run([GODOT, '--headless', '--path', str(project), '--script', str(project/'run.gd'), '--', str(packs['Android Release']), *packages], capture_output=True, text=True, timeout=30)
             output = result.stdout + result.stderr
             user_dir = next((line.split('=',1)[1] for line in output.splitlines() if line.startswith('TEST_USER_DIR=')), '')
             if user_dir and token in Path(user_dir).name:
                 shutil.rmtree(user_dir, ignore_errors=True)
             assert result.returncode == 0 and 'BUNDLED_MODS_RUNTIME_OK' in output and 'ERROR:' not in output, output
-            print('PASS isolated exported client: Gomoku + Add game only, legacy UI skips removed builtins, external Mod still installs')
+            print('PASS isolated exported client: Gomoku + Add game only, legacy UI skips removed builtins, regular external Mods install and load')
     finally:
         shutil.rmtree(probe)
 

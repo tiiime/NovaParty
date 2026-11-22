@@ -119,4 +119,6 @@ Android Debug 0.1.12 支持通过认证 HTTP 上传 APK 并触发系统安装，
 
 新增[斗地主](docs/doudizhu.md) Mod（3 人叫分，电视公共牌桌 + 手机私有手牌）。
 
+[象棋与 9 路围棋](docs/tabletop.md)作为独立双人 Mod 提供：打包后在「选择游戏 → 添加游戏」导入；不改变五子棋的默认内置策略。
+
 0.1.16 采用 v0.4「果冻星星」界面（[cheat sheet](docs/design/cheat-sheet.svg)），加入手机触感反馈和[蓝牙 LE 联机](docs/bluetooth.md)，并按 `app/ui/*`、`sdk/{net,session,mods}`、`tests/{unit,integration,devices}`、`tools/{build,dev,design}` 重组目录；UI 包接口升为 2。

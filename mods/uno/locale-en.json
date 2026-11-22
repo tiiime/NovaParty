@@ -25,6 +25,7 @@
   "RULES_TITLE": "Party rules",
   "RULES_BODY": "TV is a public display by default; 2–6 phone players receive 7 cards each. Phone hosts may turn Public screen off to play. Match colour or symbol. Skip misses the next player; Reverse changes direction (acts as Skip with two players). +2 accepts +2 or +4; +4 accepts only +4, regardless of colour. Draw the whole accumulated penalty and lose your turn. Wild and +4 choose a colour; +4 is unrestricted, with no challenge. Drawing voluntarily is allowed, then only the new card can be played. Say UNO when leaving one card; opponents can catch a missed call for +2 before the next play/draw/pass. The first discard is a number card. First empty hand wins; a final penalty is drawn before scoring. Everyone must agree to play again.",
   "SETTINGS": "Settings",
+  "INVITE": "Invite",
   "MENU": "Game menu",
   "RECONNECT": "Reconnect",
   "SENDING": "Sending your move…",
