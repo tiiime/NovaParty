@@ -64,7 +64,7 @@ python3 tools/design/build_app_icons.py --check # 检查已提交的变体是否
 | Accent 按钮 | 天蓝；强调但非唯一主操作 | `button()` |
 | Secondary 按钮 | 白底蓝字；返回、取消、设置、次要操作 | `button()` |
 | Danger 按钮 | 白底危险色；删除、离开等破坏性确认 | `button()` |
-| 可选卡片 | 默认白底；选中为 `sky.soft` 填充、`sky` 描边与厚底边 | `party_theme.gd` 的 `card()` |
+| 可选卡片 | 默认白底；选中为 `sky.soft` 填充和 `selection.lip` 厚底边，游戏封面加勾标 | `party_theme.gd` 的 `card()` |
 | 开关行 | 左侧标签，右侧 `sky` 轨道和白色圆钮 | `app/ui/widgets/switch_row.gd` |
 | 输入框 | 白底；聚焦时 `sky` 色 3 单位描边 | `build_theme()` 中的 `LineEdit` 样式 |
 | 进度条 | `line` 轨道，`star` 填充及 4 单位 `star.lip` | `party_theme.gd` 的 `progress()` |
@@ -75,7 +75,7 @@ python3 tools/design/build_app_icons.py --check # 检查已提交的变体是否
 
 ## 电视焦点
 
-电视或键盘焦点使用橙色 6 单位外环、深色细轮廓与奶白内边。聚焦按钮放大 `1.045`，卡片放大 `1.035`；减少动态效果时保留静态边界，但取消缩放过渡和呼吸。
+电视或键盘焦点使用 3 单位蓝环，与控件之间留 2 单位间隔；淡蓝投影略向下偏移，呼应厚底边。聚焦按钮最多放大 `1.045`，卡片最多放大 `1.035`；减少动态效果时保留静态高亮，但取消缩放过渡和投影呼吸。
 
 **焦点不等于选中**：焦点表示确认键将操作谁，选中表示当前值。卡片即使已经选中，也必须能独立显示焦点。焦点环要预留空间，不能被滚动容器或父节点裁切。
 

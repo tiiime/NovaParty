@@ -3,7 +3,9 @@ signal selected(index: int)
 signal add_requested
 signal navigation_changed
 const Style = preload("res://app/ui/theme/party_theme.gd")
+const Icons = preload("res://app/ui/theme/party_icons.gd")
 const T = Style.T
+const BADGE_SIZE := 28
 var cards: Array[Button] = []
 var entries: Array = []
 var selection := 0
@@ -60,7 +62,7 @@ func populate(items: Array, current: int) -> void:
 		margin.add_child(body)
 		if adding:
 			var plus := TextureRect.new()
-			plus.texture = preload("res://app/ui/theme/party_icons.gd").get_icon("plus", T.SKY, 64)
+			plus.texture = Icons.get_icon("plus", T.SKY, 64)
 			plus.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 			plus.size_flags_vertical = Control.SIZE_EXPAND_FILL
 			plus.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -91,8 +93,27 @@ func populate(items: Array, current: int) -> void:
 		detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		body.add_child(detail)
 		card.set_meta("detail", detail)
+		if not adding: _add_selection_badge(card)
 	select_game(current)
 	_adapt()
+
+func _add_selection_badge(card: Button) -> void:
+	var badge := Panel.new()
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.add_theme_stylebox_override("panel", Style.pill(T.SKY, BADGE_SIZE / 2))
+	card.add_child(badge)
+	badge.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	badge.offset_left = -12 - BADGE_SIZE
+	badge.offset_top = 12
+	badge.offset_right = -12
+	badge.offset_bottom = 12 + BADGE_SIZE
+	var checkmark := TextureRect.new()
+	checkmark.texture = Icons.get_icon("check", T.WHITE, 18)
+	checkmark.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	checkmark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.add_child(checkmark)
+	checkmark.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	card.set_meta("selection_badge", badge)
 
 func _player_count(info: Dictionary) -> String:
 	var players: Dictionary = info.get("players", {})
@@ -123,6 +144,8 @@ func select_game(index: int) -> void:
 		Style.card(cards[i], active)
 		if i < entries.size():
 			cards[i].set_pressed_no_signal(active)
+			var badge: Control = cards[i].get_meta("selection_badge")
+			badge.visible = active
 			var detail: Label = cards[i].get_meta("detail")
 			detail.text = tr("GAME_PICKED_SHORT") if active else _player_count(entries[i])
 			detail.add_theme_color_override("font_color", T.SKY if active else T.MUTED)

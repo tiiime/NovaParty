@@ -30,7 +30,7 @@
 <rect x="32" y="128" width="1536" height="500" rx="20" fill="#C8D0E4" opacity="1"/>
 <rect x="32" y="124" width="1536" height="500" rx="20" fill="#FFFFFF" opacity="1" stroke="#E2E6F1" stroke-width="2"/>
 <text x="56" y="162" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="800" fill="#18254D" text-anchor="start">按钮：4 种 × 4 状态</text>
-<text x="56" y="190" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="500" fill="#4D6079" text-anchor="start">焦点使用橙色 6 单位外环，并加 focus.outline 深色细轮廓</text>
+<text x="56" y="190" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="500" fill="#4D6079" text-anchor="start">焦点使用细蓝环与略向下的淡蓝投影，保留按钮厚底边</text>
 <text x="416" y="222" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#4D6079" text-anchor="middle">默认</text>
 <text x="698" y="222" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#4D6079" text-anchor="middle">按下</text>
 <text x="980" y="222" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#4D6079" text-anchor="middle">电视焦点</text>
@@ -41,8 +41,9 @@
 <text x="416.0" y="286.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#18254D" text-anchor="middle">PRIMARY</text>
 <rect x="582" y="252" width="232" height="64" rx="16" fill="#FFDE46" opacity="1"/>
 <text x="698.0" y="290.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#18254D" text-anchor="middle">PRIMARY</text>
-<rect x="856" y="240" width="248" height="80" rx="22" fill="none" opacity="1" stroke="#263461" stroke-width="2"/>
-<rect x="858" y="242" width="244" height="76" rx="22" fill="none" opacity="1" stroke="#FF8A1C" stroke-width="6"/>
+<rect x="856" y="241" width="248" height="84" rx="24" fill="none" opacity="0.1" stroke="#4764E8" stroke-width="2"/>
+<rect x="858" y="243" width="244" height="80" rx="22" fill="none" opacity="0.2" stroke="#4764E8" stroke-width="2"/>
+<rect x="860.5" y="244.5" width="239.0" height="75.0" rx="19.5" fill="none" opacity="1" stroke="#4764E8" stroke-width="3"/>
 <rect x="864" y="252" width="232" height="64" rx="16" fill="#D4A524" opacity="1"/>
 <rect x="864" y="248" width="232" height="64" rx="16" fill="#FFDE46" opacity="1"/>
 <text x="980.0" y="286.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#18254D" text-anchor="middle">PRIMARY</text>
@@ -54,8 +55,9 @@
 <text x="416.0" y="374.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#FFFFFF" text-anchor="middle">ACCENT</text>
 <rect x="582" y="340" width="232" height="64" rx="16" fill="#304CE0" opacity="1"/>
 <text x="698.0" y="378.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#FFFFFF" text-anchor="middle">ACCENT</text>
-<rect x="856" y="328" width="248" height="80" rx="22" fill="none" opacity="1" stroke="#263461" stroke-width="2"/>
-<rect x="858" y="330" width="244" height="76" rx="22" fill="none" opacity="1" stroke="#FF8A1C" stroke-width="6"/>
+<rect x="856" y="329" width="248" height="84" rx="24" fill="none" opacity="0.1" stroke="#4764E8" stroke-width="2"/>
+<rect x="858" y="331" width="244" height="80" rx="22" fill="none" opacity="0.2" stroke="#4764E8" stroke-width="2"/>
+<rect x="860.5" y="332.5" width="239.0" height="75.0" rx="19.5" fill="none" opacity="1" stroke="#4764E8" stroke-width="3"/>
 <rect x="864" y="340" width="232" height="64" rx="16" fill="#2739A2" opacity="1"/>
 <rect x="864" y="336" width="232" height="64" rx="16" fill="#304CE0" opacity="1"/>
 <text x="980.0" y="374.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#FFFFFF" text-anchor="middle">ACCENT</text>
@@ -67,8 +69,9 @@
 <text x="416.0" y="462.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#304CE0" text-anchor="middle">SECONDARY</text>
 <rect x="582" y="428" width="232" height="64" rx="16" fill="#FFFFFF" opacity="1" stroke="#C8D0E4" stroke-width="2"/>
 <text x="698.0" y="466.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#304CE0" text-anchor="middle">SECONDARY</text>
-<rect x="856" y="416" width="248" height="80" rx="22" fill="none" opacity="1" stroke="#263461" stroke-width="2"/>
-<rect x="858" y="418" width="244" height="76" rx="22" fill="none" opacity="1" stroke="#FF8A1C" stroke-width="6"/>
+<rect x="856" y="417" width="248" height="84" rx="24" fill="none" opacity="0.1" stroke="#4764E8" stroke-width="2"/>
+<rect x="858" y="419" width="244" height="80" rx="22" fill="none" opacity="0.2" stroke="#4764E8" stroke-width="2"/>
+<rect x="860.5" y="420.5" width="239.0" height="75.0" rx="19.5" fill="none" opacity="1" stroke="#4764E8" stroke-width="3"/>
 <rect x="864" y="428" width="232" height="64" rx="16" fill="#C8D0E4" opacity="1"/>
 <rect x="864" y="424" width="232" height="64" rx="16" fill="#FFFFFF" opacity="1" stroke="#C8D0E4" stroke-width="2"/>
 <text x="980.0" y="462.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#304CE0" text-anchor="middle">SECONDARY</text>
@@ -80,8 +83,9 @@
 <text x="416.0" y="550.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#AB3558" text-anchor="middle">DANGER</text>
 <rect x="582" y="516" width="232" height="64" rx="16" fill="#FFFFFF" opacity="1" stroke="#F0B3C8" stroke-width="2"/>
 <text x="698.0" y="554.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#AB3558" text-anchor="middle">DANGER</text>
-<rect x="856" y="504" width="248" height="80" rx="22" fill="none" opacity="1" stroke="#263461" stroke-width="2"/>
-<rect x="858" y="506" width="244" height="76" rx="22" fill="none" opacity="1" stroke="#FF8A1C" stroke-width="6"/>
+<rect x="856" y="505" width="248" height="84" rx="24" fill="none" opacity="0.1" stroke="#4764E8" stroke-width="2"/>
+<rect x="858" y="507" width="244" height="80" rx="22" fill="none" opacity="0.2" stroke="#4764E8" stroke-width="2"/>
+<rect x="860.5" y="508.5" width="239.0" height="75.0" rx="19.5" fill="none" opacity="1" stroke="#4764E8" stroke-width="3"/>
 <rect x="864" y="516" width="232" height="64" rx="16" fill="#F0B3C8" opacity="1"/>
 <rect x="864" y="512" width="232" height="64" rx="16" fill="#FFFFFF" opacity="1" stroke="#F0B3C8" stroke-width="2"/>
 <text x="980.0" y="550.3" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#AB3558" text-anchor="middle">DANGER</text>
@@ -107,8 +111,8 @@
 <text x="138" y="780" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="800" fill="#18254D" text-anchor="start">星星棋</text>
 <text x="138" y="804" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="500" fill="#4D6079" text-anchor="start">2–4 人</text>
 <text x="72" y="850" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#4D6079" text-anchor="start">约 5 分钟</text>
-<rect x="288" y="742" width="202" height="122" rx="20" fill="#304CE0" opacity="1"/>
-<rect x="288" y="738" width="202" height="122" rx="20" fill="#E9EDFF" opacity="1" stroke="#304CE0" stroke-width="2"/>
+<rect x="288" y="742" width="202" height="122" rx="20" fill="#657AE1" opacity="1"/>
+<rect x="288" y="738" width="202" height="122" rx="20" fill="#E9EDFF" opacity="1" stroke="#657AE1" stroke-width="2"/>
 <rect x="302" y="752" width="54" height="54" rx="14" fill="#304CE0" opacity="1"/>
 <g transform="translate(305 755) scale(0.45) rotate(-8 55 55)">
 <use href="#star-shape" transform="translate(0 4)" fill="#D4A524"/>
@@ -123,10 +127,11 @@
 <text x="368" y="780" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="800" fill="#18254D" text-anchor="start">连连看</text>
 <text x="368" y="804" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="500" fill="#4D6079" text-anchor="start">2–4 人</text>
 <text x="302" y="850" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#4D6079" text-anchor="start">约 5 分钟</text>
-<circle cx="468" cy="760" r="14" fill="#087658" opacity="1"/>
-<use href="#i-check" transform="translate(456 748) scale(1)" color="#FFFFFF"/>
-<rect x="52" y="868" width="444" height="150" rx="26" fill="none" opacity="1" stroke="#FF8A1C" stroke-width="6"/>
-<rect x="50" y="866" width="448" height="154" rx="26" fill="none" opacity="1" stroke="#263461" stroke-width="2"/>
+<circle cx="464" cy="764" r="14" fill="#304CE0" opacity="1"/>
+<use href="#i-check" transform="translate(455 755) scale(0.75)" color="#FFFFFF"/>
+<rect x="50" y="867" width="448" height="158" rx="28" fill="none" opacity="0.1" stroke="#4764E8" stroke-width="2"/>
+<rect x="52" y="869" width="444" height="154" rx="26" fill="none" opacity="0.2" stroke="#4764E8" stroke-width="2"/>
+<rect x="54.5" y="870.5" width="439.0" height="149.0" rx="23.5" fill="none" opacity="1" stroke="#4764E8" stroke-width="3"/>
 <rect x="58" y="878" width="432" height="138" rx="20" fill="#C8D0E4" opacity="1"/>
 <rect x="58" y="874" width="432" height="138" rx="20" fill="#FFFFFF" opacity="1" stroke="#E2E6F1" stroke-width="2"/>
 <rect x="72" y="888" width="82" height="82" rx="14" fill="#304CE0" opacity="1"/>

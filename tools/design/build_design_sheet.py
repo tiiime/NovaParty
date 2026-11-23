@@ -143,6 +143,15 @@ class Board:
         self.text(40, self.height - 20, f'{TOKENS["brand"]} · {TOKENS["direction"]}', T["size.meta"], C["muted"], T["weight.body"])
         self.text(self.width - 40, self.height - 20, label, T["size.meta"], C["muted"], T["weight.label"], "end")
 
+    def focus(self, x, y, w, h, radius) -> None:
+        ring = M["focus.ring"]
+        edge = M["focus.gap"] + ring
+        for spread, opacity in ((edge + 4, 0.10), (edge + 2, 0.20)):
+            offset = spread - 1
+            self.rect(x - offset, y - offset + 1, w + offset * 2, h + offset * 2, "none", radius + offset, C["focus"], 2, opacity)
+        offset = edge - ring / 2
+        self.rect(x - offset, y - offset, w + offset * 2, h + offset * 2, "none", radius + offset, C["focus"], ring)
+
     def button(self, x, y, w, label, kind="primary", state="default", h=None, size=None, icon=None) -> None:
         h = h or M["button.height"]
         size = size or T["size.button"]
@@ -152,8 +161,7 @@ class Board:
         text_color = C[spec["text"]]
         border = C[spec["border"]] if spec["border"] else None
         if state == "focus":
-            self.rect(x - M["focus.ring"] - M["stroke"], y - M["focus.ring"] - M["stroke"], w + (M["focus.ring"] + M["stroke"]) * 2, h + (M["focus.ring"] + M["stroke"]) * 2, "none", M["radius.button"] + M["focus.ring"], C["focus.outline"], M["stroke"])
-            self.rect(x - M["focus.ring"], y - M["focus.ring"], w + M["focus.ring"] * 2, h + M["focus.ring"] * 2, "none", M["radius.button"] + M["focus.ring"], C["focus"], M["focus.ring"])
+            self.focus(x, y, w, h + M["lip"], M["radius.button"])
         pressed = state == "pressed"
         face_y = y + (M["lip"] if pressed else 0)
         if lip and not pressed:
@@ -224,7 +232,7 @@ def foundations() -> Board:
         x, y = 596 + col * 136, 220 + row * 48
         border = C["line.lip"] if color in (C["white"], C["panel"], C["page"]) else None
         b.rect(x, y, sw, sh, color, M["radius.input"], border, M["stroke"])
-        text_color = C["white"] if name in ("sky", "sky.lip", "ink", "muted", "success", "danger", "focus.outline", "scrim") else C["ink"]
+        text_color = C["white"] if name in ("sky", "sky.lip", "ink", "muted", "success", "danger", "scrim") else C["ink"]
         b.text(x + 7, y + 17, name, 12, text_color, T["weight.label"])
         b.text(x + 7, y + 34, color, 11, text_color, T["weight.body"])
 
@@ -275,7 +283,7 @@ def foundations() -> Board:
     b.text(850, 806, "静止", T["size.section"], C["ink"], T["weight.label"])
     b.rect(850, 844 + M["lip"] * 4, 260, 104, C["star.lip"], M["radius.button"])
     b.rect(850, 844, 260, 104, C["star"], M["radius.button"], C["ink"], M["stroke"])
-    b.line(1132, 844, 1182, 844, C["focus.outline"], M["stroke"])
+    b.line(1132, 844, 1182, 844, C["ink"], M["stroke"])
     b.text(1194, 851, f'描边 {M["stroke"]}', T["size.meta"], C["ink"], T["weight.label"])
     b.line(1132, 948, 1182, 948 + M["lip"] * 4, C["star.lip"], M["stroke"])
     b.text(1194, 974, f'厚底边 {M["lip"]}', T["size.meta"], C["ink"], T["weight.label"])
@@ -290,11 +298,10 @@ def foundations() -> Board:
 def game_card(b: Board, x, y, w, title, selected=False, focused=False, plus=False) -> None:
     h = 122 if w <= 240 else 138
     if focused:
-        b.rect(x - M["focus.ring"], y - M["focus.ring"], w + M["focus.ring"] * 2, h + M["focus.ring"] * 2, "none", M["radius.card"] + M["focus.ring"], C["focus"], M["focus.ring"])
-        b.rect(x - M["focus.ring"] - M["stroke"], y - M["focus.ring"] - M["stroke"], w + (M["focus.ring"] + M["stroke"]) * 2, h + (M["focus.ring"] + M["stroke"]) * 2, "none", M["radius.card"] + M["focus.ring"], C["focus.outline"], M["stroke"])
-    lip = C["sky"] if selected else C["line.lip"]
+        b.focus(x, y, w, h + M["lip"], M["radius.card"])
+    lip = C["selection.lip"] if selected else C["line.lip"]
     b.rect(x, y + M["lip"], w, h, lip, M["radius.card"])
-    b.rect(x, y, w, h, C["sky.soft"] if selected else C["panel"], M["radius.card"], C["sky"] if selected else C["line"], M["stroke"])
+    b.rect(x, y, w, h, C["sky.soft"] if selected else C["panel"], M["radius.card"], lip if selected else C["line"], M["stroke"])
     if plus:
         b.circle(x + w / 2, y + 54, 30, C["sky.soft"])
         b.use("i-plus", x + w / 2 - 12, y + 42, 1, C["sky"])
@@ -312,8 +319,8 @@ def game_card(b: Board, x, y, w, title, selected=False, focused=False, plus=Fals
             b.text(x + 112, y + 50, title, T["size.section"], C["ink"], T["weight.title"])
             b.text(x + 112, y + 82, "2–4 人 · 约 5 分钟", T["size.meta"], C["muted"])
         if selected:
-            b.circle(x + w - 22, y + 22, 14, C["success"])
-            b.use("i-check", x + w - 34, y + 10, 1, C["white"])
+            b.circle(x + w - 26, y + 26, 14, C["sky"])
+            b.use("i-check", x + w - 35, y + 17, 0.75, C["white"])
 
 
 def banner(b: Board, x, y, w, label, kind) -> None:
@@ -333,7 +340,7 @@ def components() -> Board:
     b = Board(1600, 1500, f'星星大作战 v{TOKENS["version"]} 组件规范')
     b.header("02", "组件规范", "纯色果冻组件、厚底边、电视焦点与完整状态")
 
-    b.panel(32, 124, 1536, 500, "按钮：4 种 × 4 状态", "焦点使用橙色 6 单位外环，并加 focus.outline 深色细轮廓")
+    b.panel(32, 124, 1536, 500, "按钮：4 种 × 4 状态", "焦点使用细蓝环与略向下的淡蓝投影，保留按钮厚底边")
     kinds = [("primary", "PRIMARY / 星黄"), ("accent", "ACCENT / 天蓝"), ("secondary", "SECONDARY / 白底"), ("danger", "DANGER / 危险")]
     states = [("default", "默认"), ("pressed", "按下"), ("focus", "电视焦点"), ("disabled", "禁用")]
     for j, (state, state_label) in enumerate(states):

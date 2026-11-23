@@ -16,7 +16,6 @@ func _ready() -> void:
 		var box := Style.slab(T.SKY_SOFT if state.begins_with("hover") else T.PANEL, T.LINE_LIP, T.RADIUS_BUTTON, true, false, pad)
 		box.content_margin_right = pad.x + T.SWITCH_WIDTH + 12
 		add_theme_stylebox_override(state, box)
-	add_theme_stylebox_override("focus", Style.focus_box())
 	add_theme_font_override("font", Style.font(T.FONT_WEIGHT_LABEL))
 	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
 		add_theme_color_override(state, T.INK)

@@ -84,8 +84,8 @@
 <text x="36" y="108" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="800" fill="#2739A2" text-anchor="start">发起游戏</text>
 <text x="36" y="159" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="32" font-weight="800" fill="#18254D" text-anchor="start">选择游戏</text>
 <text x="36" y="213" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="22" font-weight="500" fill="#4D6079" text-anchor="start">挑一个喜欢的游戏，再邀请朋友。</text>
-<rect x="36" y="262" width="218" height="122" rx="20" fill="#304CE0" opacity="1"/>
-<rect x="36" y="258" width="218" height="122" rx="20" fill="#E9EDFF" opacity="1" stroke="#304CE0" stroke-width="2"/>
+<rect x="36" y="262" width="218" height="122" rx="20" fill="#657AE1" opacity="1"/>
+<rect x="36" y="258" width="218" height="122" rx="20" fill="#E9EDFF" opacity="1" stroke="#657AE1" stroke-width="2"/>
 <rect x="50" y="272" width="54" height="54" rx="14" fill="#304CE0" opacity="1"/>
 <g transform="translate(53 275) scale(0.45) rotate(-8 55 55)">
 <use href="#star-shape" transform="translate(0 4)" fill="#D4A524"/>
@@ -100,8 +100,8 @@
 <text x="116" y="300" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="800" fill="#18254D" text-anchor="start">五子棋</text>
 <text x="116" y="324" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="500" fill="#4D6079" text-anchor="start">2–4 人</text>
 <text x="50" y="370" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#4D6079" text-anchor="start">约 5 分钟</text>
-<circle cx="232" cy="280" r="14" fill="#087658" opacity="1"/>
-<use href="#i-check" transform="translate(220 268) scale(1)" color="#FFFFFF"/>
+<circle cx="228" cy="284" r="14" fill="#304CE0" opacity="1"/>
+<use href="#i-check" transform="translate(219 275) scale(0.75)" color="#FFFFFF"/>
 <rect x="286" y="262" width="218" height="122" rx="20" fill="#C8D0E4" opacity="1"/>
 <rect x="286" y="258" width="218" height="122" rx="20" fill="#FFFFFF" opacity="1" stroke="#E2E6F1" stroke-width="2"/>
 <circle cx="395.0" cy="312" r="30" fill="#E9EDFF" opacity="1"/>
@@ -378,8 +378,9 @@
 <circle cx="79" cy="60" r="4" fill="#FF75B9" opacity="0.55"/>
 </g>
 <text x="700" y="223" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="22" font-weight="800" fill="#2739A2" text-anchor="start">现在开玩</text>
-<rect x="692" y="236" width="496" height="96" rx="22" fill="none" opacity="1" stroke="#263461" stroke-width="2"/>
-<rect x="694" y="238" width="492" height="92" rx="22" fill="none" opacity="1" stroke="#FF8A1C" stroke-width="6"/>
+<rect x="692" y="237" width="496" height="100" rx="24" fill="none" opacity="0.1" stroke="#4764E8" stroke-width="2"/>
+<rect x="694" y="239" width="492" height="96" rx="22" fill="none" opacity="0.2" stroke="#4764E8" stroke-width="2"/>
+<rect x="696.5" y="240.5" width="487.0" height="91.0" rx="19.5" fill="none" opacity="1" stroke="#4764E8" stroke-width="3"/>
 <rect x="700" y="248" width="480" height="80" rx="16" fill="#D4A524" opacity="1"/>
 <rect x="700" y="244" width="480" height="80" rx="16" fill="#FFDE46" opacity="1"/>
 <text x="940.0" y="292.4" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="700" fill="#18254D" text-anchor="middle">选择游戏</text>

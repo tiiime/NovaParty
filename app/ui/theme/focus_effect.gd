@@ -1,7 +1,10 @@
 extends Control
-# A lightweight canvas halo and short scale tweens; no bloom/postprocessing needed on TV.
+# A thin focus ring with a soft, slightly lowered shadow; no postprocessing needed on TV.
 const T = preload("res://app/ui/theme/tokens.gd")
-const HALO_SPREAD := 9
+const SHADOW_STEP := 2
+const SHADOW_OFFSET := Vector2(0, 1)
+const RING_SPREAD := T.FOCUS_GAP + T.FOCUS_RING
+const SHADOW_SPREAD := RING_SPREAD + 2 * SHADOW_STEP
 const MAX_GROWTH := 10.0 # Per edge, even for full-width buttons on TV.
 var button: Button
 var feedback
@@ -9,9 +12,8 @@ var hovered := false
 var tween: Tween
 var phase := 0.0
 var frame_time := 0.0
-var glow: StyleBoxFlat
-var inset: StyleBoxFlat
-var outline: StyleBoxFlat
+var ring: StyleBoxFlat
+var shadow: StyleBoxFlat
 
 func _ready() -> void:
 	button = get_parent() as Button
@@ -26,23 +28,10 @@ func _ready() -> void:
 		ancestor = ancestor.get_parent()
 	if feedback != null:
 		feedback.preferences_changed.connect(_refresh)
-	glow = StyleBoxFlat.new()
-	glow.bg_color = Color.TRANSPARENT
-	glow.draw_center = false
-	glow.set_border_width_all(2)
-	var radius := int(button.get_meta("focus_radius", T.RADIUS_BUTTON))
-	glow.set_corner_radius_all(radius + 3)
-	inset = StyleBoxFlat.new()
-	inset.bg_color = Color.TRANSPARENT
-	inset.draw_center = false
-	inset.border_color = T.FOCUS_INNER
-	inset.set_border_width_all(2)
-	inset.set_corner_radius_all(radius - 1)
-	outline = StyleBoxFlat.new()
-	outline.draw_center = false
-	outline.border_color = T.FOCUS_OUTLINE
-	outline.set_border_width_all(2)
-	outline.set_corner_radius_all(radius + 6)
+	ring = ring_box(int(button.get_meta("focus_radius", T.RADIUS_BUTTON)))
+	shadow = StyleBoxFlat.new()
+	shadow.draw_center = false
+	shadow.set_border_width_all(SHADOW_STEP)
 	button.focus_entered.connect(func():
 		_refresh()
 		if feedback != null: feedback.play("move")
@@ -70,6 +59,16 @@ func _ready() -> void:
 	_center()
 	_refresh()
 
+static func ring_box(radius: int) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.draw_center = false
+	box.border_color = T.FOCUS
+	box.set_border_width_all(T.FOCUS_RING)
+	box.set_corner_radius_all(radius + RING_SPREAD)
+	box.set_expand_margin_all(RING_SPREAD)
+	box.set_content_margin_all(0)
+	return box
+
 static func _focus_scale(control: Control) -> float:
 	var preferred := T.FOCUS_CARD_SCALE if control.get_meta("focus_card", false) else T.FOCUS_BUTTON_SCALE
 	return _bounded_scale(control, preferred)
@@ -84,7 +83,7 @@ static func visual_rect(control: Control, relative_to: Control) -> Rect2:
 		var target_scale := _focus_scale(control)
 		# Account for the current tween without waiting for it to settle.
 		var ratio := (Vector2.ONE * target_scale).max(control.scale) / control.scale
-		var painted := rect.grow(HALO_SPREAD + 1)
+		var painted := rect.grow(SHADOW_SPREAD + 1.0).merge(Rect2(SHADOW_OFFSET, control.size).grow(SHADOW_SPREAD + 1.0))
 		var pivot := control.pivot_offset
 		rect = Rect2(pivot + (painted.position - pivot) * ratio, painted.size * ratio)
 	elif control.has_theme_stylebox("focus"):
@@ -111,7 +110,7 @@ func _refresh() -> void:
 	button.z_index = 1 if active else 0
 	var amount := _focus_scale(button) if button.has_focus() else _bounded_scale(button, T.FOCUS_HOVER_SCALE)
 	_animate(Vector2.ONE * amount if active else Vector2.ONE, T.MOTION_FOCUS)
-	set_process(active and not _reduced())
+	set_process(active and button.has_focus() and not _reduced())
 	phase = 0
 	queue_redraw()
 
@@ -131,11 +130,11 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 func _draw() -> void:
-	if not is_instance_valid(button) or not _active() or glow == null: return
+	if not is_instance_valid(button) or not _active() or not button.has_focus() or ring == null: return
 	var pulse := 0.0 if _reduced() else sin(phase * TAU * T.FOCUS_HALO_HZ) * 0.5 + 0.5
-	for spread in [HALO_SPREAD, HALO_SPREAD - 2, HALO_SPREAD - 4]:
-		glow.border_color = Color(1.0, 0.49, 0.06, (0.12 + pulse * 0.10) * (12.0 - spread) / 7.0)
-		draw_style_box(glow, Rect2(Vector2.ZERO, size).grow(spread))
-	if button.has_focus():
-		draw_style_box(outline, Rect2(Vector2.ZERO, size).grow(5))
-		draw_style_box(inset, Rect2(Vector2.ONE, size - Vector2.ONE * 2))
+	var radius := int(button.get_meta("focus_radius", T.RADIUS_BUTTON))
+	for spread in [SHADOW_SPREAD, SHADOW_SPREAD - SHADOW_STEP]:
+		shadow.set_corner_radius_all(radius + spread)
+		shadow.border_color = Color(T.FOCUS, (0.08 + pulse * 0.035) * (1 if spread == SHADOW_SPREAD else 2))
+		draw_style_box(shadow, Rect2(SHADOW_OFFSET, size).grow(spread))
+	draw_style_box(ring, Rect2(Vector2.ZERO, size))

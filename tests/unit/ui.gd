@@ -1,5 +1,6 @@
 extends SceneTree
 const FocusEffect = preload("res://app/ui/theme/focus_effect.gd")
+const T = FocusEffect.T
 var checks := 0
 var failures := 0
 
@@ -38,6 +39,8 @@ func run() -> void:
 	check(root.gui_get_focus_owner() == main.home.start_button, "home focuses the primary action")
 	check(main.home.header.size.y < 82 and main.home.start_button.get_global_rect().end.y <= root.get_visible_rect().size.y, "landscape brand and badge leave room for the primary action")
 	await focus_fits(main.home.start_button, main.home.scroll, "home start and its halo fit on TV")
+	var home_ring: StyleBoxFlat = main.home.start_button.get_node("FocusFeedback").ring
+	check(main.home.start_button.get_theme_stylebox("focus") is StyleBoxEmpty and home_ring.border_color == T.FOCUS and home_ring.border_width_bottom == T.FOCUS_RING, "home uses one thin blue ring, not a stacked engine outline")
 	await focus_fits(main.home.settings_button, main.home, "home dock highlight stays on screen")
 	main.set_language("en")
 	check(TranslationServer.translate("APP_NAME") == "NovaParty", "English title installed")
@@ -101,6 +104,13 @@ func run() -> void:
 	check(root.gui_get_focus_owner() == main.create_button, "selected card moves focus to launch")
 	check(not main.settings_action.visible, "selection footer omits settings")
 	check(main.library.cards[1].button_pressed and main.library.cards[1].get_meta("detail").text == main.tr("GAME_PICKED_SHORT"), "selected game has explicit visual and semantic feedback")
+	var picked: Button = main.library.cards[1]
+	var badge: Control = picked.get_meta("selection_badge")
+	check(not picked.has_focus() and badge.visible and not main.library.cards[0].get_meta("selection_badge").visible, "check badge follows persistent selection rather than focus")
+	check(badge.position.is_equal_approx(Vector2(picked.size.x - 40, 12)) and badge.size.is_equal_approx(Vector2(28, 28)), "check badge sits inside the top-right of the game card")
+	for state in ["pressed", "hover_pressed"]:
+		var face: StyleBoxFlat = picked.get_theme_stylebox(state)
+		check(face.bg_color == T.SKY_SOFT and face.border_color == T.SELECTION_LIP and face.border_width_bottom == T.STROKE + T.LIP and face.expand_margin_top == 0, "selected tile retains its blue face and raised lip in " + state)
 	check(main.create_button.text == "LAUNCH_GAME", "launch action avoids room terminology")
 	check(main.back_button.global_position.y > main.library.global_position.y, "back follows game grid in fixed footer")
 	check(main.library._cover({"id": "unknown"}) != null, "unknown games receive a default cover")

@@ -127,30 +127,27 @@
 <rect x="1276" y="316" width="126" height="42" rx="14" fill="#F0B3C8" opacity="1"/>
 <text x="1283" y="333" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" font-weight="700" fill="#18254D" text-anchor="start">danger.line</text>
 <text x="1283" y="350" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" font-weight="500" fill="#18254D" text-anchor="start">#F0B3C8</text>
-<rect x="1412" y="316" width="126" height="42" rx="14" fill="#FF8A1C" opacity="1"/>
+<rect x="1412" y="316" width="126" height="42" rx="14" fill="#4764E8" opacity="1"/>
 <text x="1419" y="333" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" font-weight="700" fill="#18254D" text-anchor="start">focus</text>
-<text x="1419" y="350" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" font-weight="500" fill="#18254D" text-anchor="start">#FF8A1C</text>
-<rect x="596" y="364" width="126" height="42" rx="14" fill="#263461" opacity="1"/>
-<text x="603" y="381" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="start">focus.outline</text>
-<text x="603" y="398" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" font-weight="500" fill="#FFFFFF" text-anchor="start">#263461</text>
-<rect x="732" y="364" width="126" height="42" rx="14" fill="#FFF5CE" opacity="1"/>
-<text x="739" y="381" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" font-weight="700" fill="#18254D" text-anchor="start">focus.inner</text>
-<text x="739" y="398" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" font-weight="500" fill="#18254D" text-anchor="start">#FFF5CE</text>
-<rect x="868" y="364" width="126" height="42" rx="14" fill="#FF75B9" opacity="1"/>
-<text x="875" y="381" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" font-weight="700" fill="#18254D" text-anchor="start">pink</text>
-<text x="875" y="398" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" font-weight="500" fill="#18254D" text-anchor="start">#FF75B9</text>
-<rect x="1004" y="364" width="126" height="42" rx="14" fill="#49DFCB" opacity="1"/>
-<text x="1011" y="381" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" font-weight="700" fill="#18254D" text-anchor="start">mint</text>
-<text x="1011" y="398" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" font-weight="500" fill="#18254D" text-anchor="start">#49DFCB</text>
-<rect x="1140" y="364" width="126" height="42" rx="14" fill="#B99AFF" opacity="1"/>
-<text x="1147" y="381" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" font-weight="700" fill="#18254D" text-anchor="start">purple</text>
-<text x="1147" y="398" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" font-weight="500" fill="#18254D" text-anchor="start">#B99AFF</text>
-<rect x="1276" y="364" width="126" height="42" rx="14" fill="#FFFFFF" opacity="1" stroke="#C8D0E4" stroke-width="2"/>
-<text x="1283" y="381" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" font-weight="700" fill="#18254D" text-anchor="start">white</text>
-<text x="1283" y="398" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" font-weight="500" fill="#18254D" text-anchor="start">#FFFFFF</text>
-<rect x="1412" y="364" width="126" height="42" rx="14" fill="#06143D" opacity="1"/>
-<text x="1419" y="381" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="start">scrim</text>
-<text x="1419" y="398" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" font-weight="500" fill="#FFFFFF" text-anchor="start">#06143D</text>
+<text x="1419" y="350" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" font-weight="500" fill="#18254D" text-anchor="start">#4764E8</text>
+<rect x="596" y="364" width="126" height="42" rx="14" fill="#657AE1" opacity="1"/>
+<text x="603" y="381" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" font-weight="700" fill="#18254D" text-anchor="start">selection.lip</text>
+<text x="603" y="398" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" font-weight="500" fill="#18254D" text-anchor="start">#657AE1</text>
+<rect x="732" y="364" width="126" height="42" rx="14" fill="#FF75B9" opacity="1"/>
+<text x="739" y="381" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" font-weight="700" fill="#18254D" text-anchor="start">pink</text>
+<text x="739" y="398" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" font-weight="500" fill="#18254D" text-anchor="start">#FF75B9</text>
+<rect x="868" y="364" width="126" height="42" rx="14" fill="#49DFCB" opacity="1"/>
+<text x="875" y="381" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" font-weight="700" fill="#18254D" text-anchor="start">mint</text>
+<text x="875" y="398" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" font-weight="500" fill="#18254D" text-anchor="start">#49DFCB</text>
+<rect x="1004" y="364" width="126" height="42" rx="14" fill="#B99AFF" opacity="1"/>
+<text x="1011" y="381" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" font-weight="700" fill="#18254D" text-anchor="start">purple</text>
+<text x="1011" y="398" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" font-weight="500" fill="#18254D" text-anchor="start">#B99AFF</text>
+<rect x="1140" y="364" width="126" height="42" rx="14" fill="#FFFFFF" opacity="1" stroke="#C8D0E4" stroke-width="2"/>
+<text x="1147" y="381" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" font-weight="700" fill="#18254D" text-anchor="start">white</text>
+<text x="1147" y="398" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" font-weight="500" fill="#18254D" text-anchor="start">#FFFFFF</text>
+<rect x="1276" y="364" width="126" height="42" rx="14" fill="#06143D" opacity="1"/>
+<text x="1283" y="381" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="start">scrim</text>
+<text x="1283" y="398" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" font-weight="500" fill="#FFFFFF" text-anchor="start">#06143D</text>
 <rect x="32" y="456" width="648" height="252" rx="20" fill="#C8D0E4" opacity="1"/>
 <rect x="32" y="452" width="648" height="252" rx="20" fill="#FFFFFF" opacity="1" stroke="#E2E6F1" stroke-width="2"/>
 <text x="56" y="490" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="800" fill="#18254D" text-anchor="start">插图配色</text>
@@ -218,13 +215,13 @@
 <text x="850" y="806" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="700" fill="#18254D" text-anchor="start">静止</text>
 <rect x="850" y="860" width="260" height="104" rx="16" fill="#D4A524" opacity="1"/>
 <rect x="850" y="844" width="260" height="104" rx="16" fill="#FFDE46" opacity="1" stroke="#18254D" stroke-width="2"/>
-<line x1="1132" y1="844" x2="1182" y2="844" stroke="#263461" stroke-width="2" stroke-linecap="round"/>
+<line x1="1132" y1="844" x2="1182" y2="844" stroke="#18254D" stroke-width="2" stroke-linecap="round"/>
 <text x="1194" y="851" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#18254D" text-anchor="start">描边 2</text>
 <line x1="1132" y1="948" x2="1182" y2="964" stroke="#D4A524" stroke-width="2" stroke-linecap="round"/>
 <text x="1194" y="974" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#18254D" text-anchor="start">厚底边 4</text>
 <text x="850" y="1018" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="24" font-weight="700" fill="#18254D" text-anchor="start">按下</text>
 <rect x="850" y="1054" width="260" height="56" rx="16" fill="#FFDE46" opacity="1" stroke="#18254D" stroke-width="2"/>
-<line x1="1132" y1="1050" x2="1132" y2="1066" stroke="#FF8A1C" stroke-width="2" stroke-linecap="round"/>
+<line x1="1132" y1="1050" x2="1132" y2="1066" stroke="#4764E8" stroke-width="2" stroke-linecap="round"/>
 <text x="1152" y="1080" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#18254D" text-anchor="start">按下下沉 4，lip 消失</text>
 <text x="40" y="1180" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="500" fill="#4D6079" text-anchor="start">星星大作战 · 派对街机 / Party Arcade: 暖白画布、清亮蓝展台、星黄主操作；纯色块、2 单位描边、4 单位厚底边</text>
 <text x="1560" y="1180" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#4D6079" text-anchor="end">FOUNDATIONS</text>

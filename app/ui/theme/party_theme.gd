@@ -5,7 +5,6 @@ const T = preload("res://app/ui/theme/tokens.gd")
 const FocusEffect = preload("res://app/ui/theme/focus_effect.gd")
 const INK = T.INK
 const BLUE = T.SKY
-const FOCUS_ORANGE = T.FOCUS
 static var _fonts := {}
 
 static func token(name: String) -> Color:
@@ -48,14 +47,10 @@ static func slab(fill: Color, lip: Color, radius: int, stroke: bool, pressed: bo
 		box.content_margin_bottom = pad.y + T.LIP
 	return box
 
-static func focus_box(radius: int = T.RADIUS_BUTTON + 3) -> StyleBoxFlat:
-	var box := pill(Color.TRANSPARENT, radius, T.FOCUS, T.FOCUS_RING)
-	box.draw_center = false
-	box.set_expand_margin_all(3)
-	return box
-
 static func feedback(button: Button, card: bool = false) -> void:
 	if button.has_node("FocusFeedback"): return
+	# Only the overlay paints focus so engine states cannot stack a second outline on it.
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	button.set_meta("focus_card", card)
 	var effect := FocusEffect.new()
 	effect.name = "FocusFeedback"
@@ -73,9 +68,10 @@ static func button(target: Button, kind = "primary", height: int = T.BUTTON_HEIG
 	target.add_theme_font_size_override("font_size", T.FONT_SIZE_BUTTON)
 	target.add_theme_stylebox_override("normal", slab(fill, lip, T.RADIUS_BUTTON, outlined))
 	target.add_theme_stylebox_override("hover", slab(fill.lerp(T.SKY_SOFT if outlined else Color.WHITE, 0.6 if outlined else 0.18), lip, T.RADIUS_BUTTON, outlined))
-	target.add_theme_stylebox_override("pressed", slab(fill.lerp(lip, 0.25), lip, T.RADIUS_BUTTON, outlined, true))
+	var pressed := slab(fill.lerp(lip, 0.25), lip, T.RADIUS_BUTTON, outlined, true)
+	target.add_theme_stylebox_override("pressed", pressed)
+	target.add_theme_stylebox_override("hover_pressed", pressed)
 	target.add_theme_stylebox_override("disabled", slab(T.DISABLED, T.DISABLED, T.RADIUS_BUTTON, false))
-	target.add_theme_stylebox_override("focus", focus_box())
 	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
 		target.add_theme_color_override(state, token(spec.text))
 	target.add_theme_color_override("font_disabled_color", T.DISABLED_TEXT)
@@ -84,16 +80,17 @@ static func button(target: Button, kind = "primary", height: int = T.BUTTON_HEIG
 	target.set_meta("focus_radius", T.RADIUS_BUTTON)
 	feedback(target)
 
-# Selectable tile: game covers, avatars, rooms. Selected tiles turn sky-soft with a sky lip.
+# Selectable tile: a latched selection keeps its raised lip after the click.
 static func card(target: Button, selected: bool = false, radius: int = T.RADIUS_CARD) -> void:
 	var fill := T.SKY_SOFT if selected else T.PANEL
-	var lip := T.SKY if selected else T.LINE_LIP
+	var lip := T.SELECTION_LIP if selected else T.LINE_LIP
 	var pad := Vector2(14, 12)
 	target.add_theme_stylebox_override("normal", slab(fill, lip, radius, true, false, pad))
 	target.add_theme_stylebox_override("hover", slab(T.SKY_SOFT, lip, radius, true, false, pad))
-	target.add_theme_stylebox_override("pressed", slab(T.SKY_SOFT, lip, radius, true, true, pad))
+	var pressed := slab(T.SKY_SOFT, lip, radius, true, not (target.toggle_mode and selected), pad)
+	target.add_theme_stylebox_override("pressed", pressed)
+	target.add_theme_stylebox_override("hover_pressed", pressed)
 	target.add_theme_stylebox_override("disabled", slab(T.DISABLED, T.DISABLED, radius, false, false, pad))
-	target.add_theme_stylebox_override("focus", focus_box(radius + 3))
 	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
 		target.add_theme_color_override(state, T.SKY if selected else T.INK)
 	target.set_meta("focus_radius", radius)
@@ -148,5 +145,5 @@ static func build_theme() -> Theme:
 	theme.set_stylebox("normal", "OptionButton", slab(T.PANEL, T.LINE_LIP, T.RADIUS_INPUT, true))
 	theme.set_stylebox("hover", "OptionButton", slab(T.SKY_SOFT, T.LINE_LIP, T.RADIUS_INPUT, true))
 	theme.set_stylebox("pressed", "OptionButton", slab(T.SKY_SOFT, T.LINE_LIP, T.RADIUS_INPUT, true, true))
-	theme.set_stylebox("focus", "OptionButton", focus_box(T.RADIUS_INPUT + 3))
+	theme.set_stylebox("focus", "OptionButton", FocusEffect.ring_box(T.RADIUS_INPUT))
 	return theme
