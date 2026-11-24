@@ -2,6 +2,7 @@
 from pathlib import Path
 import sys
 import hashlib
+import time
 import urllib.request
 import subprocess
 import tempfile
@@ -9,6 +10,31 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT / p) for p in ['tools/build', 'tools/dev']]
+
+ZXING_SHA256 = '8d8064c1636fdaef7189dd9055c7d59950a8940a12f2293956446ec3c109fd82'
+ZXING_URLS = [
+    'https://repo1.maven.org/maven2/com/google/zxing/core/3.5.3/core-3.5.3.jar',
+    'https://repo.maven.apache.org/maven2/com/google/zxing/core/3.5.3/core-3.5.3.jar',
+    'https://maven.aliyun.com/repository/central/com/google/zxing/core/3.5.3/core-3.5.3.jar',
+]
+
+
+def _download_zxing(destination):
+    last_error = None
+    for attempt in range(3):
+        for url in ZXING_URLS:
+            try:
+                request = urllib.request.Request(url, headers={'User-Agent': 'NovaParty-Build/1.0'})
+                with urllib.request.urlopen(request, timeout=30) as response:
+                    data = response.read()
+                if hashlib.sha256(data).hexdigest() != ZXING_SHA256:
+                    raise ValueError(f'ZXing dependency checksum mismatch from {url}')
+                destination.write_bytes(data)
+                return
+            except Exception as error:
+                last_error = error
+        time.sleep(2 ** attempt)
+    raise RuntimeError(f'Failed to download ZXing core 3.5.3: {last_error}') from last_error
 
 
 def include_sdk(apk, root, debug=True):
@@ -22,8 +48,8 @@ def include_sdk(apk, root, debug=True):
     zxing=root/'build/deps/zxing-core-3.5.3.jar'
     zxing.parent.mkdir(parents=True,exist_ok=True)
     if not zxing.exists():
-        urllib.request.urlretrieve('https://repo.maven.apache.org/maven2/com/google/zxing/core/3.5.3/core-3.5.3.jar',zxing)
-    if hashlib.sha256(zxing.read_bytes()).hexdigest()!='8d8064c1636fdaef7189dd9055c7d59950a8940a12f2293956446ec3c109fd82':
+        _download_zxing(zxing)
+    if hashlib.sha256(zxing.read_bytes()).hexdigest()!=ZXING_SHA256:
         raise ValueError('ZXing dependency checksum mismatch')
     with tempfile.TemporaryDirectory(prefix='nv-sdk-dex-') as temp:
         temp=Path(temp);classes=temp/'classes';classes.mkdir();dex=temp/'dex';dex.mkdir()

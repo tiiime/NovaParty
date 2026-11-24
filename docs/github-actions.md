@@ -1,8 +1,42 @@
 # GitHub 构建与打包
 
+## Tag 自动发布（APK / IPA / EXE / DMG）
+
+工作流 `.github/workflows/release.yml`，名称 **Release Packages**。
+
+推送 `v*` 标签（例如 `v0.1.16`）时自动并行构建 4 端 Release 安装包，并在对应标签下创建/更新 GitHub Release（附带 `SHA256SUMS.txt`）：
+
+| 平台 | Runner / 架构 | Release 产物 | 说明 |
+| --- | --- | --- | --- |
+| Android | `ubuntu-24.04` / ARMv7 + ARM64 | `NovaParty-<tag>-android.apk` | 使用仓库 Secrets 正式签名，排除 Debug 服务与安装权限 |
+| iOS | `macos-15` / arm64 | `NovaParty-<tag>-ios.ipa` | 未配置 Apple 签名 Secrets 时生成未签名 IPA（可供 AltStore/SideStore/Sideloadly/TrollStore 重签安装）；配置后自动走 `xcodebuild archive` 正式签名 |
+| Windows | `windows-2025` / x64 | `NovaParty-<tag>-windows-x64.exe` | 内嵌 PCK 的单文件 EXE，排除 Debug，CI 独立目录启动校验 |
+| macOS | `macos-15` / Universal | `NovaParty-<tag>-macos-universal.dmg` | arm64 + x86_64 通用 `.app` + `/Applications` 拖拽链接；默认临时签名，配置 Developer ID Secrets 后自动正式签名 |
+
+触发发版：
+
+```sh
+git tag v0.1.16
+git push origin v0.1.16
+```
+
+也可以在不打 tag 时手动试跑全平台 Release 构建（仅上传到 Actions Artifacts，不发布 GitHub Release）：
+
+```sh
+gh workflow run release.yml
+```
+
+可选 Apple 签名 Secrets（不配置也可正常产出可用 DMG 和未签名 IPA）：
+
+| Secret | 用途 |
+| --- | --- |
+| `MACOS_CERTIFICATE_BASE64` / `MACOS_CERTIFICATE_PASSWORD` / `MACOS_SIGN_IDENTITY` | 可选：macOS Developer ID `.p12` 证书、密码与签名身份 |
+| `IOS_CERTIFICATE_BASE64` / `IOS_CERTIFICATE_PASSWORD` / `IOS_PROVISIONING_PROFILE_BASE64` / `IOS_TEAM_ID` | 可选：iOS 分发 `.p12` 证书、密码、`.mobileprovision` 描述文件与 Team ID |
+| `IOS_EXPORT_METHOD` / `IOS_CODE_SIGN_IDENTITY` | 可选：导出方式（默认 `ad-hoc`）与签名身份（默认 `Apple Distribution`） |
+
 ## Windows、macOS 与 iOS 模拟器测试包
 
-工作流 `.github/workflows/platforms.yml`，名称 **Desktop and iOS Simulator**。推送 main、推送 v* 标签、向 main 提交 PR 或手动运行时，并行生成以下测试包；不读取任何签名 Secrets，也不发布到商店：
+工作流 `.github/workflows/platforms.yml`，名称 **Desktop and iOS Simulator**。推送 main、向 main 提交 PR 或手动运行时，并行生成以下测试包；不读取任何签名 Secrets，也不发布到商店：
 
 | 平台 | Runner / 架构 | 产物 |
 | --- | --- | --- |
@@ -35,8 +69,8 @@ python3 tools/build/build_platform.py --platform macos
 
 - 推送 `main` 或向 `main` 提交 PR：检查后生成 Debug APK。
 - 手动 **Run workflow**：默认只生成 Debug；勾选 `release` 同时生成正式签名 Release APK。
-- 推送 `v*` 标签：同时生成 Debug 和正式签名 Release APK。
-- APK 位于运行记录底部的 Artifacts，Debug 保留 14 天，Release 保留 30 天；不自动发布 GitHub Release 或上传商店。
+- 推送 `v*` 标签由 **Release Packages**（`.github/workflows/release.yml`）统一打包并发布到 GitHub Release。
+- APK 位于运行记录底部的 Artifacts，Debug 保留 14 天，Release 保留 30 天；不自动上传商店。
 
 ```sh
 gh workflow run android.yml                          # Debug

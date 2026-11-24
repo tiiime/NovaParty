@@ -19,7 +19,7 @@ HASHES = {
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--platform', choices=['windows', 'macos', 'ios-simulator'], required=True)
+    parser.add_argument('--platform', choices=['windows', 'macos', 'ios-simulator', 'ios'], required=True)
     args = parser.parse_args()
     if os.environ.get('GITHUB_ACTIONS') != 'true':
         raise SystemExit('Run this setup only in a disposable GitHub Actions checkout.')
@@ -49,7 +49,7 @@ def main():
         binary = cache/'Godot.app/Contents/MacOS/Godot'
         binary.chmod(0o755)
         base = Path.home()/'Library/Application Support/Godot'
-        templates = ['macos.zip'] + (['ios.zip'] if args.platform == 'ios-simulator' else [])
+        templates = ['macos.zip'] + (['ios.zip'] if args.platform in ('ios-simulator', 'ios') else [])
     destination = base/'export_templates'/f'{VERSION}.stable'
     destination.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(cache/f'Godot_v{VERSION}-stable_export_templates.tpz') as z:
@@ -64,6 +64,8 @@ def main():
         if args.platform == 'ios-simulator':
             for platform in ['simulator', 'ios']:
                 subprocess.run([sys.executable, 'tools/build/build_apple_bridge.py', '--platform', platform], cwd=root, env=env, check=True)
+        elif args.platform == 'ios':
+            subprocess.run([sys.executable, 'tools/build/build_apple_bridge.py', '--platform', 'ios'], cwd=root, env=env, check=True)
     print('Prepared verified Godot, selected export templates and native bridges.')
 
 
